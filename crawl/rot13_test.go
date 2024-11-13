@@ -1,13 +1,12 @@
 package crawl
 
 import (
-	"math"
 	"strings"
 	"testing"
 )
 
 
-var repCnt int = int(math.Pow( 2, 8) + 1 )
+var repCnt int = 10000000
 
 // cas-test pour la conversion ROT-13
 var rot13tests = map[string]struct {
@@ -55,10 +54,10 @@ var rot13tests = map[string]struct {
 		out: `"You cracked the code!"`,
 		len: 23,
 	},
-	"1M zéros": {
-		in:  strings.Repeat("Abcde", repCnt),
-		out: strings.Repeat("Nopqr", repCnt),
-		len: repCnt*len("Abcde"),
+	"long (50Mb)": {
+		in:  strings.Repeat("Abc", repCnt),
+		out: strings.Repeat("Nop", repCnt),
+		len: repCnt*len("Abc"),
 	},
 }
 
@@ -67,7 +66,10 @@ func TestRot13(t *testing.T) {
 	for name, test := range rot13tests {
 		t.Run(name, func(t *testing.T) {
 			//t.Parallel()
-			got := Rot13(test.in)
+			got, err := Rot13(test.in)
+			if err != nil {
+				t.Error( err )
+			}
 			if len(got) != test.len {
 				t.Fatalf("rot13(%q) is %d bytes; expected %d bytes", test.in, len(got), test.len)
 			}
