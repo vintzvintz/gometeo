@@ -1,8 +1,8 @@
 package crawl
 
 import (
-	//"fmt"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -11,7 +11,12 @@ type stringAndLen struct {
 	l int
 }
 
-func Test_wesh(t *testing.T) {
+func stringLen(s string) int {
+	var l int = strings.Count(s, "")
+	return l - 1 // https://pkg.go.dev/strings#example-Count
+}
+
+func Test_StringLen(t *testing.T) {
 	var test_cases = make([]stringAndLen, 0)
 
 	test_cases = append(test_cases,
@@ -25,7 +30,7 @@ func Test_wesh(t *testing.T) {
 		//log := fmt.Sprintf("Test case %d", i)
 		//t.Log(log)
 
-		got := string_len(tc.s)
+		got := stringLen(tc.s)
 		want := tc.l
 
 		if got != want {
@@ -34,8 +39,8 @@ func Test_wesh(t *testing.T) {
 	}
 }
 
-func Example_wesh(){
-	l := string_len( "wouèch ")
-	fmt.Printf( "%d", l)
+func ExamplestringLen() {
+	l := stringLen("wouèch ")
+	fmt.Printf("%d", l)
 	// Output: 7
 }

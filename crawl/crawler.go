@@ -3,14 +3,8 @@ package crawl
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 )
-
-func string_len(s string) int {
-	var l int = strings.Count(s, "")
-	return l - 1 // https://pkg.go.dev/strings#example-Count
-}
 
 const (
 	HTTP_DOMAIN         = "https://meteofrance.com"
