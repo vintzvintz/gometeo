@@ -39,7 +39,7 @@ func getAuthToken(resp *http.Response) (string, error) {
 	return "", nil // TODO erreurs
 }
 
-func (c *MfCrawler) get_map(path string, parent *MfMap) {
+func (c *MfCrawler) get_map(path string, parent *MfMap) (err error) {
 	url := HTTP_DOMAIN + path
 	fmt.Printf("Crawling %s from parent %p\n", url, parent)
 
@@ -55,8 +55,12 @@ func (c *MfCrawler) get_map(path string, parent *MfMap) {
 		//TODO
 	}
 	fmt.Printf("obfus_auth = %s\n", obfuscated)
-	token := Rot13( obfuscated )
+	token, err := Rot13( obfuscated )
+	if err != nil {
+		return 
+	}
 	fmt.Printf("rot13_auth = %s\n", token)
+	return 
 }
 
 func Run() {
