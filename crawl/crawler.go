@@ -1,9 +1,11 @@
 package crawl
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
-
 )
 
 const (
@@ -12,52 +14,98 @@ const (
 )
 
 type MfMap struct {
-	nom string
+	//nom string
 }
 
-type MfSession struct {
+type MfClient struct {
 	auth_token string
+	client     *http.Client
 }
 
 type MfCrawler struct {
-	session *MfSession
+	client *MfClient
 }
 
-func getAuthToken(resp *http.Response) (string, error) {
+// updateAuthToken() extracts and store authentication token from
+// a Set-Cookie "mfsession" present in every response.
+// Warns if token changes during a session
+func (s *MfClient) updateAuthToken(resp *http.Response) error {
+	var tok string
 	for _, cookie := range resp.Cookies() {
 		if cookie.Name == SESSION_COOKIE_NAME {
-			return cookie.Value, nil
+			tok = cookie.Value
+			break
 		}
 	}
-	fmt.Printf("Cookie de session non trouvé")
-	return "", nil // TODO erreurs
+	if tok == "" {
+		msg := fmt.Sprintf("Set-Cookie mfsession absent de la réponse. url=%s", resp.Request.URL.String())
+		return errors.New(msg)
+	}
+	if s.auth_token != tok {
+		log.Println("Cookie de session modifié.")
+	}
+	s.auth_token, _ = Rot13(tok)
+	return nil
+}
+
+
+// Get issues a GET request to the specified URL
+func (s *MfClient) Get(url string) (body []byte, err error) {
+
+	var req *http.Request
+	var resp *http.Response
+
+	// initialise un client http pour la premiere requete de la session
+	if s.client == nil {
+		s.client = &http.Client{}
+	}
+	// cree une requete GET avec l'url et le header d'authentification
+	req, err = http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Printf("Erreur de création de la requete pour %s", url)
+		return
+	}
+
+	// TODO : implémenter un cache ici
+
+	if s.auth_token != "" {
+		req.Header.Add("Authorization", "Bearer "+s.auth_token)
+	}
+	// execute la requête et renvoie le contenu
+	resp, err = s.client.Do(req)
+	if err == nil {
+		body, err = io.ReadAll(resp.Body)
+		resp.Body.Close()
+	}
+	// met à jour le token de session
+	if err == nil {
+		err = s.updateAuthToken(resp)
+	}
+	return
 }
 
 func (c *MfCrawler) get_map(path string, parent *MfMap) (err error) {
-	url := HTTP_DOMAIN + path
-	fmt.Printf("Crawling %s from parent %p\n", url, parent)
 
-	resp, err := http.Get(url)
+	url := HTTP_DOMAIN + path
+	log.Printf("Crawling %s from parent %p\n", url, parent)
+
+	resp, err := c.client.Get(url)
 	if err != nil {
 		fmt.Printf("Erreur HTTP %s", err)
 		return
 	}
-	defer resp.Body.Close()
+	log.Print( string(resp[0:200]) )
 
-	obfuscated, err := getAuthToken(resp)
-	if err != nil {
-		//TODO
+	return err
+}
+
+func NewCrawler( ) *MfCrawler {
+	return &MfCrawler{
+		client: &MfClient{}, 
 	}
-	fmt.Printf("obfus_auth = %s\n", obfuscated)
-	token, err := Rot13( obfuscated )
-	if err != nil {
-		return 
-	}
-	fmt.Printf("rot13_auth = %s\n", token)
-	return 
 }
 
 func Run() {
-	crawler := &MfCrawler{}
+	crawler := NewCrawler()
 	crawler.get_map("/", nil)
 }
