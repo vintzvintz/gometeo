@@ -9,30 +9,51 @@ import (
 )
 
 const (
-	HTTP_DOMAIN         = "https://meteofrance.com"
-	SESSION_COOKIE_NAME = "mfsession"
+	urlBase       = "https://meteofrance.com"
+	sessionCookie = "mfsession"
 )
-
-type MfMap struct {
-	//nom string
-}
-
-type MfClient struct {
-	auth_token string
-	client     *http.Client
-}
 
 type MfCrawler struct {
 	client *MfClient
 }
 
+type MfCache map[string][]byte
+
+type MfClient struct {
+	auth_token string
+	client     *http.Client
+	cache      MfCache
+}
+
+type MfMap struct {
+	nom  string
+	html string
+}
+
+// Declaring an enum type for cache control
+type CachePolicy int
+
+const (
+	CacheDefault  CachePolicy = iota // default. return cached data if available, otherwise send a request
+	CacheUpdate                      // ignore cache but store response
+	CacheDisabled                    // ignore cache and do not store response
+	CacheOnly                        // do not send any request, only cache data only
+)
+
+func NewClient() *MfClient {
+	return &MfClient{
+		client: &http.Client{},
+		cache:  make(MfCache),
+	}
+}
+
 // updateAuthToken() extracts and store authentication token from
-// a Set-Cookie "mfsession" present in every response.
+// a Set-Cookie "mfsession" header present in every response.
 // Warns if token changes during a session
 func (s *MfClient) updateAuthToken(resp *http.Response) error {
 	var tok string
 	for _, cookie := range resp.Cookies() {
-		if cookie.Name == SESSION_COOKIE_NAME {
+		if cookie.Name == sessionCookie {
 			tok = cookie.Value
 			break
 		}
@@ -41,71 +62,94 @@ func (s *MfClient) updateAuthToken(resp *http.Response) error {
 		msg := fmt.Sprintf("Set-Cookie mfsession absent de la réponse. url=%s", resp.Request.URL.String())
 		return errors.New(msg)
 	}
-	if s.auth_token != tok {
+	if s.auth_token != "" && s.auth_token != tok {
 		log.Println("Cookie de session modifié.")
 	}
 	s.auth_token, _ = Rot13(tok)
 	return nil
 }
 
+// Get issues a GET request to path, prefixed with 'baseUrl' constant.
+// with a basic cache
+func (cl *MfClient) Get(path string, cp CachePolicy) ([]byte, error) {
 
-// Get issues a GET request to the specified URL
-func (s *MfClient) Get(url string) (body []byte, err error) {
-
-	var req *http.Request
-	var resp *http.Response
-
-	// initialise un client http pour la premiere requete de la session
-	if s.client == nil {
-		s.client = &http.Client{}
-	}
 	// cree une requete GET avec l'url et le header d'authentification
-	req, err = http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", urlBase+path, nil)
 	if err != nil {
-		log.Printf("Erreur de création de la requete pour %s", url)
-		return
+		msg := fmt.Sprintf("Erreur de création de la requete pour %s", path)
+		return nil, errors.New(msg)
 	}
 
-	// TODO : implémenter un cache ici
+	// cherche dans le cache
+	if cp == CacheDefault || cp == CacheOnly {
+		body, ok := cl.cache[path]
+		// renvoie le résultat si présent dans le cache
+		if ok {
+			return body, nil
+		}
+	}
 
-	if s.auth_token != "" {
-		req.Header.Add("Authorization", "Bearer "+s.auth_token)
+	// arrete ici en mode CacheOnly
+	if cp == CacheOnly {
+		msg := fmt.Sprint("ressource non disponible dans le cache ", path)
+		return nil, errors.New(msg)
 	}
-	// execute la requête et renvoie le contenu
-	resp, err = s.client.Do(req)
-	if err == nil {
-		body, err = io.ReadAll(resp.Body)
-		resp.Body.Close()
+
+	// execute la requête
+	if cl.auth_token != "" {
+		req.Header.Add("Authorization", "Bearer "+cl.auth_token)
 	}
+	resp, err := cl.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
 	// met à jour le token de session
-	if err == nil {
-		err = s.updateAuthToken(resp)
-	}
-	return
-}
-
-func (c *MfCrawler) get_map(path string, parent *MfMap) (err error) {
-
-	url := HTTP_DOMAIN + path
-	log.Printf("Crawling %s from parent %p\n", url, parent)
-
-	resp, err := c.client.Get(url)
+	err = cl.updateAuthToken(resp)
 	if err != nil {
-		fmt.Printf("Erreur HTTP %s", err)
-		return
+		return nil, err
 	}
-	log.Print( string(resp[0:200]) )
 
-	return err
+	// recupere le contenu de la réponse
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// met à jour le cache
+	if cp == CacheDefault || cp == CacheUpdate {
+		cl.cache[path] = body
+	}
+	return body, nil
 }
 
-func NewCrawler( ) *MfCrawler {
+// getMap gets a map from remote service or from local cache if available
+func (c *MfCrawler) getMap(path string, parent *MfMap) (*MfMap, error) {
+
+	log.Printf("Crawling %s from parent '%s'\n", path, parent.nom)
+
+	resp, err := c.client.Get(path, CacheDefault)
+	if err != nil {
+		return nil, err
+	}
+	m := MfMap{html: string(resp)}
+	return &m, nil
+}
+
+func NewCrawler() *MfCrawler {
 	return &MfCrawler{
-		client: &MfClient{}, 
+		client: NewClient(),
 	}
 }
 
-func Run() {
+func Run() error {
 	crawler := NewCrawler()
-	crawler.get_map("/", nil)
+	mfmap, err := crawler.getMap("/", &MfMap{nom: "racine"})
+	if err != nil {
+		return err
+	}
+	var trunc int = min(int(200), len(mfmap.html))
+	fmt.Printf(mfmap.html[0:trunc])
+	return nil
 }
