@@ -50,7 +50,7 @@ func NewClient() *MfClient {
 // updateAuthToken() extracts and store authentication token from
 // a Set-Cookie "mfsession" header present in every response.
 // Warns if token changes during a session
-func (s *MfClient) updateAuthToken(resp *http.Response) error {
+func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 	var tok string
 	for _, cookie := range resp.Cookies() {
 		if cookie.Name == sessionCookie {
@@ -62,10 +62,10 @@ func (s *MfClient) updateAuthToken(resp *http.Response) error {
 		msg := fmt.Sprintf("Set-Cookie mfsession absent de la réponse. url=%s", resp.Request.URL.String())
 		return errors.New(msg)
 	}
-	if s.auth_token != "" && s.auth_token != tok {
+	if cl.auth_token != "" && cl.auth_token != tok {
 		log.Println("Cookie de session modifié.")
 	}
-	s.auth_token, _ = Rot13(tok)
+	cl.auth_token, _ = Rot13(tok)
 	return nil
 }
 
