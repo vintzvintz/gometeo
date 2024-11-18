@@ -81,6 +81,24 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 	return nil
 }
 
+// addUrlBase returns
+//   - path (unchanged) if path starts with urlBase
+//   - urlBase+path if path starts with a slash
+//   - error in other cases
+func addUrlBase(path string) (string, error) {
+	l := min(len(path), len(urlBase))
+	switch {
+	case path == "":
+		return "", fmt.Errorf("path is empty")
+	case path[0:l] == urlBase:
+		return path, nil
+	case path[0] == '/':
+		return urlBase + path, nil
+	default:
+		return "", fmt.Errorf("path '%s' does not start with '/' or '%s'", path, urlBase)
+	}
+}
+
 // Get issues a GET request to path, prefixed with 'baseUrl' constant.
 // with a basic cache
 func (cl *MfClient) Get(path string, cp CachePolicy) ([]byte, error) {
