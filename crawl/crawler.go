@@ -40,10 +40,22 @@ const (
 	CacheOnly                        // do not send any request, only cache data only
 )
 
-func NewClient() *MfClient {
+// NewClient allocates a *MfClient.
+// cache is an optional pre-initialized cache. cache=nil is allowed.
+func NewClient(cache MfCache) *MfClient {
+	if cache == nil {
+		cache = make(MfCache)
+	}
 	return &MfClient{
 		client: &http.Client{},
-		cache:  make(MfCache),
+		cache:  cache,
+	}
+}
+
+// NewCrawler allocates as *MfCrawler
+func NewCrawler() *MfCrawler {
+	return &MfCrawler{
+		client: NewClient(nil),
 	}
 }
 
@@ -79,7 +91,6 @@ func (cl *MfClient) Get(path string, cp CachePolicy) ([]byte, error) {
 		msg := fmt.Sprintf("Erreur de création de la requete pour %s", path)
 		return nil, errors.New(msg)
 	}
-
 	// cherche dans le cache
 	if cp == CacheDefault || cp == CacheOnly {
 		body, ok := cl.cache[path]
@@ -88,13 +99,11 @@ func (cl *MfClient) Get(path string, cp CachePolicy) ([]byte, error) {
 			return body, nil
 		}
 	}
-
 	// arrete ici en mode CacheOnly
 	if cp == CacheOnly {
 		msg := fmt.Sprint("ressource non disponible dans le cache ", path)
 		return nil, errors.New(msg)
 	}
-
 	// execute la requête
 	if cl.auth_token != "" {
 		req.Header.Add("Authorization", "Bearer "+cl.auth_token)
@@ -104,19 +113,16 @@ func (cl *MfClient) Get(path string, cp CachePolicy) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	// met à jour le token de session
 	err = cl.updateAuthToken(resp)
 	if err != nil {
 		return nil, err
 	}
-
 	// recupere le contenu de la réponse
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-
 	// met à jour le cache
 	if cp == CacheDefault || cp == CacheUpdate {
 		cl.cache[path] = body
@@ -126,21 +132,13 @@ func (cl *MfClient) Get(path string, cp CachePolicy) ([]byte, error) {
 
 // getMap gets a map from remote service or from local cache if available
 func (c *MfCrawler) getMap(path string, parent *MfMap) (*MfMap, error) {
-
 	log.Printf("Crawling %s from parent '%s'\n", path, parent.nom)
-
 	resp, err := c.client.Get(path, CacheDefault)
 	if err != nil {
 		return nil, err
 	}
 	m := MfMap{html: string(resp)}
 	return &m, nil
-}
-
-func NewCrawler() *MfCrawler {
-	return &MfCrawler{
-		client: NewClient(),
-	}
 }
 
 func Run() error {
