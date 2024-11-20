@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-
 var repCnt int = 10000000
 
 // cas-test pour la conversion ROT-13
@@ -57,7 +56,7 @@ var rot13tests = map[string]struct {
 	"long (50Mb)": {
 		in:  strings.Repeat("Abc", repCnt),
 		out: strings.Repeat("Nop", repCnt),
-		len: repCnt*len("Abc"),
+		len: repCnt * len("Abc"),
 	},
 }
 
@@ -68,7 +67,7 @@ func TestRot13(t *testing.T) {
 			//t.Parallel()
 			got, err := Rot13(test.in)
 			if err != nil {
-				t.Error( err )
+				t.Error(err)
 			}
 			if len(got) != test.len {
 				t.Fatalf("rot13(%q) is %d bytes; expected %d bytes", test.in, len(got), test.len)
