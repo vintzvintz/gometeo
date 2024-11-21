@@ -3,37 +3,28 @@ package crawl
 import (
 	"bytes"
 	"io"
-	/*
 	"net/http"
 	"net/http/httptest"
 	"os"
-	*/
 	"strings"
 	"testing"
 )
 
-var testData01 = MfCache{
-	"key_nil":      nil,
-	"key_empty":    []byte(""),
-	"key_wesh":     []byte("wèèèsh"),
-	"":             []byte("Empty key"),
-	"unicode_data": []byte(strings.Repeat("Azêrty uiop ", 30)),
-	"unicode_kèy":  []byte(strings.Repeat("Azerty uiop ", 30)),
-}
-
-func copyCache(src MfCache) (dst MfCache) {
-	dst = make(MfCache)
-	for k, v := range src {
-		vCopy := make([]byte, len(v))
-		copy(vCopy, v)
-		dst[k] = vCopy
+func dataSet01() *MfCache {
+	return &MfCache{
+		"key_nil":      nil,
+		"key_empty":    []byte(""),
+		"key_wesh":     []byte("wèèèsh"),
+		"":             []byte("Empty key"),
+		"unicode_data": []byte(strings.Repeat("Azêrty uiop ", 30)),
+		"unicode_kèy":  []byte(strings.Repeat("Azerty uiop ", 30)),
 	}
-	return
 }
 
 func TestCacheHit(t *testing.T) {
-	cl := NewClient(copyCache(testData01))
-	for path, expected := range testData01 {
+	cl := NewClient()
+	cl.cache = dataSet01()
+	for path, expected := range *dataSet01() {
 		t.Run(path, func(t *testing.T) {
 			body, err := cl.Get(path, CacheOnly)
 			if err != nil {
@@ -48,7 +39,8 @@ func TestCacheHit(t *testing.T) {
 }
 
 func TestCacheMiss(t *testing.T) {
-	cl := NewClient(copyCache(testData01))
+	cl := NewClient()
+	cl.cache = dataSet01()
 	_, err := cl.Get("missing_key", CacheOnly)
 	if err == nil {
 		t.Error("MfClient.Get() returned nil error on cache miss")
@@ -56,8 +48,8 @@ func TestCacheMiss(t *testing.T) {
 }
 
 func TestLookupHit(t *testing.T) {
-	c := copyCache(testData01)
-	for key, data := range c {
+	c := dataSet01()
+	for key, data := range *c {
 		t.Run(key, func(t *testing.T) {
 			r, ok := c.lookup(key)
 			if !ok {
@@ -76,7 +68,7 @@ func TestLookupHit(t *testing.T) {
 }
 
 func TestLookupMiss(t *testing.T) {
-	c := copyCache(testData01)
+	c := dataSet01()
 	_, ok := c.lookup("missing_key")
 	if ok {
 		t.Error("MfCache.lookup() returned nil error on cache miss")
@@ -89,10 +81,12 @@ var pathInvalid = map[string]string{
 	"no_leading_slash": "x",
 }
 
+var urlBase string = httpsMeteofranceCom
+
 func TestInvalidPath(t *testing.T) {
 	for name, path := range pathInvalid {
 		t.Run(name, func(t *testing.T) {
-			_, err := addUrlBase(path)
+			_, err := addUrlBase(path, urlBase)
 			if err == nil {
 				t.Errorf("path '%s' not recognized as invalid", path)
 			}
@@ -114,7 +108,7 @@ var pathValid = map[string]struct {
 func TestValidPath(t *testing.T) {
 	for name, d := range pathValid {
 		t.Run(name, func(t *testing.T) {
-			got, err := addUrlBase(d.path)
+			got, err := addUrlBase(d.path, urlBase)
 			if err != nil {
 				t.Error(err)
 			}
@@ -125,9 +119,9 @@ func TestValidPath(t *testing.T) {
 	}
 }
 
-func TestUpdaterRead(t *testing.T) {
+func TestUpdater(t *testing.T) {
 	cache := MfCache{}
-	for k, v := range copyCache(testData01) {
+	for k, v := range *dataSet01() {
 		body := io.NopCloser(bytes.NewReader(v))
 		updater := cache.NewCacheUpdater(k, body)
 
@@ -141,7 +135,7 @@ func TestUpdaterRead(t *testing.T) {
 	}
 
 	// verifie que le cache a capturé toutes les données
-	for k, v := range copyCache(testData01) {
+	for k, v := range *dataSet01() {
 		got, ok := cache[k]
 		if !ok {
 			t.Errorf("Clé %s absente du cache", k)
@@ -152,30 +146,128 @@ func TestUpdaterRead(t *testing.T) {
 	}
 }
 
-
 const assets_dir = "../test_data/"
-/*
-func TestGet(t *testing.T) {
 
-	name := "/racine.html"
-	f, err := os.Open(assets_dir + name)
+func setupServer(t *testing.T, filename string, cnt *int) (srv *httptest.Server) {
+	f, err := os.Open(assets_dir + filename)
 	if err != nil {
-		t.Errorf("%s : %v", name, err)
+		t.Errorf("%s : %v", filename, err)
 	}
-
-	// setup mock server
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if cnt != nil {
+			*cnt++
+		}
+		cookie := &http.Cookie{Name: sessionCookie, Value: "some_token"}
+		http.SetCookie(w, cookie)
 		_, err := io.Copy(w, f)
 		if err != nil {
 			t.Error(err)
 		}
 	}))
-	defer srv.Close()
+	return srv
+}
 
-	client := NewClient(nil)
-	body, err := client.Get( "/racine.html", CacheDefault)
+func compareBytesWithFile(t *testing.T, data []byte, filename string) int {
+	path := assets_dir + filename
+	f, err := os.Open(path)
 	if err != nil {
-		t.Errorf("GET ")
+		t.Errorf("os.Open(%s) error: %v", path, err)
+		return 1
+	}
+	defer f.Close()
+	file, err := io.ReadAll(f)
+	if err != nil {
+		t.Error(err)
+		return 1
+	}
+	cmp := bytes.Compare(data, file)
+/*
+	if cmp != 0 {
+		err := os.WriteFile("fromBytes.html", data, 0660)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+*/
+	return cmp
+}
+
+const fileRacine = "racine.html"
+
+func TestGetCacheOnly(t *testing.T) {
+
+	var cnt int
+	srv := setupServer(t, fileRacine, &cnt)
+	defer srv.Close()
+	client := NewClient()
+	client.baseUrl = srv.URL
+
+	for i := 0; i < 2; i++ {
+		// Echec attendu en mode cacheOnly car le cache est vide
+		data, err := client.Get("/"+fileRacine, CacheOnly)
+		_ = data
+		if err == nil {
+			t.Error("GET should fail in CacheOnly mode")
+		}
+		if cnt > 0 {
+			t.Errorf("GET request sent in CacheOnly mode")
+		}
 	}
 }
-*/
+
+func TestGetCacheDefault(t *testing.T) {
+	srv := setupServer(t, fileRacine, nil)
+	defer srv.Close()
+	client := NewClient()
+	client.baseUrl = srv.URL
+
+	if htmlFromSrv, err := testClientGet(t, "/"+fileRacine, client, CacheDefault); err != nil {
+		if compareBytesWithFile(t, htmlFromSrv, fileRacine) != 0 {
+			t.Errorf("différence entre Get(/%s) (fromSrv) et le fichier local '%s'", fileRacine, assets_dir+fileRacine)
+		}
+	}
+
+	// même requête sans le serveur, devrait réussir avec le cache
+	srv.Close()
+
+	if htmlFromCache, err := testClientGet(t, "/"+fileRacine, client, CacheDefault); err != nil {
+		// vérifie que la réponse est toujours identique au fichier source
+		if compareBytesWithFile(t, htmlFromCache, fileRacine) != 0 {
+			t.Errorf("différence entre Get(/%s) (fromCache) et le fichier local '%s'", fileRacine, assets_dir+fileRacine)
+		}
+	}
+}
+
+func TestGetCacheDisabled(t *testing.T) {
+	var cnt int
+	srv := setupServer(t, fileRacine, &cnt)
+	defer srv.Close()
+	client := NewClient()
+	client.baseUrl = srv.URL
+
+	for i := 0; i < 3; i++ {
+		if htmlFromSrv, err := testClientGet(t, "/"+fileRacine, client, CacheDisabled); err != nil {
+			if compareBytesWithFile(t, htmlFromSrv, fileRacine) != 0 {
+				t.Errorf("différence entre Get(/%s) (fromSrv) et le fichier local '%s'", fileRacine, assets_dir+fileRacine)
+			}
+		}
+		if i+1 != cnt {
+			t.Errorf("server should have received %d requests, got %d", i+1, cnt)
+		}
+	}
+}
+
+func testClientGet(t *testing.T, path string, client *MfClient, policy CachePolicy) ([]byte, error) {
+	body, err := client.Get(path, policy)
+	if err != nil {
+		t.Errorf("GET error: %s", err)
+		return nil, err
+	}
+	defer body.Close()
+	data, err := io.ReadAll(body)
+	if err != nil {
+		t.Error(err)
+		return nil, err
+	}
+	return data, nil
+}

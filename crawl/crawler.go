@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	urlBase       = "https://meteofrance.com"
-	sessionCookie = "mfsession"
+	httpsMeteofranceCom = "https://meteofrance.com"
+	sessionCookie       = "mfsession"
 )
 
 type MfCrawler struct {
@@ -18,7 +18,7 @@ type MfCrawler struct {
 // NewCrawler allocates as *MfCrawler
 func NewCrawler() *MfCrawler {
 	return &MfCrawler{
-		client: NewClient(nil),
+		client: NewClient(),
 	}
 }
 

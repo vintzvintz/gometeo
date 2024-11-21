@@ -10,20 +10,19 @@ import (
 )
 
 type MfClient struct {
+	baseUrl    string
 	auth_token string
 	client     *http.Client
-	cache      MfCache
+	cache      *MfCache
 }
 
 // NewClient allocates a *MfClient.
 // cache is an optional pre-initialized cache. cache=nil is allowed.
-func NewClient(cache MfCache) *MfClient {
-	if cache == nil {
-		cache = make(MfCache)
-	}
+func NewClient() *MfClient {
 	return &MfClient{
-		client: &http.Client{},
-		cache:  cache,
+		baseUrl: httpsMeteofranceCom,
+		client:  &http.Client{},
+		cache:   &MfCache{},
 	}
 }
 
@@ -46,13 +45,14 @@ func (m MfCache) lookup(path string) (io.ReadCloser, bool) {
 
 // cacheUpdater wraps Respose.Body to store bytes in the cache
 type cacheUpdater struct {
-	cache *MfCache // cache[path] is updated on Close()
-	path  string
-	body  io.ReadCloser
-	buf   bytes.Buffer
+	cache  MfCache // cache[path] is updated on Close()
+	path   string
+	body   io.ReadCloser
+	buf    []byte
+	closed bool
 }
 
-func (c *MfCache) NewCacheUpdater(path string, body io.ReadCloser) *cacheUpdater {
+func (c MfCache) NewCacheUpdater(path string, body io.ReadCloser) *cacheUpdater {
 	return &cacheUpdater{
 		cache: c,
 		path:  path,
@@ -62,21 +62,23 @@ func (c *MfCache) NewCacheUpdater(path string, body io.ReadCloser) *cacheUpdater
 
 func (cu *cacheUpdater) Read(p []byte) (int, error) {
 	nr, err := cu.body.Read(p)
-	if err != nil {
-		return nr, err
+	if err == nil || err == io.EOF {
+		cu.buf = append(cu.buf, p[:nr]...)
 	}
-	nw, err := cu.buf.Write(p[:nr])
-	if err != nil || nw != nr {
-		panic(fmt.Sprintf("Nb de bytes reçus : %d mise en cache %d", nr, nw))
-	}
-	return nw, nil
+	return nr, err
 }
 
 // Close() updates the cache and close resp.Body()
 func (cu *cacheUpdater) Close() error {
-	//log.Println("cacheUpdater.Close()")
-	(*cu.cache)[cu.path] = cu.buf.Bytes()
+	if cu.closed {
+		return nil
+	}
+	cu.closed = true
+	//log.Printf("cacheUpdater.Close() len=%d", len(cu.buf))
+	cu.cache[cu.path] = cu.buf
+	cu.buf = nil
 	cu.body.Close()
+	cu.body = nil
 	return nil
 }
 
@@ -103,20 +105,20 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 }
 
 // addUrlBase returns
-//   - path (unchanged) if path starts with urlBase
-//   - urlBase+path if path starts with a slash
+//   - path unchanged if path starts with base
+//   - base+path if path starts with a slash
 //   - error in other cases
-func addUrlBase(path string) (string, error) {
-	l := min(len(path), len(urlBase))
+func addUrlBase(path string, base string) (string, error) {
+	l := min(len(path), len(base))
 	switch {
 	case path == "":
 		return "", fmt.Errorf("empty path")
-	case path[0:l] == urlBase:
+	case path[0:l] == base:
 		return path, nil
 	case path[0] == '/':
-		return urlBase + path, nil
+		return base + path, nil
 	default:
-		return "", fmt.Errorf("path '%s' invalid, must start with '/' or '%s'", path, urlBase)
+		return "", fmt.Errorf("path '%s' invalid, must start with '/' or '%s'", path, base)
 	}
 }
 
@@ -137,9 +139,9 @@ func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) 
 		msg := fmt.Sprint("ressource non disponible dans le cache ", path)
 		return nil, errors.New(msg)
 	}
-	
+
 	// cree une requete GET sur path
-	url, err := addUrlBase(path)
+	url, err := addUrlBase(path, cl.baseUrl)
 	if err != nil {
 		return nil, err
 	}
