@@ -21,32 +21,6 @@ func dataSet01() *MfCache {
 	}
 }
 
-func TestCacheHit(t *testing.T) {
-	cl := NewClient()
-	cl.cache = dataSet01()
-	for path, expected := range *dataSet01() {
-		t.Run(path, func(t *testing.T) {
-			body, err := cl.Get(path, CacheOnly)
-			if err != nil {
-				t.Error(err)
-			}
-			got, _ := io.ReadAll(body)
-			if !bytes.Equal(got, expected) {
-				t.Errorf("got:'%s' expected:'%s'", string(got), string(expected))
-			}
-		})
-	}
-}
-
-func TestCacheMiss(t *testing.T) {
-	cl := NewClient()
-	cl.cache = dataSet01()
-	_, err := cl.Get("missing_key", CacheOnly)
-	if err == nil {
-		t.Error("MfClient.Get() returned nil error on cache miss")
-	}
-}
-
 func TestLookupHit(t *testing.T) {
 	c := dataSet01()
 	for key, data := range *c {
@@ -123,7 +97,7 @@ func TestUpdater(t *testing.T) {
 	cache := MfCache{}
 	for k, v := range *dataSet01() {
 		body := io.NopCloser(bytes.NewReader(v))
-		updater := cache.NewCacheUpdater(k, body)
+		updater := cache.NewUpdater(k, body)
 
 		// lit toutes les données
 		_, err := io.ReadAll(updater)
@@ -146,20 +120,60 @@ func TestUpdater(t *testing.T) {
 	}
 }
 
+func TestUpdaterDoubleClose(t *testing.T) {
+	c := MfCache{}
+	data := io.NopCloser(strings.NewReader("data"))
+	u := c.NewUpdater("key", data)
+	if err := u.Close(); err != nil {
+		t.Errorf("cacheUpdater.Close() error on first call :%v", err)
+	}
+	if err := u.Close(); err != nil {
+		t.Errorf("cacheUpdater.Close() error on second call :%v", err)
+	}
+	u = nil // remove reference
+	// is cache properly updated after double close ?
+	if _, ok := c.lookup("key"); !ok {
+		t.Error("cache not properly updated after double Close()")
+	}
+}
+
 const assets_dir = "../test_data/"
 
 func setupServer(t *testing.T, filename string, cnt *int) (srv *httptest.Server) {
-	f, err := os.Open(assets_dir + filename)
-	if err != nil {
-		t.Errorf("%s : %v", filename, err)
+	cookie := &http.Cookie{Name: sessionCookie, Value: "auth_token_string"}
+	return setupCustomServer(t, filename, cnt, cookie)
+}
+
+func setupServerNoCookie(t *testing.T, filename string, cnt *int) (srv *httptest.Server) {
+	return setupCustomServer(t, filename, cnt, nil)
+}
+
+func setupCustomServer(t *testing.T, filename string, cnt *int, cookie *http.Cookie) (srv *httptest.Server) {
+
+	// prepare data from file
+	// empty data if filename is ""
+	data := []byte{}
+	if filename != "" {
+		fp := assets_dir + filename
+		f, err := os.Open(fp)
+		if err != nil {
+			t.Errorf("%s : %v", fp, err)
+			return
+		}
+		data, err = io.ReadAll(f)
+		if err != nil {
+			t.Errorf("%s : %v", fp, err)
+			return
+		}
 	}
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if cnt != nil {
 			*cnt++
 		}
-		cookie := &http.Cookie{Name: sessionCookie, Value: "some_token"}
-		http.SetCookie(w, cookie)
-		_, err := io.Copy(w, f)
+		if cookie != nil {
+			http.SetCookie(w, cookie)
+		}
+		_, err := io.Copy(w, bytes.NewReader(data))
 		if err != nil {
 			t.Error(err)
 		}
@@ -181,23 +195,48 @@ func compareBytesWithFile(t *testing.T, data []byte, filename string) int {
 		return 1
 	}
 	cmp := bytes.Compare(data, file)
-/*
-	if cmp != 0 {
-		err := os.WriteFile("fromBytes.html", data, 0660)
-		if err != nil {
-			t.Error(err)
+	/*
+		if cmp != 0 {
+			err := os.WriteFile("fromBytes.html", data, 0660)
+			if err != nil {
+				t.Error(err)
+			}
 		}
-	}
-*/
+	*/
 	return cmp
 }
 
 const fileRacine = "racine.html"
 
-func TestGetCacheOnly(t *testing.T) {
+func TestCacheHit(t *testing.T) {
+	cl := NewClient()
+	cl.cache = dataSet01()
+	for path, expected := range *dataSet01() {
+		t.Run(path, func(t *testing.T) {
+			body, err := cl.Get(path, CacheOnly)
+			if err != nil {
+				t.Error(err)
+			}
+			got, _ := io.ReadAll(body)
+			if !bytes.Equal(got, expected) {
+				t.Errorf("got:'%s' expected:'%s'", string(got), string(expected))
+			}
+		})
+	}
+}
 
+func TestCacheMiss(t *testing.T) {
+	cl := NewClient()
+	cl.cache = dataSet01()
+	_, err := cl.Get("missing_key", CacheOnly)
+	if err == nil {
+		t.Error("MfClient.Get() returned nil error on cache miss")
+	}
+}
+
+func TestGetCacheOnly(t *testing.T) {
 	var cnt int
-	srv := setupServer(t, fileRacine, &cnt)
+	srv := setupServerNoCookie(t, "", &cnt)
 	defer srv.Close()
 	client := NewClient()
 	client.baseUrl = srv.URL
@@ -238,13 +277,20 @@ func TestGetCacheDefault(t *testing.T) {
 	}
 }
 
+const initialCachedData = "initial cached data"
+
 func TestGetCacheDisabled(t *testing.T) {
+
 	var cnt int
 	srv := setupServer(t, fileRacine, &cnt)
 	defer srv.Close()
 	client := NewClient()
 	client.baseUrl = srv.URL
 
+	// pre-fill cache with data which must not be updated by Get() calls
+	client.cache = &MfCache{"/" + fileRacine: []byte(initialCachedData)}
+
+	// perform some requests with CacheDisabled mode
 	for i := 0; i < 3; i++ {
 		if htmlFromSrv, err := testClientGet(t, "/"+fileRacine, client, CacheDisabled); err != nil {
 			if compareBytesWithFile(t, htmlFromSrv, fileRacine) != 0 {
@@ -255,7 +301,70 @@ func TestGetCacheDisabled(t *testing.T) {
 			t.Errorf("server should have received %d requests, got %d", i+1, cnt)
 		}
 	}
+
+	// check cache has not been updated
+	cachedData, err := testClientGet(t, "/"+fileRacine, client, CacheOnly)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !bytes.Equal([]byte(initialCachedData), cachedData) {
+		t.Error("cache modified in CacheDisable mode")
+	}
 }
+
+func TestGetCacheUpdate(t *testing.T) {
+
+	var cnt int
+	srv := setupServer(t, fileRacine, &cnt)
+	defer srv.Close()
+	client := NewClient()
+	client.baseUrl = srv.URL
+
+	// pre-fill cache with data to be updated by Get() calls
+	client.cache = &MfCache{"/" + fileRacine: []byte(initialCachedData)}
+
+	// send requests with CacheUpdate mode
+	if htmlFromSrv, err := testClientGet(t, "/"+fileRacine, client, CacheUpdate); err != nil {
+		if compareBytesWithFile(t, htmlFromSrv, fileRacine) != 0 {
+			t.Errorf("différence entre Get(/%s) (fromSrv) et le fichier local '%s'", fileRacine, assets_dir+fileRacine)
+		}
+	}
+	if cnt != 1 {
+		t.Errorf("server should have received 1 requests, got %d", cnt)
+	}
+
+	// check cache has been updated
+	cachedData, err := testClientGet(t, "/"+fileRacine, client, CacheOnly)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if compareBytesWithFile(t, cachedData, fileRacine) != 0 {
+		t.Errorf("différence entre Get(/%s) (fromCache) et le fichier local '%s'", fileRacine, assets_dir+fileRacine)
+	}
+}
+
+/*
+func TestGetMissingCookie(t *testing.T) {
+
+	srv := setupServerNoCookie(t, fileRacine, nil)
+	defer srv.Close()
+	client := NewClient()
+	client.baseUrl = srv.URL
+
+	// send a request, expect a "missing cookie" error
+	_, err := testClientGet(t, "/"+fileRacine, client, CacheDisabled)
+	if err == nil {
+		t.Error("error expected when server does not send auth token")
+		return
+	}
+	_, ok := err.(MissingCookieError)
+	if !ok {
+		t.Error("MissingCookieError expected when server does not send auth token")
+	}
+}
+*/
 
 func testClientGet(t *testing.T, path string, client *MfClient, policy CachePolicy) ([]byte, error) {
 	body, err := client.Get(path, policy)
