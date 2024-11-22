@@ -1,6 +1,7 @@
 package mfmap
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -25,11 +26,6 @@ func (m *MfMap) SetParent( parent *MfMap ) {
 	m.parent = parent
 }
 
-/*
-	func NewMap() *MfMap {
-		return &MfMap{}
-	}
-*/
-func (m *MfMap) ReadFrom(io.Reader) (int64, error) {
-	return 0, nil
+func NewFrom(io.Reader) (*MfMap, error) {
+	return nil, fmt.Errorf("fail")
 }

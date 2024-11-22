@@ -29,8 +29,8 @@ func (c *MfCrawler) getMap(path string) (*mfmap.MfMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := &mfmap.MfMap{}
-	_, err = m.ReadFrom(body)
+	//m := &mfmap.MfMap{}
+	m, err := mfmap.NewFrom(body)
 	return m, err
 }
 

@@ -13,6 +13,7 @@ func TestNewMap(t *testing.T) {
 	f, err := os.Open(name)
 	if err != nil {
 		t.Errorf("os.Open(%s) failed: %v", name, err)
+		return
 	}
 	defer f.Close()
 
@@ -20,15 +21,24 @@ func TestNewMap(t *testing.T) {
 	if err != nil {
 		t.Errorf("os.Stat(%s) failed: %v", name, err)
 	}
+	filesize := fileInfo.Size()
 
-	var m *MfMap
-	nb, err := m.ReadFrom( f )
+	
+	m, err := NewFrom( f )
+
+//	nb, err := m.ReadFrom( f )
 	if err != nil {
-		t.Errorf("MfMap.ReadFrom(%s) failed: %v", name, err)
+		t.Errorf("NewFrom(%s) failed: %v", name, err)
 	}
+	/*
 	filesize := fileInfo.Size()
 	if nb != filesize {
 		t.Errorf("MfMap.ReadFrom(%s) returned %d, expected %d from fileInfo.Size()", name, nb, filesize)
 	}
+		*/
 	// TODO: check parse results
+
+	_ = m
+
+	_ = filesize
 }
