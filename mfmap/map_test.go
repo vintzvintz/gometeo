@@ -38,7 +38,9 @@ func TestNewMap(t *testing.T) {
 		*/
 	// TODO: check parse results
 
-	_ = m
+	if int64(len(m.html)) != filesize {
+		t.Errorf( "NewFrom(%s) : size mismatch len(src)=%d len(buf)=%d", name, filesize, len(m.html) )
+	}
 
 	_ = filesize
 }

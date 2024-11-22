@@ -1,7 +1,7 @@
 package crawl
 
 import (
-	"fmt"
+	//"fmt"
 	"gometeo/mfmap"
 	"log"
 )
@@ -51,8 +51,11 @@ func SampleRun(path string) error {
 	if err != nil {
 		return err
 	}
-	html := m.Html()
+	_ = m
+	/*
+	html := m.html
 	var trunc int = min(int(200), len(html))
 	fmt.Printf(html[0:trunc])
+	*/
 	return nil
 }
