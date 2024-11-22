@@ -345,27 +345,6 @@ func TestGetCacheUpdate(t *testing.T) {
 	}
 }
 
-/*
-func TestGetMissingCookie(t *testing.T) {
-
-	srv := setupServerNoCookie(t, fileRacine, nil)
-	defer srv.Close()
-	client := NewClient()
-	client.baseUrl = srv.URL
-
-	// send a request, expect a "missing cookie" error
-	_, err := testClientGet(t, "/"+fileRacine, client, CacheDisabled)
-	if err == nil {
-		t.Error("error expected when server does not send auth token")
-		return
-	}
-	_, ok := err.(MissingCookieError)
-	if !ok {
-		t.Error("MissingCookieError expected when server does not send auth token")
-	}
-}
-*/
-
 func testClientGet(t *testing.T, path string, client *MfClient, policy CachePolicy) ([]byte, error) {
 	body, err := client.Get(path, policy)
 	if err != nil {
@@ -379,4 +358,35 @@ func testClientGet(t *testing.T, path string, client *MfClient, policy CachePoli
 		return nil, err
 	}
 	return data, nil
+}
+
+func TestGetMissingCookie(t *testing.T) {
+
+	t.Run("MissingCookieError", func(t *testing.T) {
+		errMsg := "some error message"
+		err := MissingCookieError( errMsg )
+		got := err.Error()
+		expected := "MissingCookieError: " + errMsg
+		if got != expected {
+			t.Errorf("MissingCookieError does not generate expected string. got '%s' expected '%s'", got, expected)
+		}
+
+	})
+
+	t.Run("MissingCookie", func(t *testing.T) {
+		srv := setupServerNoCookie(t, fileRacine, nil)
+		defer srv.Close()
+		client := NewClient()
+		client.baseUrl = srv.URL
+
+		// send a request, expect a "missing cookie" error
+		var err error
+		if _, err = client.Get("/"+fileRacine, CacheDisabled); err == nil {
+			t.Error("error expected when server does not send auth token")
+			return
+		}
+		if _, ok := err.(MissingCookieError); !ok {
+			t.Errorf("MissingCookieError expected, got %v", err)
+		}
+	})
 }

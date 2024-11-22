@@ -25,16 +25,14 @@ func NewClient() *MfClient {
 		cache:   &MfCache{},
 	}
 }
-/*
-type MissingCookieError struct {
-	msg string
+
+// custom error for MfClient
+type MissingCookieError string
+
+func (e MissingCookieError) Error() string {
+	return "MissingCookieError: " + string(e)
 }
 
-func (err MissingCookieError) Error() string {
-	return err.msg
-}
-
-*/
 type MfCache map[string][]byte
 
 // Declaring an enum type for cache control
@@ -102,9 +100,8 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 		}
 	}
 	if tok == "" {
-		msg := fmt.Sprintf("Set-Cookie mfsession absent de la réponse. url=%s", resp.Request.URL.String())
-		return errors.New(msg)
-		//return MissingCookieError{msg}
+		msg := fmt.Sprintf("Set-Cookie mfsession absent url=%s", resp.Request.URL.String())
+		return MissingCookieError(msg)
 	}
 	tok, _ = Rot13(tok)
 	if cl.auth_token != "" && cl.auth_token != tok {
