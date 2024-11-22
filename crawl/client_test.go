@@ -414,3 +414,22 @@ func TestGetModifiedCookie(t *testing.T) {
 	assertCookie(t, client, cookieValA)
 	assertCookie(t, client, cookieValB)
 }
+
+// test invalid path
+func TestGetBadPath(t *testing.T) {
+
+	badPaths := map[string]string{
+		"emptyString":    "", // empty string does not starts with a slash
+		"noLeadingSlash": "x",
+		"schemeDTC":      "dtc://example.com/",
+	}
+	cl := NewClient()
+	for name, path := range badPaths {
+		t.Run( name, func( t *testing.T) {
+			_, err := cl.Get(path, CacheDisabled)
+			if err == nil {
+				t.Errorf("expected error on invalid path '%s'", path)
+		}
+		})
+	}
+}
