@@ -5,10 +5,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+
+	//"net/url"
 	"os"
 	"strings"
 	"testing"
 )
+
+const assets_dir = "../test_data/"
 
 func dataSet01() *MfCache {
 	return &MfCache{
@@ -137,22 +141,14 @@ func TestUpdaterDoubleClose(t *testing.T) {
 	}
 }
 
-const assets_dir = "../test_data/"
-
 func setupServer(t *testing.T, filename string, cnt *int) (srv *httptest.Server) {
 	cookie := &http.Cookie{Name: sessionCookie, Value: "auth_token_string"}
 	return setupServerCustom(t, filename, cnt, cookie)
 }
 
-/*
-	func setupServerNoCookie(t *testing.T, filename string, cnt *int) (srv *httptest.Server) {
-		return setupCustomServer(t, filename, cnt, nil)
-	}
-*/
 func setupServerCustom(t *testing.T, filename string, cnt *int, cookie *http.Cookie) (srv *httptest.Server) {
 
 	// prepare data from file
-	// empty data if filename is ""
 	data := []byte{}
 	if filename != "" {
 		fp := assets_dir + filename
@@ -167,6 +163,8 @@ func setupServerCustom(t *testing.T, filename string, cnt *int, cookie *http.Coo
 			return
 		}
 	}
+
+	// start an http server replying with data to any request
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if cnt != nil {
 			*cnt++
@@ -178,6 +176,14 @@ func setupServerCustom(t *testing.T, filename string, cnt *int, cookie *http.Coo
 		if err != nil {
 			t.Error(err)
 		}
+	}))
+	return srv
+}
+
+// setupServerWithStatus starts an http server replying with empty body and provided status code
+func setupServerWithStatus(t *testing.T, status int) (srv *httptest.Server) {
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(status)
 	}))
 	return srv
 }
@@ -195,16 +201,7 @@ func compareBytesWithFile(t *testing.T, data []byte, filename string) int {
 		t.Error(err)
 		return 1
 	}
-	cmp := bytes.Compare(data, file)
-	/*
-		if cmp != 0 {
-			err := os.WriteFile("fromBytes.html", data, 0660)
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	*/
-	return cmp
+	return bytes.Compare(data, file)
 }
 
 const fileRacine = "racine.html"
@@ -425,11 +422,32 @@ func TestGetBadPath(t *testing.T) {
 	}
 	cl := NewClient()
 	for name, path := range badPaths {
-		t.Run( name, func( t *testing.T) {
+		t.Run(name, func(t *testing.T) {
 			_, err := cl.Get(path, CacheDisabled)
 			if err == nil {
 				t.Errorf("expected error on invalid path '%s'", path)
-		}
+			}
+		})
+	}
+}
+
+func TestHttpErrors(t *testing.T) {
+
+	client := NewClient()
+	statusCodes := []int{401, 404, 500}
+
+	for _, code := range statusCodes {
+		t.Run(http.StatusText(code), func(t *testing.T) {
+
+			srv := setupServerWithStatus(t, code)
+			defer srv.Close()
+			client.baseUrl = srv.URL
+
+			data, err := client.Get("/", CacheDefault)
+			_ = data
+			if err == nil {
+				t.Error("client.Get() did not returned an error")
+			}
 		})
 	}
 }
