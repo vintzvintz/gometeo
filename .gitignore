@@ -2,3 +2,4 @@
 # vscode local stuff
 gometeo.code-workspace
 .vscode
+crawl/coverage.out
