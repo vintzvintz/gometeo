@@ -141,14 +141,15 @@ const assets_dir = "../test_data/"
 
 func setupServer(t *testing.T, filename string, cnt *int) (srv *httptest.Server) {
 	cookie := &http.Cookie{Name: sessionCookie, Value: "auth_token_string"}
-	return setupCustomServer(t, filename, cnt, cookie)
+	return setupServerCustom(t, filename, cnt, cookie)
 }
 
-func setupServerNoCookie(t *testing.T, filename string, cnt *int) (srv *httptest.Server) {
-	return setupCustomServer(t, filename, cnt, nil)
-}
-
-func setupCustomServer(t *testing.T, filename string, cnt *int, cookie *http.Cookie) (srv *httptest.Server) {
+/*
+	func setupServerNoCookie(t *testing.T, filename string, cnt *int) (srv *httptest.Server) {
+		return setupCustomServer(t, filename, cnt, nil)
+	}
+*/
+func setupServerCustom(t *testing.T, filename string, cnt *int, cookie *http.Cookie) (srv *httptest.Server) {
 
 	// prepare data from file
 	// empty data if filename is ""
@@ -236,7 +237,7 @@ func TestCacheMiss(t *testing.T) {
 
 func TestGetCacheOnly(t *testing.T) {
 	var cnt int
-	srv := setupServerNoCookie(t, "", &cnt)
+	srv := setupServer(t, "", &cnt)
 	defer srv.Close()
 	client := NewClient()
 	client.baseUrl = srv.URL
@@ -364,17 +365,16 @@ func TestGetMissingCookie(t *testing.T) {
 
 	t.Run("MissingCookieError", func(t *testing.T) {
 		errMsg := "some error message"
-		err := MissingCookieError( errMsg )
+		err := MissingCookieError(errMsg)
 		got := err.Error()
 		expected := "MissingCookieError: " + errMsg
 		if got != expected {
 			t.Errorf("MissingCookieError does not generate expected string. got '%s' expected '%s'", got, expected)
 		}
-
 	})
 
 	t.Run("MissingCookie", func(t *testing.T) {
-		srv := setupServerNoCookie(t, fileRacine, nil)
+		srv := setupServerCustom(t, fileRacine, nil, nil) // no counter, no cookie
 		defer srv.Close()
 		client := NewClient()
 		client.baseUrl = srv.URL
@@ -389,4 +389,28 @@ func TestGetMissingCookie(t *testing.T) {
 			t.Errorf("MissingCookieError expected, got %v", err)
 		}
 	})
+}
+
+const cookieValA = "cookie_value_A"
+const cookieValB = "cookie_value_B"
+
+func assertCookie(t *testing.T, client *MfClient, cookieVal string) {
+	cookie := &http.Cookie{Name: sessionCookie, Value: cookieVal}
+	srv := setupServerCustom(t, fileRacine, nil, cookie) // no counter
+	defer srv.Close()
+	client.baseUrl = srv.URL
+	if _, err := testClientGet(t, "/"+fileRacine, client, CacheDisabled); err != nil {
+		t.Error(err)
+		return
+	}
+	got, _ := Rot13(client.auth_token)
+	if got != cookieVal {
+		t.Errorf("auth token mismatch. got '%s', expected:'%s'", got, cookieVal)
+	}
+}
+
+func TestGetModifiedCookie(t *testing.T) {
+	client := NewClient()
+	assertCookie(t, client, cookieValA)
+	assertCookie(t, client, cookieValB)
 }
