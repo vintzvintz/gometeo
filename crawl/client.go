@@ -166,8 +166,8 @@ func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) 
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		msg := fmt.Sprintf( "error %s on url '%s'", resp.Status, resp.Request.URL )
-		return nil, errors.New(msg)
+//		msg := fmt.Sprintf( "error %s on url '%s'", resp.Status, resp.Request.URL )
+		return nil, fmt.Errorf("error %s on url '%s'", resp.Status, resp.Request.URL )
 	}
 	// met à jour le token de session
 	err = cl.updateAuthToken(resp)

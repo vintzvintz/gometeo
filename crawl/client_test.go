@@ -181,8 +181,9 @@ func setupServerCustom(t *testing.T, filename string, cnt *int, cookie *http.Coo
 }
 
 // setupServerWithStatus starts an http server replying with empty body and provided status code
-func setupServerWithStatus(t *testing.T, status int) (srv *httptest.Server) {
-	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+func setupServerWithStatus(t *testing.T, status int) (*httptest.Server) {
+	_ = t
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(status)
 	}))
 	return srv
@@ -247,7 +248,7 @@ func TestGetCacheOnly(t *testing.T) {
 			t.Error("GET should fail in CacheOnly mode")
 		}
 		if cnt > 0 {
-			t.Errorf("GET request sent in CacheOnly mode")
+			t.Errorf("GET request performed in CacheOnly mode")
 		}
 	}
 }
