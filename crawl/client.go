@@ -25,7 +25,16 @@ func NewClient() *MfClient {
 		cache:   &MfCache{},
 	}
 }
+/*
+type MissingCookieError struct {
+	msg string
+}
 
+func (err MissingCookieError) Error() string {
+	return err.msg
+}
+
+*/
 type MfCache map[string][]byte
 
 // Declaring an enum type for cache control
@@ -52,7 +61,7 @@ type cacheUpdater struct {
 	closed bool
 }
 
-func (c MfCache) NewCacheUpdater(path string, body io.ReadCloser) *cacheUpdater {
+func (c MfCache) NewUpdater(path string, body io.ReadCloser) *cacheUpdater {
 	return &cacheUpdater{
 		cache: c,
 		path:  path,
@@ -74,7 +83,6 @@ func (cu *cacheUpdater) Close() error {
 		return nil
 	}
 	cu.closed = true
-	//log.Printf("cacheUpdater.Close() len=%d", len(cu.buf))
 	cu.cache[cu.path] = cu.buf
 	cu.buf = nil
 	cu.body.Close()
@@ -96,11 +104,13 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 	if tok == "" {
 		msg := fmt.Sprintf("Set-Cookie mfsession absent de la réponse. url=%s", resp.Request.URL.String())
 		return errors.New(msg)
+		//return MissingCookieError{msg}
 	}
+	tok, _ = Rot13(tok)
 	if cl.auth_token != "" && cl.auth_token != tok {
 		log.Println("Cookie de session modifié.")
 	}
-	cl.auth_token, _ = Rot13(tok)
+	cl.auth_token = tok
 	return nil
 }
 
@@ -165,7 +175,7 @@ func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) 
 	}
 	// met à jour le cache
 	if policy == CacheDefault || policy == CacheUpdate {
-		return cl.cache.NewCacheUpdater(path, resp.Body), nil
+		return cl.cache.NewUpdater(path, resp.Body), nil
 	}
 	return resp.Body, nil
 }
