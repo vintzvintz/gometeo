@@ -1,6 +1,7 @@
 package mfmap
 
 import (
+	"io"
 	"os"
 	"testing"
 )
@@ -17,30 +18,30 @@ func TestNewMap(t *testing.T) {
 	}
 	defer f.Close()
 
+	// get OS filesize to compare with byte readcount
 	fileInfo, err :=  f.Stat()
 	if err != nil {
 		t.Errorf("os.Stat(%s) failed: %v", name, err)
 	}
 	filesize := fileInfo.Size()
 
-	
+	// feed raw html
 	m, err := NewFrom( f )
-
-//	nb, err := m.ReadFrom( f )
 	if err != nil {
 		t.Errorf("NewFrom(%s) failed: %v", name, err)
 	}
-	/*
-	filesize := fileInfo.Size()
-	if nb != filesize {
-		t.Errorf("MfMap.ReadFrom(%s) returned %d, expected %d from fileInfo.Size()", name, nb, filesize)
-	}
-		*/
-	// TODO: check parse results
-
 	if int64(len(m.html)) != filesize {
 		t.Errorf( "NewFrom(%s) : size mismatch len(src)=%d len(buf)=%d", name, filesize, len(m.html) )
 	}
 
-	_ = filesize
+	// get json content
+	r, err := m.JsonContent()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	txt, err := io.ReadAll(io.LimitReader(r,50))
+	if err == nil {
+		t.Logf( "JSON=%s", txt)
+	}
 }

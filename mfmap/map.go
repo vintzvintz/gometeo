@@ -2,6 +2,7 @@ package mfmap
 
 import (
 	"io"
+	"strings"
 )
 
 type MfMap struct {
@@ -34,4 +35,11 @@ func NewFrom(r io.Reader) (*MfMap, error) {
 		return nil, err
 	}
 	return &MfMap{html: buf}, nil
+}
+
+func (m *MfMap) JsonContent() (io.Reader, error) {
+
+	// tokenizer
+	
+	return strings.NewReader("{le_vincent:1}"), nil
 }
