@@ -1,7 +1,6 @@
 package mfmap
 
 import (
-
 	"io"
 	"os"
 	"strings"
@@ -9,6 +8,10 @@ import (
 )
 
 const assets_path = "../test_data/"
+
+
+
+const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
 
 
 /*
@@ -66,16 +69,16 @@ func TestJsonFilter(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	data, err := io.ReadAll(io.LimitReader(r,50))
+	data, err := io.ReadAll(io.LimitReader(r, 50))
 	if err != nil {
 		t.Errorf("Failed to extract JSON data from %s", name)
 		return
 	}
-	t.Logf( "JSON=%s", data)
+	t.Logf("JSON=%s", data)
 }
 
 func TestJsonFilterFail(t *testing.T) {
-	r := strings.NewReader( `
+	r := strings.NewReader(`
 <html>
 <head>
 <title>JsonReader test</head>
@@ -101,7 +104,6 @@ func TestJsonFilterFail(t *testing.T) {
 	}
 }
 
-
 func TestJsonParsing(t *testing.T) {
 	const name = assets_path + "racine.json"
 	f, err := os.Open(name)
@@ -116,14 +118,24 @@ func TestJsonParsing(t *testing.T) {
 		t.Errorf("json.Unmarshal(%s) failed: %v", name, err)
 	}
 	t.Log(j)
-	// check few leafs
-	if j.Path.BaseUrl != "/" {
-		t.Errorf( "j.Path.BaseUrl=%v expected /", j.Path.BaseUrl)
-	}
-	if j.MapLayersV2.Taxonomy != "PAYS" {
-		t.Errorf( "j.MapLayersV2.Taxonomy=%v expected FRANCE", j.MapLayersV2.Taxonomy )
-	}
-	if j.MapLayersV2.IdTechnique != "PAYS007" {
-		t.Errorf( "j.MapLayersV2.IdTechnique=%v expected PAYS007", j.MapLayersV2.IdTechnique )
-	}
+	t.Run("basic", func(t *testing.T) {
+		// check few leafs
+		if j.Path.BaseUrl != "/" {
+			t.Errorf("j.Path.BaseUrl=%v expected /", j.Path.BaseUrl)
+		}
+		if j.MapLayersV2.Taxonomy != "PAYS" {
+			t.Errorf("j.MapLayersV2.Taxonomy=%v expected FRANCE", j.MapLayersV2.Taxonomy)
+		}
+		if j.MapLayersV2.IdTechnique != "PAYS007" {
+			t.Errorf("j.MapLayersV2.IdTechnique=%v expected PAYS007", j.MapLayersV2.IdTechnique)
+		}
+	})
+
+	t.Run("config",func(t *testing.T) {
+		got := j.ApiURL()
+		if got != apiUrl {
+			t.Errorf("ApiUrl() got %s expected %s", got, apiUrl)
+		}
+	})
 }
+

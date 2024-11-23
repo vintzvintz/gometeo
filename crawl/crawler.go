@@ -3,7 +3,7 @@ package crawl
 import (
 	//"fmt"
 	"gometeo/mfmap"
-	"log"
+	//"log"
 )
 
 const (
@@ -35,7 +35,7 @@ func (c *MfCrawler) getMap(path string) (*mfmap.MfMap, error) {
 }
 
 func (c *MfCrawler) GetMap(path string, parent *mfmap.MfMap) (*mfmap.MfMap, error) {
-	log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
+	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
 	m, err := c.getMap(path)
 	if err != nil {
 		return nil, err

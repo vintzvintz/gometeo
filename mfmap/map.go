@@ -1,12 +1,26 @@
 package mfmap
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
-	"encoding/json"
+
 	"golang.org/x/net/html"
 )
+
+/*
+class Mf_map:
+  # Counterpart of MF forecast pages, with geographical, svg and forecast data
+  def __init__(self, data, own_path, parent):
+    conf = data["mf_tools_common"]["config"]
+    self.api_url="https://"+conf["site"]+"."+conf["base_url"]    # https://rpcache-aa.meteofrance.com/internet2018client/2.0
+    self.infos = data["mf_map_layers_v2"]
+    self.pois = data["mf_map_layers_v2_children_poi"]
+    self.subzones = data["mf_map_layers_v2_sub_zone"]
+    self.own_path = own_path
+    self.parent = parent
+*/
 
 type MfMap struct {
 	nom    string
@@ -17,6 +31,7 @@ type MfMap struct {
 type JsonData struct {
 	Path        PathType        `json:"path"`
 	MapLayersV2 MapLayersV2Type `json:"mf_map_layers_v2"`
+	ToolsCommon ToolsCommonType `json:"mf_tools_common"`
 }
 
 type PathType struct {
@@ -33,12 +48,31 @@ type MapLayersV2Type struct {
 	IdTechnique string `json:"field_id_technique"`
 }
 
+type ToolsCommonType struct {
+	Alias  string     `json:"alias"`
+	Config ConfigType `json:"config"`
+}
+
+type ConfigType struct {
+	BaseUrl string `json:"base_url"`
+	Site    string `json:"site"`
+	Domain  string `json:"domain"`
+}
+
+func (j *JsonData) ApiURL() string {
+	// self.api_url="https://"+conf["site"]+"."+conf["base_url"]
+	// # https://rpcache-aa.meteofrance.com/internet2018client/2.0
+
+	conf := j.ToolsCommon.Config
+	return fmt.Sprintf("https://%s.%s", conf.Site, conf.BaseUrl)
+}
+
+/*
 // accessor
 func (m *MfMap) Nom() string {
 	return m.nom
 }
 
-/*
 // accessor
 func (m *MfMap) Html() string {
 	return m.html
@@ -110,5 +144,4 @@ func JsonParser(r io.Reader) (*JsonData, error) {
 	}
 	err = json.Unmarshal(buf, &j)
 	return &j, err
-	
 }
