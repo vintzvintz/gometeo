@@ -9,10 +9,7 @@ import (
 
 const assets_path = "../test_data/"
 
-
-
 const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
-
 
 /*
 func TestNewMap(t *testing.T) {
@@ -64,7 +61,7 @@ func TestJsonFilter(t *testing.T) {
 	defer f.Close()
 
 	// get json content
-	r, err := JsonFilter(f)
+	r, err := jsonFilter(f)
 	if err != nil {
 		t.Error(err)
 		return
@@ -97,14 +94,14 @@ func TestJsonFilterFail(t *testing.T) {
 </script>
 <body>
 </html>`)
-	_, err := JsonFilter(r)
+	_, err := jsonFilter(r)
 	if err == nil {
 		t.Error("JsonReader did not returned error")
 		return
 	}
 }
 
-func TestJsonParsing(t *testing.T) {
+func TestJsonParser(t *testing.T) {
 	const name = assets_path + "racine.json"
 	f, err := os.Open(name)
 	if err != nil {
@@ -113,7 +110,7 @@ func TestJsonParsing(t *testing.T) {
 	}
 	defer f.Close()
 
-	j, err := JsonParser(f)
+	j, err := jsonParser(f)
 	if err != nil {
 		t.Errorf("json.Unmarshal(%s) failed: %v", name, err)
 	}
@@ -123,19 +120,46 @@ func TestJsonParsing(t *testing.T) {
 		if j.Path.BaseUrl != "/" {
 			t.Errorf("j.Path.BaseUrl=%v expected /", j.Path.BaseUrl)
 		}
-		if j.MapLayersV2.Taxonomy != "PAYS" {
-			t.Errorf("j.MapLayersV2.Taxonomy=%v expected FRANCE", j.MapLayersV2.Taxonomy)
+		if j.Layers.Taxonomy != "PAYS" {
+			t.Errorf("j.MapLayersV2.Taxonomy=%v expected FRANCE", j.Layers.Taxonomy)
 		}
-		if j.MapLayersV2.IdTechnique != "PAYS007" {
-			t.Errorf("j.MapLayersV2.IdTechnique=%v expected PAYS007", j.MapLayersV2.IdTechnique)
+		if j.Layers.IdTechnique != "PAYS007" {
+			t.Errorf("j.MapLayersV2.IdTechnique=%v expected PAYS007", j.Layers.IdTechnique)
 		}
 	})
 
-	t.Run("config",func(t *testing.T) {
+	t.Run("config", func(t *testing.T) {
 		got := j.ApiURL()
 		if got != apiUrl {
 			t.Errorf("ApiUrl() got %s expected %s", got, apiUrl)
 		}
 	})
-}
 
+	t.Run("children", func(t *testing.T) {
+		firstChild := j.Children[0]
+		got := firstChild.Taxonomy
+		expected := "VILLE_FRANCE"
+		if got != expected {
+			t.Errorf("MapChildren() taxonomy got %s expected %s)", got, expected)
+		}
+	})
+
+	t.Run("subzones", func(t *testing.T) {
+		id := "REGIN10" // auvergne rhone alpes
+
+		expected := struct{ Path, Name string }{
+			Path: "/previsions-meteo-france/auvergne-rhone-alpes/10",
+			Name: "Auvergne-Rhône-Alpes",
+		}
+		sz, ok := j.SubZones[id]
+		if !ok {
+			t.Errorf("subzone %s not found", id)
+		}
+		if sz.Name != expected.Name {
+			t.Errorf("subzone[%s].name got '%s', expected '%s'", id, sz.Name, expected.Name)
+		}
+		if sz.Path != expected.Path {
+			t.Errorf("subzone[%s].name got '%s', expected '%s'", id, sz.Name, expected.Path)
+		}
+	})
+}

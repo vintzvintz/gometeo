@@ -9,17 +9,85 @@ import (
 	"golang.org/x/net/html"
 )
 
+/*
+class Mf_map:
+  # Counterpart of MF forecast pages, with geographical, svg and forecast data
+  def __init__(self, data, own_path, parent):
+    conf = data["mf_tools_common"]["config"]
+    self.api_url="https://"+conf["site"]+"."+conf["base_url"]    # https://rpcache-aa.meteofrance.com/internet2018client/2.0
+    self.infos = data["mf_map_layers_v2"]
+    self.pois = data["mf_map_layers_v2_children_poi"]
+    self.subzones = data["mf_map_layers_v2_sub_zone"]
+    self.own_path = own_path
+    self.parent = parent
+*/
+
+type MfMap struct {
+	nom    string
+	parent *MfMap
+	data   *JsonData
+}
+
+type JsonData struct {
+	Path        PathType               `json:"path"`
+	Layers      LayerType              `json:"mf_map_layers_v2"`
+	Children    []ChildType            `json:"mf_map_layers_v2_children_poi"`
+	SubZones    map[string]SubZoneType `json:"mf_map_layers_v2_sub_zone"`
+	ToolsCommon ToolsCommonType        `json:"mf_tools_common"`
+}
+
+type PathType struct {
+	BaseUrl    string `json:"baseUrl"`
+	ScriptPath string `json:"scriptPath"`
+}
+
+type LayerType struct {
+	Nid         string `json:"nid"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	Taxonomy    string `json:"taxonomy"`
+	PathAssets  string `json:"path_assets"`
+	IdTechnique string `json:"field_id_technique"`
+}
+
+type ChildType struct {
+	Title      string  `json:"title"`
+	Lat        float64 `json:"lat ,string"`
+	Lng        float64 `json:"lng ,string"`
+	Path       string  `json:"path"`
+	Insee      string  `json:"insee"`
+	Taxonomy   string  `json:"taxonomy"`
+	CodePostal string  `json:"code_postal"`
+	Timezone   string  `json:"timezone"`
+}
+
+type SubZoneType struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+}
+
+type ToolsCommonType struct {
+	Alias  string     `json:"alias"`
+	Config ConfigType `json:"config"`
+}
+
+type ConfigType struct {
+	BaseUrl string `json:"base_url"`
+	Site    string `json:"site"`
+	Domain  string `json:"domain"`
+}
+
 // accessor
 func (m *MfMap) SetParent(parent *MfMap) {
 	m.parent = parent
 }
 
-func NewFrom(r io.Reader) (*MfMap, error) {
-	j, err := JsonFilter(r)
+func NewFrom(html io.Reader) (*MfMap, error) {
+	j, err := jsonFilter(html)
 	if err != nil {
 		return nil, err
 	}
-	data, err := io.ReadAll(j)
+	data, err := jsonParser(j)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +114,7 @@ func isJsonTag(t html.Token) bool {
 }
 
 // JsonFilter extracts json data from an html page
-func JsonFilter(src io.Reader) (io.Reader, error) {
+func jsonFilter(src io.Reader) (io.Reader, error) {
 	z := html.NewTokenizer(src)
 	var inJson bool
 loop:
@@ -66,7 +134,7 @@ loop:
 	return nil, fmt.Errorf("données JSON non trouvées")
 }
 
-func JsonParser(r io.Reader) (*JsonData, error) {
+func jsonParser(r io.Reader) (*JsonData, error) {
 	var j JsonData
 	buf, err := io.ReadAll(r)
 	if err != nil {
