@@ -120,11 +120,11 @@ func TestJsonParser(t *testing.T) {
 		if j.Path.BaseUrl != "/" {
 			t.Errorf("j.Path.BaseUrl=%v expected /", j.Path.BaseUrl)
 		}
-		if j.Layers.Taxonomy != "PAYS" {
-			t.Errorf("j.MapLayersV2.Taxonomy=%v expected FRANCE", j.Layers.Taxonomy)
+		if j.Info.Taxonomy != "PAYS" {
+			t.Errorf("j.MapLayersV2.Taxonomy=%v expected FRANCE", j.Info.Taxonomy)
 		}
-		if j.Layers.IdTechnique != "PAYS007" {
-			t.Errorf("j.MapLayersV2.IdTechnique=%v expected PAYS007", j.Layers.IdTechnique)
+		if j.Info.IdTechnique != "PAYS007" {
+			t.Errorf("j.MapLayersV2.IdTechnique=%v expected PAYS007", j.Info.IdTechnique)
 		}
 	})
 
@@ -151,7 +151,7 @@ func TestJsonParser(t *testing.T) {
 			Path: "/previsions-meteo-france/auvergne-rhone-alpes/10",
 			Name: "Auvergne-Rhône-Alpes",
 		}
-		sz, ok := j.SubZones[id]
+		sz, ok := j.Subzones[id]
 		if !ok {
 			t.Errorf("subzone %s not found", id)
 		}
@@ -159,7 +159,7 @@ func TestJsonParser(t *testing.T) {
 			t.Errorf("subzone[%s].name got '%s', expected '%s'", id, sz.Name, expected.Name)
 		}
 		if sz.Path != expected.Path {
-			t.Errorf("subzone[%s].name got '%s', expected '%s'", id, sz.Name, expected.Path)
+			t.Errorf("subzone[%s].name got '%s', expected '%s'", id, sz.Path, expected.Path)
 		}
 	})
 }

@@ -30,9 +30,9 @@ type MfMap struct {
 
 type JsonData struct {
 	Path        PathType               `json:"path"`
-	Layers      LayerType              `json:"mf_map_layers_v2"`
-	Children    []ChildType            `json:"mf_map_layers_v2_children_poi"`
-	SubZones    map[string]SubZoneType `json:"mf_map_layers_v2_sub_zone"`
+	Info        MapInfoType              `json:"mf_map_layers_v2"`
+	Children    []POIType            `json:"mf_map_layers_v2_children_poi"`
+	Subzones    map[string]SubzoneType `json:"mf_map_layers_v2_sub_zone"`
 	ToolsCommon ToolsCommonType        `json:"mf_tools_common"`
 }
 
@@ -41,7 +41,7 @@ type PathType struct {
 	ScriptPath string `json:"scriptPath"`
 }
 
-type LayerType struct {
+type MapInfoType struct {
 	Nid         string `json:"nid"`
 	Name        string `json:"name"`
 	Path        string `json:"path"`
@@ -50,7 +50,7 @@ type LayerType struct {
 	IdTechnique string `json:"field_id_technique"`
 }
 
-type ChildType struct {
+type POIType struct {
 	Title      string  `json:"title"`
 	Lat        float64 `json:"lat ,string"`
 	Lng        float64 `json:"lng ,string"`
@@ -61,7 +61,7 @@ type ChildType struct {
 	Timezone   string  `json:"timezone"`
 }
 
-type SubZoneType struct {
+type SubzoneType struct {
 	Path string `json:"path"`
 	Name string `json:"name"`
 }
