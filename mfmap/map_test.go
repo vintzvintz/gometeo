@@ -216,7 +216,6 @@ func TestMapParseFail(t *testing.T) {
 			if err == nil {
 				t.Error("MfMap.Parse(): error expected")
 			}
-			t.Log(err)
 		})
 	}
 }

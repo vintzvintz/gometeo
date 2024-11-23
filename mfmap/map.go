@@ -29,11 +29,11 @@ type MfMap struct {
 }
 
 type JsonData struct {
-	Path        PathType               `json:"path"`
-	Info        MapInfoType              `json:"mf_map_layers_v2"`
-	Children    []POIType            `json:"mf_map_layers_v2_children_poi"`
-	Subzones    map[string]SubzoneType `json:"mf_map_layers_v2_sub_zone"`
-	ToolsCommon ToolsCommonType        `json:"mf_tools_common"`
+	Path     PathType               `json:"path"`
+	Info     MapInfoType            `json:"mf_map_layers_v2"`
+	Children []POIType              `json:"mf_map_layers_v2_children_poi"`
+	Subzones map[string]SubzoneType `json:"mf_map_layers_v2_sub_zone"`
+	Tools    ToolsType              `json:"mf_tools_common"`
 }
 
 type PathType struct {
@@ -66,7 +66,7 @@ type SubzoneType struct {
 	Name string `json:"name"`
 }
 
-type ToolsCommonType struct {
+type ToolsType struct {
 	Alias  string     `json:"alias"`
 	Config ConfigType `json:"config"`
 }
@@ -77,10 +77,7 @@ type ConfigType struct {
 	Domain  string `json:"domain"`
 }
 
-
-
-
-func (m *MfMap) Parse(html io.Reader)  error {
+func (m *MfMap) Parse(html io.Reader) error {
 	j, err := jsonFilter(html)
 	if err != nil {
 		return err
@@ -146,6 +143,6 @@ func jsonParser(r io.Reader) (*JsonData, error) {
 // ApiURL builds API URL from "config" node
 // typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0
 func (j *JsonData) ApiURL() string {
-	conf := j.ToolsCommon.Config
+	conf := j.Tools.Config
 	return fmt.Sprintf("https://%s.%s", conf.Site, conf.BaseUrl)
 }
