@@ -22,26 +22,22 @@ func NewCrawler() *MfCrawler {
 	}
 }
 
-// getMap gets a map from remote service or from local cache if available
-func (c *MfCrawler) getMap(path string) (*mfmap.MfMap, error) {
-	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom)
+func (c *MfCrawler) GetMap(path string, parent *mfmap.MfMap) (*mfmap.MfMap, error) {
+	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
+	//m, err := c.getMap(path)
+
 	body, err := c.client.Get(path, CacheDefault)
 	if err != nil {
 		return nil, err
 	}
-	//m := &mfmap.MfMap{}
-	m, err := mfmap.NewFrom(body)
-	return m, err
-}
-
-func (c *MfCrawler) GetMap(path string, parent *mfmap.MfMap) (*mfmap.MfMap, error) {
-	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
-	m, err := c.getMap(path)
+	m := &mfmap.MfMap{
+		//		Nom: nom,
+		Parent: parent,
+	}
+	err = m.Parse(body)
 	if err != nil {
 		return nil, err
 	}
-	m.SetParent(parent)
-	// TODO m.nom = xxxx
 	return m, nil
 }
 
@@ -53,9 +49,9 @@ func SampleRun(path string) error {
 	}
 	_ = m
 	/*
-	html := m.html
-	var trunc int = min(int(200), len(html))
-	fmt.Printf(html[0:trunc])
+		html := m.html
+		var trunc int = min(int(200), len(html))
+		fmt.Printf(html[0:trunc])
 	*/
 	return nil
 }

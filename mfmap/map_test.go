@@ -163,3 +163,60 @@ func TestJsonParser(t *testing.T) {
 		}
 	})
 }
+
+func TestMapParse(t *testing.T) {
+	const name = assets_path + "racine.html"
+	f, err := os.Open(name)
+	if err != nil {
+		t.Errorf("os.Open(%s) failed: %v", name, err)
+		return
+	}
+	defer f.Close()
+
+	m := MfMap{}
+	if err = m.Parse(f); err != nil {
+		t.Errorf("parse error: %s", err)
+	}
+	// check content
+	if m.Data.Info.Path != "/meteo-france" {
+		t.Errorf("MfMap.Parse() Info.Path='%s' expected '%s'", m.Data.Info.Path, "/meteo-france")
+	}
+}
+
+func TestMapParseFail(t *testing.T) {
+
+	tests := map[string]string{
+		"missingJson": `
+<html>
+<head><title>JsonReader test</title></head>
+<body>
+ <script>wesh</script>
+<body>
+</html>`,
+		"emptyJson": `
+<html>
+<head><title>JsonReader test</title></head>
+<body>
+ <script type="application/json" data-drupal-selector="drupal-settings-json"></script>
+<body>
+</html>`,
+		"invalidJson": `
+<html>
+<head><title>JsonReader test</title></head>
+<body>
+ <script type="application/json" data-drupal-selector="drupal-settings-json">{invalid json content}</script>
+<body>
+</html>`,
+	}
+	m := MfMap{}
+	for name, html := range tests {
+		t.Run(name, func(t *testing.T) {
+			r := strings.NewReader(html)
+			err := m.Parse(r)
+			if err == nil {
+				t.Error("MfMap.Parse(): error expected")
+			}
+			t.Log(err)
+		})
+	}
+}

@@ -23,9 +23,9 @@ class Mf_map:
 */
 
 type MfMap struct {
-	nom    string
-	parent *MfMap
-	data   *JsonData
+	Nom    string
+	Parent *MfMap
+	Data   *JsonData
 }
 
 type JsonData struct {
@@ -77,21 +77,20 @@ type ConfigType struct {
 	Domain  string `json:"domain"`
 }
 
-// accessor
-func (m *MfMap) SetParent(parent *MfMap) {
-	m.parent = parent
-}
 
-func NewFrom(html io.Reader) (*MfMap, error) {
+
+
+func (m *MfMap) Parse(html io.Reader)  error {
 	j, err := jsonFilter(html)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	data, err := jsonParser(j)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &MfMap{data: data}, nil
+	m.Data = data
+	return nil
 }
 
 // isJsonTag detecte l'élement contenant les donnnées drupal
