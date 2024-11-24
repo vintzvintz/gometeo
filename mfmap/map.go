@@ -156,3 +156,7 @@ func (j *JsonData) ApiURL() string {
 func (m *MfMap) forecastUrl() string {
 	return m.Data.ApiURL() + api_forecast
 }
+
+func (m *MfMap) forecastQuery() string {
+	return "wesh"
+}

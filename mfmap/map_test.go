@@ -93,7 +93,7 @@ var parseTests = map[string]struct {
 	},
 	"api_URL": {
 		want: "https://rpcache-aa.meteofrance.com/internet2018client/2.0",
-		got: func(j *JsonData) interface{} { return j.ApiURL() },
+		got:  func(j *JsonData) interface{} { return j.ApiURL() },
 	},
 }
 
@@ -177,10 +177,20 @@ const multiforecastUrl = "https://rpcache-aa.meteofrance.com/internet2018client/
 
 func TestForecastUrl(t *testing.T) {
 	m := parseMapHtml(t, fileHtmlRacine)
-	
+
 	want := multiforecastUrl
 	got := m.forecastUrl()
 	if got != want {
 		t.Errorf("forecastUrl()='%s' want '%s'", got, want)
+	}
+}
+
+func TestForecastQuery(t *testing.T) {
+	m := parseMapHtml(t, fileHtmlRacine)
+
+	want := "wesh"
+	got := m.forecastQuery()
+	if got != want {
+		t.Errorf("forecastQuery()='%s' want '%s'", got, want)
 	}
 }
