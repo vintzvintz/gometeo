@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"reflect"
 )
 
 const assets_path = "../test_data/"
@@ -63,28 +64,28 @@ func TestJsonParser(t *testing.T) {
 	if err != nil {
 		t.Errorf("json.Unmarshal(%s) error: %v", fileJsonRacine, err)
 	}
-	t.Log(j)
-	t.Run("basic", func(t *testing.T) {
+	//t.Log(j)
+	t.Run("configuration data", func(t *testing.T) {
 		// check few leafs
 		if j.Path.BaseUrl != "/" {
 			t.Errorf("j.Path.BaseUrl=%v expected /", j.Path.BaseUrl)
 		}
 		if j.Info.Taxonomy != "PAYS" {
-			t.Errorf("j.MapLayersV2.Taxonomy=%v expected FRANCE", j.Info.Taxonomy)
+			t.Errorf("j.Info.Taxonomy=%v expected FRANCE", j.Info.Taxonomy)
 		}
 		if j.Info.IdTechnique != "PAYS007" {
-			t.Errorf("j.MapLayersV2.IdTechnique=%v expected PAYS007", j.Info.IdTechnique)
+			t.Errorf("j.Info.IdTechnique=%v expected PAYS007", j.Info.IdTechnique)
 		}
 	})
 
-	t.Run("config", func(t *testing.T) {
+	t.Run("apiUrl", func(t *testing.T) {
 		got := j.ApiURL()
 		if got != apiUrl {
 			t.Errorf("ApiUrl() got %s expected %s", got, apiUrl)
 		}
 	})
 
-	t.Run("children", func(t *testing.T) {
+	t.Run("children poi", func(t *testing.T) {
 		firstChild := j.Children[0]
 		got := firstChild.Taxonomy
 		expected := "VILLE_FRANCE"
@@ -95,32 +96,34 @@ func TestJsonParser(t *testing.T) {
 
 	t.Run("subzones", func(t *testing.T) {
 		id := "REGIN10" // auvergne rhone alpes
-
-		expected := struct{ Path, Name string }{
+		expected := SubzoneType{
 			Path: "/previsions-meteo-france/auvergne-rhone-alpes/10",
 			Name: "Auvergne-Rhône-Alpes",
 		}
-		sz, ok := j.Subzones[id]
+		got, ok := j.Subzones[id]
 		if !ok {
-			t.Errorf("subzone %s not found", id)
+			t.Fatalf("subzone %s not found", id)
 		}
-		if sz.Name != expected.Name {
-			t.Errorf("subzone[%s].name got '%s', expected '%s'", id, sz.Name, expected.Name)
-		}
-		if sz.Path != expected.Path {
-			t.Errorf("subzone[%s].name got '%s', expected '%s'", id, sz.Path, expected.Path)
+		if !reflect.DeepEqual(got, expected) {
+			t.Errorf("subzone[%s]='%s', expected '%s'", id, got, expected)
 		}
 	})
 }
 
-func TestMapParse(t *testing.T) {
-	f := openFile(t, fileHtmlRacine)
+
+func parseMapHtml(t *testing.T, filename string) *MfMap {
+	f := openFile(t, filename)
 	defer f.Close()
 
 	m := MfMap{}
 	if err := m.Parse(f); err != nil {
-		t.Errorf("MfMap.Parse(%s) error: %s", fileHtmlRacine,err)
+		t.Fatalf("MfMap.Parse(%s) error: %s", filename, err)
 	}
+	return &m
+}
+
+func TestMapParse(t *testing.T) {
+	m := parseMapHtml(t, fileHtmlRacine)
 	// check some content
 	if m.Data.Info.Path != "/meteo-france" {
 		t.Errorf("MfMap.Parse() Info.Path='%s' expected '%s'", m.Data.Info.Path, "/meteo-france")
@@ -164,6 +167,8 @@ func TestMapParseFail(t *testing.T) {
 	}
 }
 
-func TestFetchPrevs(t *testing.T) {
+func TestPrevsReq(t *testing.T) {
+
+//	req := 
 
 }
