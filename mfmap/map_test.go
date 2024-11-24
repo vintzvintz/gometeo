@@ -4,9 +4,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
-	"reflect"
 )
 
 const assets_path = "../test_data/"
@@ -17,7 +17,7 @@ const (
 	fileJsonRacine     = "racine.json"
 )
 
-const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
+//const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
 
 func TestJsonFilter(t *testing.T) {
 	name := fileHtmlRacine
@@ -56,6 +56,43 @@ func openFile(t *testing.T, name string) io.ReadCloser {
 	return f
 }
 
+var parseTests = map[string]struct {
+	want interface{}
+	got  func(j *JsonData) interface{}
+}{
+	"Path.BaseUrl": {
+		want: "/",
+		got:  func(j *JsonData) interface{} { return j.Path.BaseUrl },
+	},
+	"Info.Taxonomy": {
+		want: "PAYS",
+		got:  func(j *JsonData) interface{} { return j.Info.Taxonomy },
+	},
+	"Info.IdTechnique": {
+		want: "PAYS007",
+		got:  func(j *JsonData) interface{} { return j.Info.IdTechnique },
+	},
+	"Tools.Config.Site": {
+		want: "rpcache-aa",
+		got:  func(j *JsonData) interface{} { return j.Tools.Config.Site },
+	},
+	"Tools.Config.BaseUrl": {
+		want: "meteofrance.com/internet2018client/2.0",
+		got:  func(j *JsonData) interface{} { return j.Tools.Config.BaseUrl },
+	},
+	"ChildrenPOI": {
+		want: "VILLE_FRANCE",
+		got:  func(j *JsonData) interface{} { return j.Children[0].Taxonomy },
+	},
+	"Subzone": {
+		want: SubzoneType{
+			Path: "/previsions-meteo-france/auvergne-rhone-alpes/10",
+			Name: "Auvergne-Rhône-Alpes",
+		},
+		got: func(j *JsonData) interface{} { return j.Subzones["REGIN10"] },
+	},
+}
+
 func TestJsonParser(t *testing.T) {
 	f := openFile(t, fileJsonRacine)
 	defer f.Close()
@@ -65,51 +102,16 @@ func TestJsonParser(t *testing.T) {
 		t.Errorf("json.Unmarshal(%s) error: %v", fileJsonRacine, err)
 	}
 	//t.Log(j)
-	t.Run("configuration data", func(t *testing.T) {
-		// check few leafs
-		if j.Path.BaseUrl != "/" {
-			t.Errorf("j.Path.BaseUrl=%v expected /", j.Path.BaseUrl)
-		}
-		if j.Info.Taxonomy != "PAYS" {
-			t.Errorf("j.Info.Taxonomy=%v expected FRANCE", j.Info.Taxonomy)
-		}
-		if j.Info.IdTechnique != "PAYS007" {
-			t.Errorf("j.Info.IdTechnique=%v expected PAYS007", j.Info.IdTechnique)
-		}
-	})
 
-	t.Run("apiUrl", func(t *testing.T) {
-		got := j.ApiURL()
-		if got != apiUrl {
-			t.Errorf("ApiUrl() got %s expected %s", got, apiUrl)
-		}
-	})
-
-	t.Run("children poi", func(t *testing.T) {
-		firstChild := j.Children[0]
-		got := firstChild.Taxonomy
-		expected := "VILLE_FRANCE"
-		if got != expected {
-			t.Errorf("MapChildren() taxonomy got %s expected %s)", got, expected)
-		}
-	})
-
-	t.Run("subzones", func(t *testing.T) {
-		id := "REGIN10" // auvergne rhone alpes
-		expected := SubzoneType{
-			Path: "/previsions-meteo-france/auvergne-rhone-alpes/10",
-			Name: "Auvergne-Rhône-Alpes",
-		}
-		got, ok := j.Subzones[id]
-		if !ok {
-			t.Fatalf("subzone %s not found", id)
-		}
-		if !reflect.DeepEqual(got, expected) {
-			t.Errorf("subzone[%s]='%s', expected '%s'", id, got, expected)
-		}
-	})
+	for key, test := range parseTests {
+		t.Run(key, func(t *testing.T) {
+			got := test.got(j)
+			if !reflect.DeepEqual(got, test.want) {
+				t.Errorf("%s got '%s' want '%s'", key, got, test.want)
+			}
+		})
+	}
 }
-
 
 func parseMapHtml(t *testing.T, filename string) *MfMap {
 	f := openFile(t, filename)
@@ -166,9 +168,22 @@ func TestMapParseFail(t *testing.T) {
 		})
 	}
 }
+/*
+func testApiURL(t *testing.T) {
+	// TODO
+}
 
 func TestPrevsReq(t *testing.T) {
 
-//	req := 
+	m := parseMapHtml(t, fileHtmlRacine)
 
+	want := "wesh"
+	got, err := m.forecastUrl()
+	if err != nil {
+		t.Fatalf("forcastUrl() error: %v", err)
+	}
+	if got != want {
+		t.Errorf("forecastUrl() got '%s' want '%s'", got, want)
+	}
 }
+*/

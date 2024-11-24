@@ -89,6 +89,11 @@ func (m *MfMap) Parse(html io.Reader) error {
 	m.Data = data
 	return nil
 }
+/*
+func (m *MfMap) forecastUrl() (string, error) {
+	return "", nil
+}
+*/
 
 // isJsonTag detecte l'élement contenant les donnnées drupal
 // <script type="application/json" data-drupal-selector="drupal-settings-json">
