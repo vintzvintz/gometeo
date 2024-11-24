@@ -77,6 +77,10 @@ type ConfigType struct {
 	Domain  string `json:"domain"`
 }
 
+const (
+	api_forecast = "/multiforecast"
+)
+
 func (m *MfMap) Parse(html io.Reader) error {
 	j, err := jsonFilter(html)
 	if err != nil {
@@ -89,11 +93,6 @@ func (m *MfMap) Parse(html io.Reader) error {
 	m.Data = data
 	return nil
 }
-/*
-func (m *MfMap) forecastUrl() (string, error) {
-	return "", nil
-}
-*/
 
 // isJsonTag detecte l'élement contenant les donnnées drupal
 // <script type="application/json" data-drupal-selector="drupal-settings-json">
@@ -152,4 +151,8 @@ func jsonParser(r io.Reader) (*JsonData, error) {
 func (j *JsonData) ApiURL() string {
 	conf := j.Tools.Config
 	return fmt.Sprintf("https://%s.%s", conf.Site, conf.BaseUrl)
+}
+
+func (m *MfMap) forecastUrl() string {
+	return m.Data.ApiURL() + api_forecast
 }

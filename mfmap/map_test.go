@@ -173,19 +173,14 @@ func TestMapParseFail(t *testing.T) {
 	}
 }
 
+const multiforecastUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0/multiforecast"
 
-/*
-func TestPrevsReq(t *testing.T) {
-
+func TestForecastUrl(t *testing.T) {
 	m := parseMapHtml(t, fileHtmlRacine)
-
-	want := "wesh"
-	got, err := m.forecastUrl()
-	if err != nil {
-		t.Fatalf("forcastUrl() error: %v", err)
-	}
+	
+	want := multiforecastUrl
+	got := m.forecastUrl()
 	if got != want {
-		t.Errorf("forecastUrl() got '%s' want '%s'", got, want)
+		t.Errorf("forecastUrl()='%s' want '%s'", got, want)
 	}
 }
-*/
