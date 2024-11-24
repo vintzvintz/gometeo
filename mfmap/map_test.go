@@ -11,14 +11,15 @@ import (
 const assets_path = "../test_data/"
 
 const (
-	fileRacine         = "racine.html"
+	fileHtmlRacine     = "racine.html"
 	fileJsonFilterFail = "json_filter_fail.html"
+	fileJsonRacine     = "racine.json"
 )
 
 const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
 
 func TestJsonFilter(t *testing.T) {
-	name := fileRacine
+	name := fileHtmlRacine
 	f := openFile(t, name)
 	defer f.Close()
 
@@ -35,6 +36,15 @@ func TestJsonFilter(t *testing.T) {
 	t.Logf("JSON=%s", data)
 }
 
+func TestJsonFilterFail(t *testing.T) {
+	f := openFile(t, fileJsonFilterFail)
+	_, err := jsonFilter(f)
+	if err == nil {
+		t.Error("JsonReader did not returned error")
+		return
+	}
+}
+
 func openFile(t *testing.T, name string) io.ReadCloser {
 	fp := filepath.Join(assets_path, name)
 	f, err := os.Open(fp)
@@ -45,27 +55,13 @@ func openFile(t *testing.T, name string) io.ReadCloser {
 	return f
 }
 
-func TestJsonFilterFail(t *testing.T) {
-	f := openFile(t, fileJsonFilterFail)
-	_, err := jsonFilter(f)
-	if err == nil {
-		t.Error("JsonReader did not returned error")
-		return
-	}
-}
-
 func TestJsonParser(t *testing.T) {
-	const name = assets_path + "racine.json"
-	f, err := os.Open(name)
-	if err != nil {
-		t.Errorf("os.Open(%s) failed: %v", name, err)
-		return
-	}
+	f := openFile(t, fileJsonRacine)
 	defer f.Close()
 
 	j, err := jsonParser(f)
 	if err != nil {
-		t.Errorf("json.Unmarshal(%s) failed: %v", name, err)
+		t.Errorf("json.Unmarshal(%s) error: %v", fileJsonRacine, err)
 	}
 	t.Log(j)
 	t.Run("basic", func(t *testing.T) {
@@ -118,19 +114,14 @@ func TestJsonParser(t *testing.T) {
 }
 
 func TestMapParse(t *testing.T) {
-	const name = assets_path + "racine.html"
-	f, err := os.Open(name)
-	if err != nil {
-		t.Errorf("os.Open(%s) failed: %v", name, err)
-		return
-	}
+	f := openFile(t, fileHtmlRacine)
 	defer f.Close()
 
 	m := MfMap{}
-	if err = m.Parse(f); err != nil {
-		t.Errorf("parse error: %s", err)
+	if err := m.Parse(f); err != nil {
+		t.Errorf("MfMap.Parse(%s) error: %s", fileHtmlRacine,err)
 	}
-	// check content
+	// check some content
 	if m.Data.Info.Path != "/meteo-france" {
 		t.Errorf("MfMap.Parse() Info.Path='%s' expected '%s'", m.Data.Info.Path, "/meteo-france")
 	}
@@ -139,7 +130,7 @@ func TestMapParse(t *testing.T) {
 func TestMapParseFail(t *testing.T) {
 
 	tests := map[string]string{
-		"missingJson": `
+		"missingJsonTag": `
 <html>
 <head><title>JsonReader test</title></head>
 <body>
@@ -157,7 +148,7 @@ func TestMapParseFail(t *testing.T) {
 <html>
 <head><title>JsonReader test</title></head>
 <body>
- <script type="application/json" data-drupal-selector="drupal-settings-json">{invalid json content}</script>
+ <script type="application/json" data-drupal-selector="drupal-settings-json">{invalid json syntax}</script>
 <body>
 </html>`,
 	}
