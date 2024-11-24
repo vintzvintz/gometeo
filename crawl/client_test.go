@@ -23,7 +23,7 @@ func dataSet01() *MfCache {
 	}
 }
 
-func TestLookupHit(t *testing.T) {
+func TestLookup(t *testing.T) {
 	c := dataSet01()
 	for key, data := range *c {
 		t.Run(key, func(t *testing.T) {
@@ -41,38 +41,24 @@ func TestLookupHit(t *testing.T) {
 			}
 		})
 	}
-}
 
-func TestLookupMiss(t *testing.T) {
-	c := dataSet01()
-	_, ok := c.lookup("missing_key")
-	if ok {
-		t.Fatal("MfCache.lookup() returned nil error on cache miss")
-	}
+	key := "missing_key"
+	t.Run(key, func(t *testing.T) {
+		if _, ok := c.lookup(key); ok {
+			t.Fatalf("MfCache.lookup(%s) : want error", key)
+		}
+	})
 }
 
 // addUrlBase tests
 var urlBaseTest string = httpsMeteofranceCom
 
-func TestInvalidPath(t *testing.T) {
+func TestAddUrlBase(t *testing.T) {
 
 	var pathInvalid = map[string]string{
 		"empty string":     "", // empty string does not starts with a slash
 		"no_leading_slash": "x",
 	}
-	
-	for name, path := range pathInvalid {
-		t.Run(name, func(t *testing.T) {
-			_, err := addUrlBase(path, urlBaseTest)
-			if err == nil {
-				t.Errorf("path '%s' not recognized as invalid", path)
-			}
-		})
-	}
-}
-
-func TestValidPath(t *testing.T) {
-
 	var pathValid = map[string]struct {
 		path     string
 		expected string
@@ -84,17 +70,37 @@ func TestValidPath(t *testing.T) {
 		"baseText":  {path: urlBaseTest + "/ressource", expected: urlBaseTest + "/ressource"},
 	}
 
-	for name, d := range pathValid {
-		t.Run(name, func(t *testing.T) {
-			got, err := addUrlBase(d.path, urlBaseTest)
-			if err != nil {
-				t.Error(err)
-			}
-			if got != d.expected {
-				t.Errorf("got:'%s' expected:'%s", got, d.expected)
-			}
-		})
-	}
+	t.Run("empty baseUrl", func(t *testing.T) {
+		_, err := addUrlBase("/", "")
+		if err == nil {
+			t.Errorf("expect error on empty urlBase")
+		}
+	})
+
+	t.Run("invalid paths", func(t *testing.T) {
+		for name, path := range pathInvalid {
+			t.Run(name, func(t *testing.T) {
+				_, err := addUrlBase(path, urlBaseTest)
+				if err == nil {
+					t.Errorf("expect error on invalid path '%s'", path)
+				}
+			})
+		}
+	})
+
+	t.Run("valid paths", func(t *testing.T) {
+		for name, d := range pathValid {
+			t.Run(name, func(t *testing.T) {
+				got, err := addUrlBase(d.path, urlBaseTest)
+				if err != nil {
+					t.Error(err)
+				}
+				if got != d.expected {
+					t.Errorf("got:'%s' expected:'%s", got, d.expected)
+				}
+			})
+		}
+	})
 }
 
 func TestUpdater(t *testing.T) {
@@ -115,10 +121,10 @@ func TestUpdater(t *testing.T) {
 	for k, v := range *dataSet01() {
 		got, ok := cache[k]
 		if !ok {
-			t.Fatalf("Clé %s absente du cache", k)
+			t.Fatalf("Key %s not found in cache", k)
 		}
 		if !bytes.Equal(cache[k], v) {
-			t.Fatalf("MfCache[%s] has wrong data. Got '%s' Expected '%s'", k, got, v)
+			t.Fatalf("MfCache[%s] got '%s' expected '%s'", k, got, v)
 		}
 	}
 }
@@ -126,9 +132,10 @@ func TestUpdater(t *testing.T) {
 func TestUpdaterDoubleClose(t *testing.T) {
 	c := MfCache{}
 	data := io.NopCloser(strings.NewReader("data"))
+	key := "double_close_test_key"
 
 	t.Run("double close", func(t *testing.T) {
-		u := c.NewUpdater("key", data)
+		u := c.NewUpdater(key, data)
 		if err := u.Close(); err != nil {
 			t.Errorf("cacheUpdater.Close() error on first call :%v", err)
 		}
@@ -139,8 +146,8 @@ func TestUpdaterDoubleClose(t *testing.T) {
 
 	t.Run("updated after double close", func(t *testing.T) {
 		// is cache properly updated after double close ?
-		if _, ok := c.lookup("key"); !ok {
-			t.Error("cache not properly updated after double Close()")
+		if _, ok := c.lookup(key); !ok {
+			t.Error("cache not updated after double Close()")
 		}
 	})
 }

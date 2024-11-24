@@ -135,7 +135,7 @@ func addUrlBase(path string, base string) (string, error) {
 // implement a basic cache, controlled with policy parameter
 func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
 	// commence par chercher dans le cache avant de lancer la requete
-	// le cache est ignoré avec les stratégies CacheDisabled et CacheUpdate
+	// le cache est ignoré avec CacheDisabled et CacheUpdate
 	if policy == CacheDefault || policy == CacheOnly {
 		body, ok := cl.cache.lookup(path)
 		if ok {
@@ -167,7 +167,6 @@ func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) 
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-//		msg := fmt.Sprintf( "error %s on url '%s'", resp.Status, resp.Request.URL )
 		return nil, fmt.Errorf("error %s on url '%s'", resp.Status, resp.Request.URL )
 	}
 	// met à jour le token de session
