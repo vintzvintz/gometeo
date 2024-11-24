@@ -116,14 +116,16 @@ func jsonFilter(src io.Reader) (io.Reader, error) {
 loop:
 	for {
 		tt := z.Next()
-		switch tt {
-		case html.ErrorToken: // éventuellement io.EOF
+		if tt == html.ErrorToken { // éventuellement io.EOF
 			break loop
+		}
+		token := z.Token()
+		switch tt {
 		case html.StartTagToken:
-			inJson = isJsonTag(z.Token())
+			inJson = isJsonTag(token)
 		case html.TextToken:
 			if inJson {
-				return strings.NewReader(z.Token().Data), nil
+				return strings.NewReader(token.Data), nil
 			}
 		}
 	}

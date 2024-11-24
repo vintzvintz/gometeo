@@ -1,0 +1,21 @@
+<html>
+<head>
+<title>JsonReader test</title>
+</head>
+<body>
+<script> 
+	function wesh1(){"script element without attributes"}
+</script>
+<script type="application/json" data-drupal-selector="wesh">
+	function wesh4(){"wrong drupal attr"}
+</script>
+<script src="/wesh.js" data-drupal-selector="drupal-settings-json">
+	function wesh2(){"wrong src attr, missing type attr"}
+</script>
+<!--
+<script type="application/json" data-drupal-selector="drupal-settings-json">
+	{"json content"}
+</script>
+-->
+</body>
+</html>

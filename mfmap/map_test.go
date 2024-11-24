@@ -3,98 +3,51 @@ package mfmap
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 const assets_path = "../test_data/"
 
+const (
+	fileRacine         = "racine.html"
+	fileJsonFilterFail = "json_filter_fail.html"
+)
+
 const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
 
-/*
-func TestNewMap(t *testing.T) {
-
-	const name = assets_path + "racine.html"
-	f, err := os.Open(name)
-	if err != nil {
-		t.Errorf("os.Open(%s) failed: %v", name, err)
-		return
-	}
-	defer f.Close()
-
-	// get OS filesize to compare with byte readcount
-	fileInfo, err :=  f.Stat()
-	if err != nil {
-		t.Errorf("os.Stat(%s) failed: %v", name, err)
-	}
-	filesize := fileInfo.Size()
-
-	// feed raw html
-	m, err := NewFrom( f )
-	if err != nil {
-		t.Errorf("NewFrom(%s) failed: %v", name, err)
-	}
-	if int64(len(m.html)) != filesize {
-		t.Errorf( "NewFrom(%s) : size mismatch len(src)=%d len(buf)=%d", name, filesize, len(m.html) )
-	}
-
-	// get json content
-	r, err := m.JsonContent()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	txt, err := io.ReadAll(io.LimitReader(r,50))
-	if err == nil {
-		t.Logf( "JSON=%s", txt)
-	}
-}
-*/
-
 func TestJsonFilter(t *testing.T) {
-	const name = assets_path + "racine.html"
-	f, err := os.Open(name)
-	if err != nil {
-		t.Errorf("os.Open(%s) failed: %v", name, err)
-		return
-	}
+	name := fileRacine
+	f := openFile(t, name)
 	defer f.Close()
 
 	// get json content
 	r, err := jsonFilter(f)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatalf("jsonFilter error : %s", err)
 	}
-	data, err := io.ReadAll(io.LimitReader(r, 50))
+	data, err := io.ReadAll(r)
 	if err != nil {
-		t.Errorf("Failed to extract JSON data from %s", name)
-		return
+		t.Fatalf("failed to extract JSON data from %s", name)
 	}
+	data = data[:min(100, len(data))]
 	t.Logf("JSON=%s", data)
 }
 
+func openFile(t *testing.T, name string) io.ReadCloser {
+	fp := filepath.Join(assets_path, name)
+	f, err := os.Open(fp)
+	if err != nil {
+		t.Fatalf("os.Open(%s) failed: %v", fp, err)
+		return nil
+	}
+	return f
+}
+
 func TestJsonFilterFail(t *testing.T) {
-	r := strings.NewReader(`
-<html>
-<head>
-<title>JsonReader test</head>
-<body>
-<script> 
-	script element without attributes
-</script>
-<script src="/wesh.js" data-drupal-selector="drupal-settings-json">
-	wrong src attr, missing type attr
-/script>
-<script type="application/json" data-drupal-selector="drupal-settings-json">
-	wrong type attr
-/script>
-<script type="application/json" data-drupal-selector="wesh">
-	wrong drupal attr
-</script>
-<body>
-</html>`)
-	_, err := jsonFilter(r)
+	f := openFile(t, fileJsonFilterFail)
+	_, err := jsonFilter(f)
 	if err == nil {
 		t.Error("JsonReader did not returned error")
 		return
@@ -218,4 +171,8 @@ func TestMapParseFail(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFetchPrevs(t *testing.T) {
+
 }
