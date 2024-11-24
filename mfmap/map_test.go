@@ -91,6 +91,10 @@ var parseTests = map[string]struct {
 		},
 		got: func(j *JsonData) interface{} { return j.Subzones["REGIN10"] },
 	},
+	"api_URL": {
+		want: "https://rpcache-aa.meteofrance.com/internet2018client/2.0",
+		got: func(j *JsonData) interface{} { return j.ApiURL() },
+	},
 }
 
 func TestJsonParser(t *testing.T) {
@@ -168,11 +172,9 @@ func TestMapParseFail(t *testing.T) {
 		})
 	}
 }
-/*
-func testApiURL(t *testing.T) {
-	// TODO
-}
 
+
+/*
 func TestPrevsReq(t *testing.T) {
 
 	m := parseMapHtml(t, fileHtmlRacine)
