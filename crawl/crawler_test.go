@@ -1,7 +1,7 @@
 package crawl
 
 import (
-
+	"testing"
 )
 
 /*
@@ -28,3 +28,15 @@ func TestGet(t *testing.T) {
 
 }
 */
+
+
+func TestGetMap(t *testing.T) {
+
+	c := NewCrawler()
+	//c.client.cache
+	m, _ := c.GetMap( "", nil)
+	_ = m
+
+
+
+}

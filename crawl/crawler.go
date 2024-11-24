@@ -22,11 +22,15 @@ func NewCrawler() *MfCrawler {
 	}
 }
 
-func (c *MfCrawler) GetMap(path string, parent *mfmap.MfMap) (*mfmap.MfMap, error) {
+
+// GetMap gets https://mf.com/zone html page and related data like
+// svg map, pictos, forecasts and list of subzones
+// related data is stored into MfMap fields
+func (c *MfCrawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error) {
 	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
 	//m, err := c.getMap(path)
 
-	body, err := c.client.Get(path, CacheDefault)
+	body, err := c.client.Get(zone, CacheDefault)
 	if err != nil {
 		return nil, err
 	}

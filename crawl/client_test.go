@@ -51,7 +51,7 @@ func TestLookup(t *testing.T) {
 }
 
 // addUrlBase tests
-var urlBaseTest string = httpsMeteofranceCom
+var urlBaseTest string = "https://example.com"
 
 func TestAddUrlBase(t *testing.T) {
 
@@ -64,10 +64,10 @@ func TestAddUrlBase(t *testing.T) {
 		expected string
 	}{
 		"slash":     {path: "/", expected: urlBaseTest + "/"},
-		"slashText": {path: "/ressource", expected: urlBaseTest + "/ressource"},
+		"slashText": {path: "/path", expected: urlBaseTest + "/path"},
 		"base":      {path: urlBaseTest, expected: urlBaseTest},
 		"baseSlash": {path: urlBaseTest + "/", expected: urlBaseTest + "/"},
-		"baseText":  {path: urlBaseTest + "/ressource", expected: urlBaseTest + "/ressource"},
+		"baseText":  {path: urlBaseTest + "/path", expected: urlBaseTest + "/path"},
 	}
 
 	t.Run("empty baseUrl", func(t *testing.T) {
