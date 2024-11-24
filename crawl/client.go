@@ -118,6 +118,8 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 func addUrlBase(path string, base string) (string, error) {
 	l := min(len(path), len(base))
 	switch {
+	case len(base) == 0 :
+		return "", fmt.Errorf("invalid or empty baseUrl: '%s'", base)
 	case path == "":
 		return "", fmt.Errorf("empty path")
 	case path[0:l] == base:
@@ -130,9 +132,8 @@ func addUrlBase(path string, base string) (string, error) {
 }
 
 // Get issues a GET request to path, prefixed with 'baseUrl' constant.
-// with a basic cache
+// implement a basic cache, controlled with policy parameter
 func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
-
 	// commence par chercher dans le cache avant de lancer la requete
 	// le cache est ignoré avec les stratégies CacheDisabled et CacheUpdate
 	if policy == CacheDefault || policy == CacheOnly {
