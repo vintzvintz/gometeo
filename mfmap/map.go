@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -78,7 +79,7 @@ type ConfigType struct {
 }
 
 const (
-	api_forecast = "/multiforecast"
+	apiMultiforecast = "/multiforecast"
 )
 
 func (m *MfMap) Parse(html io.Reader) error {
@@ -148,15 +149,39 @@ func jsonParser(r io.Reader) (*JsonData, error) {
 
 // ApiURL builds API URL from "config" node
 // typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0
-func (j *JsonData) ApiURL() string {
+func (j *JsonData) ApiURL(path string, query *url.Values) (*url.URL, error) {
 	conf := j.Tools.Config
-	return fmt.Sprintf("https://%s.%s", conf.Site, conf.BaseUrl)
+	var querystring string
+	if query != nil {
+		querystring = "?" + query.Encode()
+	}
+	// build an url.URL on path with query parameters
+	raw := fmt.Sprintf("https://%s.%s%s%s",
+		conf.Site,
+		conf.BaseUrl,
+		path,
+		querystring)
+	return url.Parse(raw)
 }
 
-func (m *MfMap) forecastUrl() string {
-	return m.Data.ApiURL() + api_forecast
+func (m *MfMap) forecastUrl() (*url.URL, error) {
+
+	query := make(url.Values)
+	query.Add("bbox", "")
+	query.Add("begin_time", "")
+	query.Add("end_time", "")
+	query.Add("time", "")
+	query.Add("instants", "morning,afternoon,evening,night")
+
+	return m.Data.ApiURL(apiMultiforecast, &query)
 }
 
-func (m *MfMap) forecastQuery() string {
-	return "wesh"
-}
+/*
+   coords = [ "%s,%s"%(poi['lat'],poi['lng']) for poi in self.pois]
+   params = { 'bbox'       : '',
+              'coords'     : '_'.join(coords),
+              'instants'   : 'morning,afternoon,evening,night',
+              'begin_time' : '', 'end_time'   : '',
+              'time'       : ''
+             }
+*/

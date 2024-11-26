@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -91,10 +92,6 @@ var parseTests = map[string]struct {
 		},
 		got: func(j *JsonData) interface{} { return j.Subzones["REGIN10"] },
 	},
-	"api_URL": {
-		want: "https://rpcache-aa.meteofrance.com/internet2018client/2.0",
-		got:  func(j *JsonData) interface{} { return j.ApiURL() },
-	},
 }
 
 func TestJsonParser(t *testing.T) {
@@ -173,24 +170,90 @@ func TestMapParseFail(t *testing.T) {
 	}
 }
 
-const multiforecastUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0/multiforecast"
+const apiBaseURL = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
 
-func TestForecastUrl(t *testing.T) {
+func TestApiUrl(t *testing.T) {
+
+	tests := map[string]struct {
+		path string
+		want string
+	}{
+		"racine": {
+			path: "",
+			want: apiBaseURL,
+		},
+		"slash": {
+			path: "/",
+			want: apiBaseURL + "/",
+		},
+		"multiforecast": {
+			path: apiMultiforecast,
+			want: apiBaseURL + apiMultiforecast,
+		},
+	}
+
 	m := parseMapHtml(t, fileHtmlRacine)
 
-	want := multiforecastUrl
-	got := m.forecastUrl()
-	if got != want {
-		t.Errorf("forecastUrl()='%s' want '%s'", got, want)
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			u, err := m.Data.ApiURL(test.path, nil)
+			if err != nil {
+				t.Fatalf("ApiURL() error : %s", err)
+			}
+			got := u.String()
+			if got != test.want {
+				t.Errorf("forecastUrl()='%s' want '%s'", got, test.want)
+			}
+		})
 	}
 }
+
+/*
+   coords = [ "%s,%s"%(poi['lat'],poi['lng']) for poi in self.pois]
+   params = { 'bbox'       : '',
+              'coords'     : '_'.join(coords),
+              'instants'   : 'morning,afternoon,evening,night',
+              'begin_time' : '', 'end_time'   : '',
+              'time'       : ''
+             }
+*/
+
+const (
+	emptyRegexp    = `^$`
+	anyRegexp      = `.*`
+	coordsRegexp   = `("[\d\.]+,[\d\.]"_?)+"`
+	instantsRegexp = "morning,afternoon,evening,night"
+)
 
 func TestForecastQuery(t *testing.T) {
 	m := parseMapHtml(t, fileHtmlRacine)
 
-	want := "wesh"
-	got := m.forecastQuery()
-	if got != want {
-		t.Errorf("forecastQuery()='%s' want '%s'", got, want)
+	validationRegexps := map[string]string{
+		"bbox":       emptyRegexp,
+		"begin_time": emptyRegexp,
+		"end_time":   emptyRegexp,
+		"time":       emptyRegexp,
+		"instants":   instantsRegexp,
+		//"coords":    coordsRegexp,
+	}
+
+	u, err := m.forecastUrl()
+	if err != nil {
+		t.Fatalf("forecastURL() error: %s", err)
+	}
+
+	values := u.Query()
+	for key, expr := range validationRegexps {
+		re := regexp.MustCompile(expr)
+		got, ok := values[key]
+		if !ok {
+			t.Fatalf("forecastQuery() does not have key '%s'", key)
+		}
+		if len(got) != 1 {
+			t.Errorf("forecastQuery()['%s'] has %d values %q, want 1", key, len(got), got)
+		}
+		if re.Find([]byte(got[0])) == nil {
+			t.Errorf("forecastQuery()['%s']='%s' doesnt match '%s'", key, got, expr)
+		}
 	}
 }
