@@ -166,12 +166,18 @@ func (j *JsonData) ApiURL(path string, query *url.Values) (*url.URL, error) {
 
 func (m *MfMap) forecastUrl() (*url.URL, error) {
 
+	// zone is described by a seqence of coordinates
+	coords := make( []string, len(m.Data.Children) )
+	for i, poi := range m.Data.Children {
+		coords[i] = fmt.Sprintf("%f,%f", poi.Lat, poi.Lng)
+	}
 	query := make(url.Values)
 	query.Add("bbox", "")
 	query.Add("begin_time", "")
 	query.Add("end_time", "")
 	query.Add("time", "")
 	query.Add("instants", "morning,afternoon,evening,night")
+	query.Add("coords", strings.Join( coords, "_") )
 
 	return m.Data.ApiURL(apiMultiforecast, &query)
 }

@@ -102,8 +102,6 @@ func TestJsonParser(t *testing.T) {
 	if err != nil {
 		t.Errorf("json.Unmarshal(%s) error: %v", fileJsonRacine, err)
 	}
-	//t.Log(j)
-
 	for key, test := range parseTests {
 		t.Run(key, func(t *testing.T) {
 			got := test.got(j)
@@ -208,20 +206,10 @@ func TestApiUrl(t *testing.T) {
 	}
 }
 
-/*
-   coords = [ "%s,%s"%(poi['lat'],poi['lng']) for poi in self.pois]
-   params = { 'bbox'       : '',
-              'coords'     : '_'.join(coords),
-              'instants'   : 'morning,afternoon,evening,night',
-              'begin_time' : '', 'end_time'   : '',
-              'time'       : ''
-             }
-*/
-
 const (
 	emptyRegexp    = `^$`
 	anyRegexp      = `.*`
-	coordsRegexp   = `("[\d\.]+,[\d\.]"_?)+"`
+	coordsRegexp   = `^([\d\.]+,[\d\.]+_?)+$`
 	instantsRegexp = "morning,afternoon,evening,night"
 )
 
@@ -234,14 +222,13 @@ func TestForecastQuery(t *testing.T) {
 		"end_time":   emptyRegexp,
 		"time":       emptyRegexp,
 		"instants":   instantsRegexp,
-		//"coords":    coordsRegexp,
+		"coords":    coordsRegexp,
 	}
 
 	u, err := m.forecastUrl()
 	if err != nil {
 		t.Fatalf("forecastURL() error: %s", err)
 	}
-
 	values := u.Query()
 	for key, expr := range validationRegexps {
 		re := regexp.MustCompile(expr)
@@ -250,10 +237,10 @@ func TestForecastQuery(t *testing.T) {
 			t.Fatalf("forecastQuery() does not have key '%s'", key)
 		}
 		if len(got) != 1 {
-			t.Errorf("forecastQuery()['%s'] has %d values %q, want 1", key, len(got), got)
+			t.Fatalf("forecastQuery()['%s'] has %d values %q, want 1", key, len(got), got)
 		}
 		if re.Find([]byte(got[0])) == nil {
-			t.Errorf("forecastQuery()['%s']='%s' doesnt match '%s'", key, got, expr)
+			t.Errorf("forecastQuery()['%s']='%s' doesnt match '%s'", key, got[0], expr)
 		}
 	}
 }
