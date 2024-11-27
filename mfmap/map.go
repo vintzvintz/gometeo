@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -51,15 +52,18 @@ type MapInfoType struct {
 	IdTechnique string `json:"field_id_technique"`
 }
 
+// lat et lgn are mixed type float / string
+type stringFloat float64
+
 type POIType struct {
-	Title      string  `json:"title"`
-	Lat        float64 `json:"lat ,string"`
-	Lng        float64 `json:"lng ,string"`
-	Path       string  `json:"path"`
-	Insee      string  `json:"insee"`
-	Taxonomy   string  `json:"taxonomy"`
-	CodePostal string  `json:"code_postal"`
-	Timezone   string  `json:"timezone"`
+	Title      string      `json:"title"`
+	Lat        stringFloat `json:"lat"`
+	Lng        stringFloat `json:"lng"`
+	Path       string      `json:"path"`
+	Insee      string      `json:"insee"`
+	Taxonomy   string      `json:"taxonomy"`
+	CodePostal string      `json:"code_postal"`
+	Timezone   string      `json:"timezone"`
 }
 
 type SubzoneType struct {
@@ -148,7 +152,7 @@ func jsonParser(r io.Reader) (*JsonData, error) {
 }
 
 // ApiURL builds API URL from "config" node
-// typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0
+// typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0/path
 func (j *JsonData) ApiURL(path string, query *url.Values) (*url.URL, error) {
 	conf := j.Tools.Config
 	var querystring string
@@ -167,7 +171,7 @@ func (j *JsonData) ApiURL(path string, query *url.Values) (*url.URL, error) {
 func (m *MfMap) forecastUrl() (*url.URL, error) {
 
 	// zone is described by a seqence of coordinates
-	coords := make( []string, len(m.Data.Children) )
+	coords := make([]string, len(m.Data.Children))
 	for i, poi := range m.Data.Children {
 		coords[i] = fmt.Sprintf("%f,%f", poi.Lat, poi.Lng)
 	}
@@ -177,7 +181,7 @@ func (m *MfMap) forecastUrl() (*url.URL, error) {
 	query.Add("end_time", "")
 	query.Add("time", "")
 	query.Add("instants", "morning,afternoon,evening,night")
-	query.Add("coords", strings.Join( coords, "_") )
+	query.Add("coords", strings.Join(coords, "_"))
 
 	return m.Data.ApiURL(apiMultiforecast, &query)
 }
@@ -191,3 +195,33 @@ func (m *MfMap) forecastUrl() (*url.URL, error) {
               'time'       : ''
              }
 */
+
+// UnmarshalJSON unmarshals stringFloat fields
+// lat and lng are received as a mix of float and strings
+func (sf *stringFloat) UnmarshalJSON(b []byte) error {
+	// convert the bytes into an interface
+	// this will help us check the type of our value
+	// if it is a string that can be converted into aa float we convert it
+	// otherwise we return an error
+	var item interface{}
+	if err := json.Unmarshal(b, &item); err != nil {
+		return err
+	}
+	switch v := item.(type) {
+	case float64:
+		*sf = stringFloat(v)
+	case int:
+		*sf = stringFloat(float64(v))
+	case string:
+		// here convert the string into a float
+		i, err := strconv.ParseFloat(v,64)
+		if err != nil {
+			// the string might not be of float type
+			// so return an error
+			return err
+
+		}
+		*sf = stringFloat(i)
+	}
+	return nil
+}

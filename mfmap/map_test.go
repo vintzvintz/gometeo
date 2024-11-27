@@ -1,6 +1,7 @@
 package mfmap
 
 import (
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -100,7 +101,7 @@ func TestJsonParser(t *testing.T) {
 
 	j, err := jsonParser(f)
 	if err != nil {
-		t.Errorf("json.Unmarshal(%s) error: %v", fileJsonRacine, err)
+		t.Fatalf("json.Unmarshal(%s) error: %v", fileJsonRacine, err)
 	}
 	for key, test := range parseTests {
 		t.Run(key, func(t *testing.T) {
@@ -109,6 +110,25 @@ func TestJsonParser(t *testing.T) {
 				t.Errorf("%s got '%s' want '%s'", key, got, test.want)
 			}
 		})
+	}
+}
+
+func TestStringFloat(t *testing.T) {
+	type Item struct {
+		A stringFloat `json:"a"`
+		B stringFloat `json:"b"`
+		C stringFloat `json:"c"`
+		D stringFloat `json:"d"`
+	}
+	jsonData := []byte(`{"a":null, "c":"51", "d":51}`) // b is missing
+	want := Item{A: 0, B: 0, C: 51, D: 51}
+	var item Item
+	err := json.Unmarshal(jsonData, &item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(item, want) {
+		t.Errorf("stringFloat custom Unmarshall() got %v, want %v", item, want)
 	}
 }
 
@@ -222,7 +242,7 @@ func TestForecastQuery(t *testing.T) {
 		"end_time":   emptyRegexp,
 		"time":       emptyRegexp,
 		"instants":   instantsRegexp,
-		"coords":    coordsRegexp,
+		"coords":     coordsRegexp,
 	}
 
 	u, err := m.forecastUrl()
