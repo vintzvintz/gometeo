@@ -171,9 +171,9 @@ func (j *JsonData) ApiURL(path string, query *url.Values) (*url.URL, error) {
 func (m *MfMap) forecastUrl() (*url.URL, error) {
 
 	// zone is described by a seqence of coordinates
-	coords := make([]string, len(m.Data.Children))
+	ids := make([]string,len(m.Data.Children))
 	for i, poi := range m.Data.Children {
-		coords[i] = fmt.Sprintf("%f,%f", poi.Lat, poi.Lng)
+		ids[i] = poi.Insee
 	}
 	query := make(url.Values)
 	query.Add("bbox", "")
@@ -181,7 +181,7 @@ func (m *MfMap) forecastUrl() (*url.URL, error) {
 	query.Add("end_time", "")
 	query.Add("time", "")
 	query.Add("instants", "morning,afternoon,evening,night")
-	query.Add("coords", strings.Join(coords, "_"))
+	query.Add("coords", strings.Join(ids, ","))
 
 	return m.Data.ApiURL(apiMultiforecast, &query)
 }

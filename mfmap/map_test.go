@@ -229,7 +229,7 @@ func TestApiUrl(t *testing.T) {
 const (
 	emptyRegexp    = `^$`
 	anyRegexp      = `.*`
-	coordsRegexp   = `^([\d\.]+,[\d\.]+_?)+$`
+	coordsRegexp   = `^([\d\.],?)+$`
 	instantsRegexp = "morning,afternoon,evening,night"
 )
 
