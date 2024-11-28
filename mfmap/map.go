@@ -27,10 +27,10 @@ class Mf_map:
 type MfMap struct {
 	Nom    string
 	Parent *MfMap
-	Data   *JsonData
+	Data   *MfMapData
 }
 
-type JsonData struct {
+type MfMapData struct {
 	Path     PathType               `json:"path"`
 	Info     MapInfoType            `json:"mf_map_layers_v2"`
 	Children []POIType              `json:"mf_map_layers_v2_children_poi"`
@@ -141,8 +141,8 @@ loop:
 	return nil, fmt.Errorf("données JSON non trouvées")
 }
 
-func jsonParser(r io.Reader) (*JsonData, error) {
-	var j JsonData
+func jsonParser(r io.Reader) (*MfMapData, error) {
+	var j MfMapData
 	buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -153,7 +153,7 @@ func jsonParser(r io.Reader) (*JsonData, error) {
 
 // ApiURL builds API URL from "config" node
 // typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0/path
-func (j *JsonData) ApiURL(path string, query *url.Values) (*url.URL, error) {
+func (j *MfMapData) apiURL(path string, query *url.Values) (*url.URL, error) {
 	conf := j.Tools.Config
 	var querystring string
 	if query != nil {
@@ -183,7 +183,7 @@ func (m *MfMap) forecastUrl() (*url.URL, error) {
 	query.Add("instants", "morning,afternoon,evening,night")
 	query.Add("coords", strings.Join(ids, ","))
 
-	return m.Data.ApiURL(apiMultiforecast, &query)
+	return m.Data.apiURL(apiMultiforecast, &query)
 }
 
 /*
