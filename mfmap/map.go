@@ -86,12 +86,12 @@ const (
 	apiMultiforecast = "/multiforecast"
 )
 
-func (m *MfMap) Parse(html io.Reader) error {
-	j, err := jsonFilter(html)
+func (m *MfMap) ParseHtml(html io.Reader) error {
+	j, err := htmlFilter(html)
 	if err != nil {
 		return err
 	}
-	data, err := jsonParser(j)
+	data, err := mapParser(j)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func isJsonTag(t html.Token) bool {
 }
 
 // JsonFilter extracts json data from an html page
-func jsonFilter(src io.Reader) (io.Reader, error) {
+func htmlFilter(src io.Reader) (io.Reader, error) {
 	z := html.NewTokenizer(src)
 	var inJson bool
 loop:
@@ -141,7 +141,8 @@ loop:
 	return nil, fmt.Errorf("données JSON non trouvées")
 }
 
-func jsonParser(r io.Reader) (*MfMapData, error) {
+// mapParser parses json data to initialise a MfMap data structure
+func mapParser(r io.Reader) (*MfMapData, error) {
 	var j MfMapData
 	buf, err := io.ReadAll(r)
 	if err != nil {
@@ -149,6 +150,12 @@ func jsonParser(r io.Reader) (*MfMapData, error) {
 	}
 	err = json.Unmarshal(buf, &j)
 	return &j, err
+}
+
+func (m *MfMap) parseMultiforecast(r io.Reader) (*MultiforecastData, error) {
+	_ = r
+
+	return &MultiforecastData{}, nil
 }
 
 // ApiURL builds API URL from "config" node
@@ -171,7 +178,7 @@ func (j *MfMapData) apiURL(path string, query *url.Values) (*url.URL, error) {
 func (m *MfMap) forecastUrl() (*url.URL, error) {
 
 	// zone is described by a seqence of coordinates
-	ids := make([]string,len(m.Data.Children))
+	ids := make([]string, len(m.Data.Children))
 	for i, poi := range m.Data.Children {
 		ids[i] = poi.Insee
 	}
@@ -185,16 +192,6 @@ func (m *MfMap) forecastUrl() (*url.URL, error) {
 
 	return m.Data.apiURL(apiMultiforecast, &query)
 }
-
-/*
-   coords = [ "%s,%s"%(poi['lat'],poi['lng']) for poi in self.pois]
-   params = { 'bbox'       : '',
-              'coords'     : '_'.join(coords),
-              'instants'   : 'morning,afternoon,evening,night',
-              'begin_time' : '', 'end_time'   : '',
-              'time'       : ''
-             }
-*/
 
 // UnmarshalJSON unmarshals stringFloat fields
 // lat and lng are received as a mix of float and strings
@@ -214,7 +211,7 @@ func (sf *stringFloat) UnmarshalJSON(b []byte) error {
 		*sf = stringFloat(float64(v))
 	case string:
 		// here convert the string into a float
-		i, err := strconv.ParseFloat(v,64)
+		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// the string might not be of float type
 			// so return an error

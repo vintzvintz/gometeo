@@ -21,13 +21,13 @@ const (
 
 //const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
 
-func TestJsonFilter(t *testing.T) {
+func TestHtmlFilter(t *testing.T) {
 	name := fileHtmlRacine
 	f := openFile(t, name)
 	defer f.Close()
 
 	// get json content
-	r, err := jsonFilter(f)
+	r, err := htmlFilter(f)
 	if err != nil {
 		t.Fatalf("jsonFilter error : %s", err)
 	}
@@ -39,11 +39,11 @@ func TestJsonFilter(t *testing.T) {
 	t.Logf("JSON=%s", data)
 }
 
-func TestJsonFilterFail(t *testing.T) {
+func TestMapParserFail(t *testing.T) {
 	f := openFile(t, fileJsonFilterFail)
-	_, err := jsonFilter(f)
+	_, err := mapParser(f)
 	if err == nil {
-		t.Error("JsonReader did not returned error")
+		t.Error("error expected")
 		return
 	}
 }
@@ -58,7 +58,7 @@ func openFile(t *testing.T, name string) io.ReadCloser {
 	return f
 }
 
-var parseTests = map[string]struct {
+var mapParseTests = map[string]struct {
 	want interface{}
 	got  func(j *MfMapData) interface{}
 }{
@@ -95,15 +95,15 @@ var parseTests = map[string]struct {
 	},
 }
 
-func TestJsonParser(t *testing.T) {
+func TestMfMapParser(t *testing.T) {
 	f := openFile(t, fileJsonRacine)
 	defer f.Close()
 
-	j, err := jsonParser(f)
+	j, err := mapParser(f)
 	if err != nil {
 		t.Fatalf("json.Unmarshal(%s) error: %v", fileJsonRacine, err)
 	}
-	for key, test := range parseTests {
+	for key, test := range mapParseTests {
 		t.Run(key, func(t *testing.T) {
 			got := test.got(j)
 			if !reflect.DeepEqual(got, test.want) {
@@ -132,22 +132,23 @@ func TestStringFloat(t *testing.T) {
 	}
 }
 
-func parseMapHtml(t *testing.T, filename string) *MfMap {
+func parseHtml(t *testing.T, filename string) *MfMap {
 	f := openFile(t, filename)
 	defer f.Close()
 
 	m := MfMap{}
-	if err := m.Parse(f); err != nil {
+	if err := m.ParseHtml(f); err != nil {
 		t.Fatalf("MfMap.Parse(%s) error: %s", filename, err)
 	}
 	return &m
 }
 
-func TestMapParse(t *testing.T) {
-	m := parseMapHtml(t, fileHtmlRacine)
+func TestParseHtml(t *testing.T) {
+	const expect = "/meteo-france"
+	m := parseHtml(t, fileHtmlRacine)
 	// check some content
 	if m.Data.Info.Path != "/meteo-france" {
-		t.Errorf("MfMap.Parse() Info.Path='%s' expected '%s'", m.Data.Info.Path, "/meteo-france")
+		t.Errorf("MfMap.ParseHtml() Info.Path='%s' expected '%s'", m.Data.Info.Path, expect)
 	}
 }
 
@@ -180,7 +181,7 @@ func TestMapParseFail(t *testing.T) {
 	for name, html := range tests {
 		t.Run(name, func(t *testing.T) {
 			r := strings.NewReader(html)
-			err := m.Parse(r)
+			err := m.ParseHtml(r)
 			if err == nil {
 				t.Error("MfMap.Parse(): error expected")
 			}
@@ -210,7 +211,7 @@ func TestApiUrl(t *testing.T) {
 		},
 	}
 
-	m := parseMapHtml(t, fileHtmlRacine)
+	m := parseHtml(t, fileHtmlRacine)
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -234,7 +235,7 @@ const (
 )
 
 func TestForecastQuery(t *testing.T) {
-	m := parseMapHtml(t, fileHtmlRacine)
+	m := parseHtml(t, fileHtmlRacine)
 
 	validationRegexps := map[string]string{
 		"bbox":       emptyRegexp,

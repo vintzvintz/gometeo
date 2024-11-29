@@ -22,7 +22,6 @@ func NewCrawler() *MfCrawler {
 	}
 }
 
-
 // GetMap gets https://mf.com/zone html page and related data like
 // svg map, pictos, forecasts and list of subzones
 // related data is stored into MfMap fields
@@ -38,7 +37,7 @@ func (c *MfCrawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, erro
 		//		Nom: nom,
 		Parent: parent,
 	}
-	err = m.Parse(body)
+	err = m.ParseHtml(body)
 	if err != nil {
 		return nil, err
 	}
