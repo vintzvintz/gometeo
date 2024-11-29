@@ -11,26 +11,14 @@ import (
 	"golang.org/x/net/html"
 )
 
-/*
-class Mf_map:
-  # Counterpart of MF forecast pages, with geographical, svg and forecast data
-  def __init__(self, data, own_path, parent):
-    conf = data["mf_tools_common"]["config"]
-    self.api_url="https://"+conf["site"]+"."+conf["base_url"]    # https://rpcache-aa.meteofrance.com/internet2018client/2.0
-    self.infos = data["mf_map_layers_v2"]
-    self.pois = data["mf_map_layers_v2_children_poi"]
-    self.subzones = data["mf_map_layers_v2_sub_zone"]
-    self.own_path = own_path
-    self.parent = parent
-*/
-
 type MfMap struct {
-	Nom    string
-	Parent *MfMap
-	Data   *MfMapData
+	Nom       string
+	Parent    *MfMap
+	Data      *MapData
+	Forecasts *MultiforecastData
 }
 
-type MfMapData struct {
+type MapData struct {
 	Path     PathType               `json:"path"`
 	Info     MapInfoType            `json:"mf_map_layers_v2"`
 	Children []POIType              `json:"mf_map_layers_v2_children_poi"`
@@ -142,8 +130,8 @@ loop:
 }
 
 // mapParser parses json data to initialise a MfMap data structure
-func mapParser(r io.Reader) (*MfMapData, error) {
-	var j MfMapData
+func mapParser(r io.Reader) (*MapData, error) {
+	var j MapData
 	buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -152,15 +140,9 @@ func mapParser(r io.Reader) (*MfMapData, error) {
 	return &j, err
 }
 
-func (m *MfMap) parseMultiforecast(r io.Reader) (*MultiforecastData, error) {
-	_ = r
-
-	return &MultiforecastData{}, nil
-}
-
 // ApiURL builds API URL from "config" node
 // typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0/path
-func (j *MfMapData) apiURL(path string, query *url.Values) (*url.URL, error) {
+func (j *MapData) apiURL(path string, query *url.Values) (*url.URL, error) {
 	conf := j.Tools.Config
 	var querystring string
 	if query != nil {

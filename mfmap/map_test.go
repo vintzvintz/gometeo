@@ -60,48 +60,48 @@ func openFile(t *testing.T, name string) io.ReadCloser {
 
 var mapParseTests = map[string]struct {
 	want interface{}
-	got  func(j *MfMapData) interface{}
+	got  func(j *MapData) interface{}
 }{
 	"Path.BaseUrl": {
 		want: "/",
-		got:  func(j *MfMapData) interface{} { return j.Path.BaseUrl },
+		got:  func(j *MapData) interface{} { return j.Path.BaseUrl },
 	},
 	"Info.Taxonomy": {
 		want: "PAYS",
-		got:  func(j *MfMapData) interface{} { return j.Info.Taxonomy },
+		got:  func(j *MapData) interface{} { return j.Info.Taxonomy },
 	},
 	"Info.IdTechnique": {
 		want: "PAYS007",
-		got:  func(j *MfMapData) interface{} { return j.Info.IdTechnique },
+		got:  func(j *MapData) interface{} { return j.Info.IdTechnique },
 	},
 	"Tools.Config.Site": {
 		want: "rpcache-aa",
-		got:  func(j *MfMapData) interface{} { return j.Tools.Config.Site },
+		got:  func(j *MapData) interface{} { return j.Tools.Config.Site },
 	},
 	"Tools.Config.BaseUrl": {
 		want: "meteofrance.com/internet2018client/2.0",
-		got:  func(j *MfMapData) interface{} { return j.Tools.Config.BaseUrl },
+		got:  func(j *MapData) interface{} { return j.Tools.Config.BaseUrl },
 	},
 	"ChildrenPOI": {
 		want: "VILLE_FRANCE",
-		got:  func(j *MfMapData) interface{} { return j.Children[0].Taxonomy },
+		got:  func(j *MapData) interface{} { return j.Children[0].Taxonomy },
 	},
 	"Subzone": {
 		want: SubzoneType{
 			Path: "/previsions-meteo-france/auvergne-rhone-alpes/10",
 			Name: "Auvergne-Rhône-Alpes",
 		},
-		got: func(j *MfMapData) interface{} { return j.Subzones["REGIN10"] },
+		got: func(j *MapData) interface{} { return j.Subzones["REGIN10"] },
 	},
 }
 
-func TestMfMapParser(t *testing.T) {
+func TestMapParser(t *testing.T) {
 	f := openFile(t, fileJsonRacine)
 	defer f.Close()
 
 	j, err := mapParser(f)
 	if err != nil {
-		t.Fatalf("json.Unmarshal(%s) error: %v", fileJsonRacine, err)
+		t.Fatalf("mapParser(%s) error: %v", fileJsonRacine, err)
 	}
 	for key, test := range mapParseTests {
 		t.Run(key, func(t *testing.T) {
