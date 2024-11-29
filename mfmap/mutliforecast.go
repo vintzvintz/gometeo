@@ -9,7 +9,7 @@ import (
 
 type featureCollection struct {
 	Type     string    `json:"type"`
-	Features []feature `json:"features"`
+	Features []*feature `json:"features"`
 }
 
 type feature struct {
@@ -17,7 +17,7 @@ type feature struct {
 	Type       string    `json:"type"`
 }
 
-type MultiforecastData []feature
+type MultiforecastData []*feature
 
 const featureCollectionStr = "FeatureCollection"
 
