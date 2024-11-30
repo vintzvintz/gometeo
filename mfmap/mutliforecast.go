@@ -13,27 +13,58 @@ type featureCollection struct {
 }
 
 type feature struct {
-	UpdateTime time.Time      `json:"update_time"`
-	Type       string         `json:"type"`
-	Geometry   GeometryType   `json:"geometry"`
-	Properties PropertiesType `json:"properties"`
+	UpdateTime time.Time `json:"update_time"`
+	Type       string    `json:"type"`
+	Geometry   Geometry  `json:"geometry"`
+	Properties Property  `json:"properties"`
 }
 
-type GeometryType struct {
+type MultiforecastData []*feature
+
+type Geometry struct {
 	Type   string     `json:"type"`
 	Coords [2]float64 `json:"coordinates"`
 }
 
-type PropertiesType struct {
-	//Altitude int `json:"altitude"`
-	//Name string `json:"name"`
-	Country  string `json:"country"`
-	Dept     string `json:"french_department"`
-	Timezone string `json:"timezone"`
-	Insee    string `json:"insee"`
+type Property struct {
+	Name      string     `json:"name"`
+	Country   string     `json:"country"`
+	Dept      string     `json:"french_department"`
+	Timezone  string     `json:"timezone"`
+	Insee     string     `json:"insee"`
+	Altitude  int        `json:"altitude"`
+	Forecasts []Forecast `json:"forecast"`
+	Dailies   []Daily    `json:"daily_forecast"`
 }
 
-type MultiforecastData []*feature
+type Forecast struct {
+	Moment        string    `json:"moment_day"`
+	Time          time.Time `json:"time"`
+	T             float64   `json:"T"`
+	TWindchill    float64   `json:"T_windchill"`
+	WindSpeed     int       `json:"wind_speed"`
+	WindSpeedGust int       `json:"wind_speed_gust"`
+	WindDirection int       `json:"wind_direction"`
+	WindIcon      string    `json:"wind_icon"`
+	Iso0          int       `json:"iso0"`
+	CloudCover    int       `json:"total_cloud_cover"`
+	WeatherIcon   string    `json:"weather_icon"`
+	WeatherDesc   string    `json:"weather_description"`
+	Humidity      int       `json:"relative_humidity"`
+	Pression      float64   `json:"P_sea"`
+	Confiance     int       `json:"weather_confidence_index"`
+}
+
+type Daily struct {
+	Time             time.Time `json:"time"`
+	T_min            float64   `json:"T_min"`
+	T_max            float64   `json:"T_max"`
+	HumidityMin      int       `json:"relative_humidity_min"`
+	HumidityMax      int       `json:"relative_humidity_max"`
+	Uv               int       `json:"uv_index"`
+	DailyWeatherIcon string    `json:"daily_weather_icon"`
+	DailyWeatherDesc string    `json:"daily_weather_description"`
+}
 
 const featureCollectionStr = "FeatureCollection"
 
