@@ -8,13 +8,29 @@ import (
 )
 
 type featureCollection struct {
-	Type     string    `json:"type"`
+	Type     string     `json:"type"`
 	Features []*feature `json:"features"`
 }
 
 type feature struct {
-	UpdateTime time.Time `json:"update_time"`
-	Type       string    `json:"type"`
+	UpdateTime time.Time      `json:"update_time"`
+	Type       string         `json:"type"`
+	Geometry   GeometryType   `json:"geometry"`
+	Properties PropertiesType `json:"properties"`
+}
+
+type GeometryType struct {
+	Type   string     `json:"type"`
+	Coords [2]float64 `json:"coordinates"`
+}
+
+type PropertiesType struct {
+	//Altitude int `json:"altitude"`
+	//Name string `json:"name"`
+	Country  string `json:"country"`
+	Dept     string `json:"french_department"`
+	Timezone string `json:"timezone"`
+	Insee    string `json:"insee"`
 }
 
 type MultiforecastData []*feature

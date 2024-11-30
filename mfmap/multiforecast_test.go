@@ -14,6 +14,14 @@ func validateMultiforecastFeature(t *testing.T, feat *feature) {
 			want: "Feature",
 			got:  func(f *feature) interface{} { return f.Type },
 		},
+		"geometry": {
+			want: "Point",
+			got:  func(f *feature) interface{} { return f.Geometry.Type },
+		},
+		"country": {
+			want: "FR - France",
+			got:  func(f *feature) interface{} { return f.Properties.Country },
+		},
 	}
 	if feat == nil {
 		t.Fatal("no feature to validate")
@@ -23,7 +31,7 @@ func validateMultiforecastFeature(t *testing.T, feat *feature) {
 			got := test.got(feat)
 			want := test.want
 			if got != want {
-				t.Errorf("multiforecast feature %s error: got %s want %s", name, got, want )
+				t.Errorf("multiforecast feature %s error: got %s want %s", name, got, want)
 			}
 		})
 	}
