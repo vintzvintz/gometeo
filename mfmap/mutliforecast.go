@@ -31,9 +31,11 @@ type mfFeature struct {
 type FeatureType string
 
 type Geometry struct {
-	Type   string      `json:"type"`
+	Type   PointType   `json:"type"`
 	Coords Coordinates `json:"coordinates"`
 }
+
+type PointType string
 
 type Coordinates [2]float64
 
@@ -80,6 +82,7 @@ type Daily struct {
 const (
 	featureCollectionStr = "FeatureCollection"
 	featureStr           = "Feature"
+	pointStr             = "Point"
 )
 
 func unmarshalConstantString(b []byte, want string, name string) (string, error) {
@@ -108,6 +111,15 @@ func (fct *FeatureType) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*fct = FeatureType(s)
+	return nil
+}
+
+func (fct *PointType) UnmarshalJSON(b []byte) error {
+	s, err := unmarshalConstantString(b, pointStr, "Point.Type")
+	if err != nil {
+		return err
+	}
+	*fct = PointType(s)
 	return nil
 }
 

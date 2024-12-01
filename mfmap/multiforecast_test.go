@@ -14,10 +14,11 @@ func validateMultiforecastFeature(t *testing.T, feat *mfFeature) {
 			want: "Feature",
 			got:  func(f *mfFeature) interface{} { return f.Type },
 		},*/
+		/*
 		"geometry": {
 			want: "Point",
 			got:  func(f *mfFeature) interface{} { return f.Geometry.Type },
-		},
+		},*/
 		"country": {
 			want: "FR - France",
 			got:  func(f *mfFeature) interface{} { return f.Properties.Country },
