@@ -1,6 +1,7 @@
 package mfmap
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -55,21 +56,35 @@ func TestGeographyQuery(t *testing.T) {
 	})
 }
 
-
 const svgTestFile = "pays007.svg"
+
+type svgSize struct {
+	height  int
+	width   int
+	viewbox [4]int
+}
+
+func getSize(t *testing.T, svg []byte) svgSize {
+	s := svgSize{}
+	// TODO : insert regexp kung-fu
+	return s
+}
 
 func TestSvgCrop(t *testing.T) {
 	name := assets_path + svgTestFile
-	f, err := os.Open( name )
-	if err!=nil {
-		t.Fatalf("could not open %s: %s", name, err)
+
+	f, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatalf("could not read %s: %s", name, err)
 	}
 	param := cropParams{}
-	cropped, err := cropSVG( f, param )
+	size := getSize(t, f)
+	_ = size
+	cropped, err := cropSVG(bytes.NewReader(f), param)
 	if err != nil {
 		t.Fatalf("could not crop %s: %s", name, err)
 	}
 	// TODO check svg size
 	svg, _ := io.ReadAll(cropped)
-	_ = svg
+	t.Log(string(svg[:400]))
 }

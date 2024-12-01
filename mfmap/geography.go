@@ -1,10 +1,11 @@
 package mfmap
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
+	"github.com/beevik/etree"
 )
 
 type geoCollection struct {
@@ -96,6 +97,19 @@ func parseGeography(r io.Reader) (*geoCollection, error) {
 
 func cropSVG(svg io.Reader, p cropParams) (io.Reader, error) {
 	_ = p
-	_ = svg
-	return strings.NewReader("<wesh>weeesh</wesh>"), nil
+	
+	xml, err := io.ReadAll(svg)
+	if err != nil {
+		return nil, fmt.Errorf("read error: %w", err)
+	}
+	doc := etree.NewDocument()
+	err = doc.ReadFromBytes(xml)
+	if err != nil {
+		return nil, fmt.Errorf("xml parse error: %w", err)
+	}
+	cropped, err := doc.WriteToBytes()
+	if err != nil {
+		return nil, fmt.Errorf("xml write error: %w", err)
+	}
+	return bytes.NewReader(cropped), nil
 }
