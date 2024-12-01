@@ -5,22 +5,22 @@ import (
 	"testing"
 )
 
-func validateMultiforecastFeature(t *testing.T, feat *feature) {
+func validateMultiforecastFeature(t *testing.T, feat *mfFeature) {
 	tests := map[string]struct {
 		want interface{}
-		got  func(*feature) interface{}
+		got  func(*mfFeature) interface{}
 	}{
 		"type": {
 			want: "Feature",
-			got:  func(f *feature) interface{} { return f.Type },
+			got:  func(f *mfFeature) interface{} { return f.Type },
 		},
 		"geometry": {
 			want: "Point",
-			got:  func(f *feature) interface{} { return f.Geometry.Type },
+			got:  func(f *mfFeature) interface{} { return f.Geometry.Type },
 		},
 		"country": {
 			want: "FR - France",
-			got:  func(f *feature) interface{} { return f.Properties.Country },
+			got:  func(f *mfFeature) interface{} { return f.Properties.Country },
 		},
 	}
 	if feat == nil {

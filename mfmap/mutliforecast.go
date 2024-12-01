@@ -7,26 +7,29 @@ import (
 	"time"
 )
 
-type featureCollection struct {
-	Type     string     `json:"type"`
-	Features []*feature `json:"features"`
+// mfCollection is root element of a multiforecast api response
+type mfCollection struct {
+	Type     string       `json:"type"`
+	Features []*mfFeature `json:"features"`
 }
 
-type feature struct {
-	UpdateTime time.Time `json:"update_time"`
-	Type       string    `json:"type"`
-	Geometry   Geometry  `json:"geometry"`
-	Properties Property  `json:"properties"`
+type mfFeature struct {
+	UpdateTime time.Time  `json:"update_time"`
+	Type       string     `json:"type"`
+	Geometry   Geometry   `json:"geometry"`
+	Properties MfProperty `json:"properties"`
 }
 
-type MultiforecastData []*feature
+type MultiforecastData []*mfFeature
 
 type Geometry struct {
-	Type   string     `json:"type"`
-	Coords [2]float64 `json:"coordinates"`
+	Type   string      `json:"type"`
+	Coords Coordinates `json:"coordinates"`
 }
 
-type Property struct {
+type Coordinates [2]float64
+
+type MfProperty struct {
 	Name      string     `json:"name"`
 	Country   string     `json:"country"`
 	Dept      string     `json:"french_department"`
@@ -69,16 +72,16 @@ type Daily struct {
 const featureCollectionStr = "FeatureCollection"
 
 func parseMultiforecast(r io.Reader) (MultiforecastData, error) {
-	fc, err := parseFeatureCollection(r)
+	fc, err := parseMfCollection(r)
 	if err != nil {
 		return nil, err
 	}
 	return fc.Features, nil
 }
 
-func parseFeatureCollection(r io.Reader) (*featureCollection, error) {
+func parseMfCollection(r io.Reader) (*mfCollection, error) {
 
-	var fc featureCollection
+	var fc mfCollection
 	j, err := io.ReadAll(r)
 
 	if err != nil {
