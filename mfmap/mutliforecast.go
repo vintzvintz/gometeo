@@ -9,18 +9,26 @@ import (
 
 // mfCollection is root element of a multiforecast api response
 type mfCollection struct {
-	Type     string       `json:"type"`
-	Features []*mfFeature `json:"features"`
+	Type     FeatureCollectionType `json:"type"`
+	Features MultiforecastData     `json:"features"`
 }
 
-type mfFeature struct {
-	UpdateTime time.Time  `json:"update_time"`
-	Type       string     `json:"type"`
-	Geometry   Geometry   `json:"geometry"`
-	Properties MfProperty `json:"properties"`
-}
+// FeatureCollectionType is checked to be equal to "FeatureCollection"
+// in custom UnmarshalJSON() method
+type FeatureCollectionType string
 
 type MultiforecastData []*mfFeature
+
+type mfFeature struct {
+	UpdateTime time.Time   `json:"update_time"`
+	Type       FeatureType `json:"type"`
+	Geometry   Geometry    `json:"geometry"`
+	Properties MfProperty  `json:"properties"`
+}
+
+// FeatureCollectionType is checked to be equal to "Feature"
+// in custom UnmarshalJSON() method
+type FeatureType string
 
 type Geometry struct {
 	Type   string      `json:"type"`
@@ -69,7 +77,39 @@ type Daily struct {
 	DailyWeatherDesc string    `json:"daily_weather_description"`
 }
 
-const featureCollectionStr = "FeatureCollection"
+const (
+	featureCollectionStr = "FeatureCollection"
+	featureStr           = "Feature"
+)
+
+func unmarshalConstantString(b []byte, want string, name string) (string, error) {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return "", fmt.Errorf("%s unmarshal error: %w", name, err)
+	}
+	if s != want {
+		return "", fmt.Errorf("%s is '%s' want '%s'", name, s, want)
+	}
+	return s, nil
+}
+
+func (fct *FeatureCollectionType) UnmarshalJSON(b []byte) error {
+	s, err := unmarshalConstantString(b, featureCollectionStr, "FeatureCollection.Type")
+	if err != nil {
+		return err
+	}
+	*fct = FeatureCollectionType(s)
+	return nil
+}
+
+func (fct *FeatureType) UnmarshalJSON(b []byte) error {
+	s, err := unmarshalConstantString(b, featureStr, "Feature.Type")
+	if err != nil {
+		return err
+	}
+	*fct = FeatureType(s)
+	return nil
+}
 
 func parseMultiforecast(r io.Reader) (MultiforecastData, error) {
 	fc, err := parseMfCollection(r)
@@ -89,10 +129,7 @@ func parseMfCollection(r io.Reader) (*mfCollection, error) {
 	}
 	err = json.Unmarshal(j, &fc)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling multiforecast data: %w", err)
-	}
-	if fc.Type != featureCollectionStr {
-		return nil, fmt.Errorf("featureCollection.Type got %s want %s", fc.Type, featureCollectionStr)
+		return nil, fmt.Errorf("multiforecast data unmarshalling: %w", err)
 	}
 	return &fc, nil
 }
