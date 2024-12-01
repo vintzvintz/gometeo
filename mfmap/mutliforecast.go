@@ -27,7 +27,6 @@ type Geometry struct {
 	Coords Coordinates `json:"coordinates"`
 }
 
-//type Coordinates [2]float64
 type Coordinates struct {
 	Lat, Lng float64
 }
@@ -37,29 +36,31 @@ type MfProperty struct {
 	Country   countryFr  `json:"country"`
 	Dept      string     `json:"french_department"`
 	Timezone  tzParis    `json:"timezone"`
-	Insee     string     `json:"insee"`
+	Insee     CodeInsee  `json:"insee"`
 	Altitude  int        `json:"altitude"`
 	Forecasts []Forecast `json:"forecast"`
 	Dailies   []Daily    `json:"daily_forecast"`
 }
+type CodeInsee string
 
 type Forecast struct {
-	Moment        string    `json:"moment_day"`
-	Time          time.Time `json:"time"`
-	T             float64   `json:"T"`
-	TWindchill    float64   `json:"T_windchill"`
-	WindSpeed     int       `json:"wind_speed"`
-	WindSpeedGust int       `json:"wind_speed_gust"`
-	WindDirection int       `json:"wind_direction"`
-	WindIcon      string    `json:"wind_icon"`
-	Iso0          int       `json:"iso0"`
-	CloudCover    int       `json:"total_cloud_cover"`
-	WeatherIcon   string    `json:"weather_icon"`
-	WeatherDesc   string    `json:"weather_description"`
-	Humidity      int       `json:"relative_humidity"`
-	Pression      float64   `json:"P_sea"`
-	Confiance     int       `json:"weather_confidence_index"`
+	Moment        MomentName `json:"moment_day"`
+	Time          time.Time  `json:"time"`
+	T             float64    `json:"T"`
+	TWindchill    float64    `json:"T_windchill"`
+	WindSpeed     int        `json:"wind_speed"`
+	WindSpeedGust int        `json:"wind_speed_gust"`
+	WindDirection int        `json:"wind_direction"`
+	WindIcon      string     `json:"wind_icon"`
+	Iso0          int        `json:"iso0"`
+	CloudCover    int        `json:"total_cloud_cover"`
+	WeatherIcon   string     `json:"weather_icon"`
+	WeatherDesc   string     `json:"weather_description"`
+	Humidity      int        `json:"relative_humidity"`
+	Pression      float64    `json:"P_sea"`
+	Confiance     int        `json:"weather_confidence_index"`
 }
+type MomentName string
 
 type Daily struct {
 	Time             time.Time `json:"time"`
@@ -78,6 +79,14 @@ const (
 	pointStr             = "Point"
 	tzStr                = "Europe/Paris"
 	countryFrStr         = "FR - France"
+	codeInseeMinLen      = 6
+)
+
+const (
+	morningStr   = "matin"
+	afternoonStr = "après-midi"
+	eveningStr   = "soirée"
+	nightStr     = "nuit"
 )
 
 // custom types for constant strings with runtime value check
@@ -148,8 +157,35 @@ func (coords *Coordinates) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &a); err != nil {
 		return fmt.Errorf("coordinates unmarshal error: %w. Want a [2]float64 array", err)
 	}
-	coords.Lng,coords.Lat  = a[0], a[1]
+	coords.Lng, coords.Lat = a[0], a[1]
 	return nil
+}
+
+func (code *CodeInsee) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return fmt.Errorf("code insee unmarshal error: %w", err)
+	}
+	if len(s) < codeInseeMinLen {
+		return fmt.Errorf("code insee '%s' length=%d, expected >= %d bytes", s, len(s), codeInseeMinLen)
+	}
+	*code = CodeInsee(s)
+	return nil
+}
+
+func (m *MomentName) UnmarshalJSON(b []byte) error {
+	allowedNames := []string{morningStr, afternoonStr, eveningStr, nightStr}
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return fmt.Errorf("moment unmarshal error: %w", err)
+	}
+	for _, name := range allowedNames {
+		if s == name {
+			*m = MomentName(s)
+			return nil
+		}
+	}
+	return fmt.Errorf("moment '%s' not in known values  %v", s, allowedNames)
 }
 
 func parseMultiforecast(r io.Reader) (MultiforecastData, error) {

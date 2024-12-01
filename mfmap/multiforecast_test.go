@@ -51,8 +51,5 @@ func TestParseMultiforecast(t *testing.T) {
 	}
 	if len(mf) == 0 {
 		t.Fatal("parseMultiforecast() returned no data")
-	} /*
-		for _, feat := range mf {
-			validateMultiforecastFeature(t, feat)
-		}*/
+	} 
 }
