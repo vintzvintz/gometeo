@@ -13,10 +13,6 @@ type mfCollection struct {
 	Features MultiforecastData     `json:"features"`
 }
 
-// FeatureCollectionType is checked to be equal to "FeatureCollection"
-// in custom UnmarshalJSON() method
-type FeatureCollectionType string
-
 type MultiforecastData []*mfFeature
 
 type mfFeature struct {
@@ -26,18 +22,15 @@ type mfFeature struct {
 	Properties MfProperty  `json:"properties"`
 }
 
-// FeatureCollectionType is checked to be equal to "Feature"
-// in custom UnmarshalJSON() method
-type FeatureType string
-
 type Geometry struct {
 	Type   PointType   `json:"type"`
 	Coords Coordinates `json:"coordinates"`
 }
 
-type PointType string
-
-type Coordinates [2]float64
+//type Coordinates [2]float64
+type Coordinates struct {
+	Lat, Lng float64
+}
 
 type MfProperty struct {
 	Name      string     `json:"name"`
@@ -49,9 +42,6 @@ type MfProperty struct {
 	Forecasts []Forecast `json:"forecast"`
 	Dailies   []Daily    `json:"daily_forecast"`
 }
-
-type tzParis string
-type countryFr string
 
 type Forecast struct {
 	Moment        string    `json:"moment_day"`
@@ -89,6 +79,13 @@ const (
 	tzStr                = "Europe/Paris"
 	countryFrStr         = "FR - France"
 )
+
+// custom types for constant strings with runtime value check
+type FeatureCollectionType string
+type FeatureType string
+type PointType string
+type tzParis string
+type countryFr string
 
 func unmarshalConstantString(b []byte, want string, name string) (string, error) {
 	var s string
@@ -143,6 +140,15 @@ func (ctry *countryFr) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*ctry = countryFr(s)
+	return nil
+}
+
+func (coords *Coordinates) UnmarshalJSON(b []byte) error {
+	var a [2]float64
+	if err := json.Unmarshal(b, &a); err != nil {
+		return fmt.Errorf("coordinates unmarshal error: %w. Want a [2]float64 array", err)
+	}
+	coords.Lng,coords.Lat  = a[0], a[1]
 	return nil
 }
 
