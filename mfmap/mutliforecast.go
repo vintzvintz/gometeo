@@ -41,14 +41,17 @@ type Coordinates [2]float64
 
 type MfProperty struct {
 	Name      string     `json:"name"`
-	Country   string     `json:"country"`
+	Country   countryFr  `json:"country"`
 	Dept      string     `json:"french_department"`
-	Timezone  string     `json:"timezone"`
+	Timezone  tzParis    `json:"timezone"`
 	Insee     string     `json:"insee"`
 	Altitude  int        `json:"altitude"`
 	Forecasts []Forecast `json:"forecast"`
 	Dailies   []Daily    `json:"daily_forecast"`
 }
+
+type tzParis string
+type countryFr string
 
 type Forecast struct {
 	Moment        string    `json:"moment_day"`
@@ -83,6 +86,8 @@ const (
 	featureCollectionStr = "FeatureCollection"
 	featureStr           = "Feature"
 	pointStr             = "Point"
+	tzStr                = "Europe/Paris"
+	countryFrStr         = "FR - France"
 )
 
 func unmarshalConstantString(b []byte, want string, name string) (string, error) {
@@ -114,12 +119,30 @@ func (fct *FeatureType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (fct *PointType) UnmarshalJSON(b []byte) error {
+func (pt *PointType) UnmarshalJSON(b []byte) error {
 	s, err := unmarshalConstantString(b, pointStr, "Point.Type")
 	if err != nil {
 		return err
 	}
-	*fct = PointType(s)
+	*pt = PointType(s)
+	return nil
+}
+
+func (tz *tzParis) UnmarshalJSON(b []byte) error {
+	s, err := unmarshalConstantString(b, tzStr, "MfProperty.Timezone")
+	if err != nil {
+		return err
+	}
+	*tz = tzParis(s)
+	return nil
+}
+
+func (ctry *countryFr) UnmarshalJSON(b []byte) error {
+	s, err := unmarshalConstantString(b, countryFrStr, "MfProperty.Country")
+	if err != nil {
+		return err
+	}
+	*ctry = countryFr(s)
 	return nil
 }
 
