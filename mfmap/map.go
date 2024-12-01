@@ -74,6 +74,14 @@ const (
 	apiMultiforecast = "/multiforecast"
 )
 
+// for coordinates sanity checks
+const (
+	minLat = 35.0
+	maxLat = 50.0
+	minLng = -10.0
+	maxLng = 15.0
+)
+
 func (m *MfMap) ParseHtml(html io.Reader) error {
 	j, err := htmlFilter(html)
 	if err != nil {

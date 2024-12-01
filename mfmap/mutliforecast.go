@@ -18,11 +18,11 @@ type MultiforecastData []*mfFeature
 type mfFeature struct {
 	UpdateTime time.Time   `json:"update_time"`
 	Type       FeatureType `json:"type"`
-	Geometry   Geometry    `json:"geometry"`
+	Geometry   MfGeometry  `json:"geometry"`
 	Properties MfProperty  `json:"properties"`
 }
 
-type Geometry struct {
+type MfGeometry struct {
 	Type   PointType   `json:"type"`
 	Coords Coordinates `json:"coordinates"`
 }
@@ -157,8 +157,23 @@ func (coords *Coordinates) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &a); err != nil {
 		return fmt.Errorf("coordinates unmarshal error: %w. Want a [2]float64 array", err)
 	}
-	coords.Lng, coords.Lat = a[0], a[1]
+	c, err := NewCoordinates(a[0], a[1])
+	if err != nil {
+		return err
+	}
+	*coords = *c
 	return nil
+}
+
+func NewCoordinates(lng, lat float64) (*Coordinates, error) {
+	// validate coordinates
+	if (lat < minLat) || (lat > maxLat) {
+		return nil, fmt.Errorf("latitude %f out of bound [%f %f]", lat, minLat, maxLat)
+	}
+	if (lng < minLng) || (lng > maxLng) {
+		return nil, fmt.Errorf("longitude %f out of bound [%f %f]", lng, minLng, maxLng)
+	}
+	return &Coordinates{Lat: lat, Lng: lng}, nil
 }
 
 func (code *CodeInsee) UnmarshalJSON(b []byte) error {
