@@ -17,8 +17,8 @@ type Bbox struct {
 }
 
 type geoFeature struct {
-	Bbox *Bbox       `json:"bbox"`
-	Type FeatureType `json:"type"`
+	Bbox       *Bbox       `json:"bbox"`
+	Type       FeatureType `json:"type"`
 	Properties GeoProperty `json:"properties"`
 	Geometry   GeoGeometry `json:"geometry"`
 }
@@ -30,7 +30,7 @@ type GeoProperty struct {
 }
 
 type GeoGeometry struct {
-	Type   string          `json:"type"`
+	Type   PolygonType     `json:"type"`
 	Coords [][]Coordinates `json:"coordinates"`
 }
 
@@ -46,20 +46,33 @@ type Paths struct {
 	Es string `json:"es"`
 }
 
+type PolygonType string
+
+const polygonStr = "Polygon"
+
 func (bbox *Bbox) UnmarshalJSON(b []byte) error {
 	var a [4]float64
 	if err := json.Unmarshal(b, &a); err != nil {
 		return fmt.Errorf("bbox unmarshal error: %w. Want a [4]float64 array", err)
 	}
-	p1, err := NewCoordinates( a[0], a[1] )
+	p1, err := NewCoordinates(a[0], a[1])
 	if err != nil {
 		return err
 	}
-	p2, err := NewCoordinates( a[2], a[3] )
+	p2, err := NewCoordinates(a[2], a[3])
 	if err != nil {
 		return err
 	}
 	bbox.A, bbox.B = *p1, *p2
+	return nil
+}
+
+func (pt *PolygonType) UnmarshalJSON(b []byte) error {
+	s, err := unmarshalConstantString(b, polygonStr, "GeoGeometry.Type")
+	if err != nil {
+		return err
+	}
+	*pt = PolygonType(s)
 	return nil
 }
 
