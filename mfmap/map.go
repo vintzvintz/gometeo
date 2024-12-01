@@ -165,8 +165,7 @@ func (j *MapData) apiURL(path string, query *url.Values) (*url.URL, error) {
 	return url.Parse(raw)
 }
 
-func (m *MfMap) forecastUrl() (*url.URL, error) {
-
+func (m *MfMap) forecastURL() (*url.URL, error) {
 	// zone is described by a seqence of coordinates
 	ids := make([]string, len(m.Data.Children))
 	for i, poi := range m.Data.Children {
@@ -181,6 +180,30 @@ func (m *MfMap) forecastUrl() (*url.URL, error) {
 	query.Add("coords", strings.Join(ids, ","))
 
 	return m.Data.apiURL(apiMultiforecast, &query)
+}
+
+// https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
+func (m *MfMap) geographyURL() (*url.URL, error) {
+
+	pathAssets := m.Data.Info.PathAssets
+	ressource := fmt.Sprintf( "%s-aggrege.json",
+		strings.ToLower(m.Data.Info.IdTechnique))
+
+	elems := []string{ 
+		"modules",
+		"custom",
+		"mf_map_layers_v2",
+		"maps",
+		"desktop",
+		pathAssets,
+		"geo_json",
+		ressource,
+	}
+	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	if err != nil {
+		return nil, fmt.Errorf("m.geographyURL() error: %w", err )
+	}
+	return u, nil
 }
 
 // UnmarshalJSON unmarshals stringFloat fields

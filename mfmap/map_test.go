@@ -231,7 +231,7 @@ const (
 	emptyRegexp    = `^$`
 	anyRegexp      = `.*`
 	coordsRegexp   = `^([\d\.],?)+$`
-	instantsRegexp = "morning,afternoon,evening,night"
+	instantsRegexp = `morning,afternoon,evening,night`
 )
 
 func TestForecastQuery(t *testing.T) {
@@ -246,7 +246,7 @@ func TestForecastQuery(t *testing.T) {
 		"coords":     coordsRegexp,
 	}
 
-	u, err := m.forecastUrl()
+	u, err := m.forecastURL()
 	if err != nil {
 		t.Fatalf("forecastURL() error: %s", err)
 	}
@@ -263,5 +263,20 @@ func TestForecastQuery(t *testing.T) {
 		if re.Find([]byte(got[0])) == nil {
 			t.Errorf("forecastQuery()['%s']='%s' doesnt match '%s'", key, got[0], expr)
 		}
+	}
+}
+
+const geoRegexp = `^https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/[A-Z]+/geo_json/[a-z0-9]+-aggrege.json$`
+
+func TestGeographyQuery(t *testing.T) {
+
+	expr := regexp.MustCompile(geoRegexp)
+	m := parseHtml(t, fileHtmlRacine)
+	u, err := m.geographyURL()
+	if err != nil {
+		t.Fatalf("geographyURL() error: %s", err)
+	}
+	if !expr.Match([]byte(u.String())) {
+		t.Errorf("geographyUrl()='%s' does not match '%s'", u.String(), geoRegexp)
 	}
 }
