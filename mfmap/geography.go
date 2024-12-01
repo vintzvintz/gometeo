@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 type geoCollection struct {
@@ -50,6 +51,10 @@ type PolygonType string
 
 const polygonStr = "Polygon"
 
+type cropParams struct {
+	north, south, east, west float64
+}
+
 func (bbox *Bbox) UnmarshalJSON(b []byte) error {
 	var a [4]float64
 	if err := json.Unmarshal(b, &a); err != nil {
@@ -87,4 +92,10 @@ func parseGeography(r io.Reader) (*geoCollection, error) {
 		return nil, fmt.Errorf("invalid geography: %w", err)
 	}
 	return &gc, nil
+}
+
+func cropSVG(svg io.Reader, p cropParams) (io.Reader, error) {
+	_ = p
+	_ = svg
+	return strings.NewReader("<wesh>weeesh</wesh>"), nil
 }

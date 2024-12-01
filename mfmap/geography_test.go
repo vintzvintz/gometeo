@@ -2,6 +2,8 @@ package mfmap
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"regexp"
 	"testing"
 )
@@ -51,4 +53,23 @@ func TestGeographyQuery(t *testing.T) {
 			t.Errorf("svgUrl()='%s' does not match '%s'", u.String(), svgRegexp)
 		}
 	})
+}
+
+
+const svgTestFile = "pays007.svg"
+
+func TestSvgCrop(t *testing.T) {
+	name := assets_path + svgTestFile
+	f, err := os.Open( name )
+	if err!=nil {
+		t.Fatalf("could not open %s: %s", name, err)
+	}
+	param := cropParams{}
+	cropped, err := cropSVG( f, param )
+	if err != nil {
+		t.Fatalf("could not crop %s: %s", name, err)
+	}
+	// TODO check svg size
+	svg, _ := io.ReadAll(cropped)
+	_ = svg
 }

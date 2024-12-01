@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-
-
 const (
 	emptyRegexp    = `^$`
 	anyRegexp      = `.*`
