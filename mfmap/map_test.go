@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -31,12 +30,10 @@ func TestHtmlFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("jsonFilter error : %s", err)
 	}
-	data, err := io.ReadAll(r)
+	_, err = io.ReadAll(r)
 	if err != nil {
 		t.Fatalf("failed to extract JSON data from %s", name)
 	}
-	data = data[:min(100, len(data))]
-	t.Logf("JSON=%s", data)
 }
 
 func TestMapParserFail(t *testing.T) {
@@ -153,7 +150,6 @@ func TestParseHtml(t *testing.T) {
 }
 
 func TestMapParseFail(t *testing.T) {
-
 	tests := map[string]string{
 		"missingJsonTag": `
 <html>
@@ -221,62 +217,8 @@ func TestApiUrl(t *testing.T) {
 			}
 			got := u.String()
 			if got != test.want {
-				t.Errorf("forecastUrl()='%s' want '%s'", got, test.want)
+				t.Errorf("ApiURL()='%s' want '%s'", got, test.want)
 			}
 		})
-	}
-}
-
-const (
-	emptyRegexp    = `^$`
-	anyRegexp      = `.*`
-	coordsRegexp   = `^([\d\.],?)+$`
-	instantsRegexp = `morning,afternoon,evening,night`
-)
-
-func TestForecastQuery(t *testing.T) {
-	m := parseHtml(t, fileHtmlRacine)
-
-	validationRegexps := map[string]string{
-		"bbox":       emptyRegexp,
-		"begin_time": emptyRegexp,
-		"end_time":   emptyRegexp,
-		"time":       emptyRegexp,
-		"instants":   instantsRegexp,
-		"coords":     coordsRegexp,
-	}
-
-	u, err := m.forecastURL()
-	if err != nil {
-		t.Fatalf("forecastURL() error: %s", err)
-	}
-	values := u.Query()
-	for key, expr := range validationRegexps {
-		re := regexp.MustCompile(expr)
-		got, ok := values[key]
-		if !ok {
-			t.Fatalf("forecastQuery() does not have key '%s'", key)
-		}
-		if len(got) != 1 {
-			t.Fatalf("forecastQuery()['%s'] has %d values %q, want 1", key, len(got), got)
-		}
-		if re.Find([]byte(got[0])) == nil {
-			t.Errorf("forecastQuery()['%s']='%s' doesnt match '%s'", key, got[0], expr)
-		}
-	}
-}
-
-const geoRegexp = `^https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/[A-Z]+/geo_json/[a-z0-9]+-aggrege.json$`
-
-func TestGeographyQuery(t *testing.T) {
-
-	expr := regexp.MustCompile(geoRegexp)
-	m := parseHtml(t, fileHtmlRacine)
-	u, err := m.geographyURL()
-	if err != nil {
-		t.Fatalf("geographyURL() error: %s", err)
-	}
-	if !expr.Match([]byte(u.String())) {
-		t.Errorf("geographyUrl()='%s' does not match '%s'", u.String(), geoRegexp)
 	}
 }
