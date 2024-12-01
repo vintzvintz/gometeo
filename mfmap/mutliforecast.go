@@ -206,7 +206,7 @@ func parseMfCollection(r io.Reader) (*mfCollection, error) {
 	}
 	err = json.Unmarshal(j, &fc)
 	if err != nil {
-		return nil, fmt.Errorf("multiforecast data unmarshalling: %w", err)
+		return nil, fmt.Errorf("invalid multiforecast: %w", err)
 	}
 	return &fc, nil
 }
