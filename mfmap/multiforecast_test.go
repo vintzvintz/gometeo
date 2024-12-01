@@ -5,41 +5,6 @@ import (
 	"testing"
 )
 
-/*
-func validateMultiforecastFeature(t *testing.T, feat *mfFeature) {
-	tests := map[string]struct {
-		want interface{}
-		got  func(*mfFeature) interface{}
-	}{
-		"type": {
-			want: "Feature",
-			got:  func(f *mfFeature) interface{} { return f.Type },
-		},
-
-		"geometry": {
-			want: "Point",
-			got:  func(f *mfFeature) interface{} { return f.Geometry.Type },
-		},
-		"country": {
-			want: "FR - France",
-			got:  func(f *mfFeature) interface{} { return f.Properties.Country },
-		},
-	}
-	if feat == nil {
-		t.Fatal("no feature to validate")
-	}
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			got := test.got(feat)
-			want := test.want
-			if got != want {
-				t.Errorf("multiforecast feature %s error: got %s want %s", name, got, want)
-			}
-		})
-	}
-}
-*/
-
 func TestParseMultiforecast(t *testing.T) {
 
 	j := openFile(t, "multiforecast.json")

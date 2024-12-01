@@ -41,7 +41,6 @@ type MfProperty struct {
 	Forecasts []Forecast `json:"forecast"`
 	Dailies   []Daily    `json:"daily_forecast"`
 }
-type CodeInsee string
 
 type Forecast struct {
 	Moment        MomentName `json:"moment_day"`
@@ -60,7 +59,6 @@ type Forecast struct {
 	Pression      float64    `json:"P_sea"`
 	Confiance     int        `json:"weather_confidence_index"`
 }
-type MomentName string
 
 type Daily struct {
 	Time             time.Time `json:"time"`
@@ -89,12 +87,14 @@ const (
 	nightStr     = "nuit"
 )
 
-// custom types for constant strings with runtime value check
+// custom types with runtime checks on unmarshalled values
 type FeatureCollectionType string
 type FeatureType string
 type PointType string
 type tzParis string
 type countryFr string
+type MomentName string
+type CodeInsee string
 
 func unmarshalConstantString(b []byte, want string, name string) (string, error) {
 	var s string
