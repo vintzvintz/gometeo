@@ -8,6 +8,8 @@ import (
 	//"github.com/beevik/etree"
 	"regexp"
 	"strconv"
+
+	"github.com/beevik/etree"
 )
 
 type geoCollection struct {
@@ -62,13 +64,15 @@ const (
 	crop_bottom = 0.08
 )
 */
-/*
+
 type svgSize struct {
-	height  int
-	width   int
-	viewbox [4]int
+	Height  int
+	Width   int
+	Viewbox vbType
 }
-*/
+
+type vbType [4]int
+
 /*
 	var cropParams = struct {
 		left, bottom, right, top float64
@@ -127,8 +131,6 @@ func pxToInt(px []byte) (int, error) {
 	return n, nil
 }
 
-type vbType [4]int
-
 func viewboxToInt(b []byte) (vbType, error) {
 	const expr = `^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$` // width and height are "666px"-like
 	re := regexp.MustCompile(expr)
@@ -137,18 +139,20 @@ func viewboxToInt(b []byte) (vbType, error) {
 		return vbType{}, fmt.Errorf("'%s' does not match `%s`", string(b), expr)
 	}
 	var vb vbType
-	for i:=0; i<4; i++ {
+	for i := 0; i < 4; i++ {
 		n, err := strconv.Atoi(string(m[i+1])) // m[0] is the full match
 		if err != nil {
-			return vbType{}, fmt.Errorf("cant parse '%s' into [4]int : %w", string(m[i+1]),err )
+			return vbType{}, fmt.Errorf("cant parse '%s' into [4]int : %w", string(m[i+1]), err)
 		}
 		vb[i] = n
 	}
 	return vb, nil
 }
 
-/*
-	func getSvgSize(doc *etree.Document) (*svgSize, error) {
+func getSvgSize(doc *etree.Document) (*svgSize, error) {
+
+	_ = doc
+	/*
 		if doc == nil {
 			return nil, fmt.Errorf("null pointer")
 		}
@@ -179,10 +183,11 @@ func viewboxToInt(b []byte) (vbType, error) {
 		}
 
 		//	elt := doc.Element
+	*/
+	//return &svgSize{}, nil
+	return nil, fmt.Errorf("wesh")
+}
 
-		return &svgSize{}, nil
-	}
-*/
 /*
 func cropSVG(svg io.Reader) (io.Reader, error) {
 	xml, err := io.ReadAll(svg)

@@ -1,10 +1,15 @@
 package mfmap
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"reflect"
 	"regexp"
 	"testing"
+	"text/template"
+
+	"github.com/beevik/etree"
 )
 
 func TestParseGeography(t *testing.T) {
@@ -119,6 +124,37 @@ func TestViewboxToInt(t *testing.T) {
 		})
 	}
 
+}
+
+/*
+const (
+
+	xmlDirective = `<?xml version="1.0" encoding="UTF-8"?>`
+	svgDoctype = `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">`
+	svgFmtString = `<svg version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="724px" height="565px" viewBox="0 0 724 565" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+`
+)
+*/
+func TestGetSvgSize(t *testing.T) {
+
+	tmpl := template.Must(template.New("test").Parse("height={{.Height}} width={{.Width}} viewbox={{.Viewbox}}"))
+	buf := &bytes.Buffer{}
+	err := tmpl.Execute(buf, svgSize{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc := etree.NewDocument()
+	b, _ := io.ReadAll(buf)
+	err = doc.ReadFromBytes(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	size, err := getSvgSize(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(size)
 }
 
 /*
