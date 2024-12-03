@@ -125,30 +125,29 @@ func TestViewboxToInt(t *testing.T) {
 	}
 
 }
-
-var svgTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+func TestGetSvgSize(t *testing.T) {
+	var svgTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="{{.Width}}px" height="{{.Height}}px" viewBox="{{.Viewbox}}" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
 </svg>`
 
-var bullshitTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+	var bullshitTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg>bullshit</svg>`
 
-var svgTests = map[string]struct {
-	tdef      string
-	want_size *svgSize
-	want_err  bool
-}{
-	"nil":      {"", nil, true},                      // error
-	"empty":    {"", &svgSize{}, true},               // error
-	"bullshit": {bullshitTemplate, &svgSize{}, true}, // error
-	"zeroes":   {svgTemplate, &svgSize{}, false},
-	"ones":     {svgTemplate, &svgSize{1, 1, vbType{1, 1, 1, 1}}, false},
-	"rect":     {svgTemplate, &svgSize{50, 100, vbType{0, 0, 50, 100}}, false},
-}
+	var svgTests = map[string]struct {
+		tdef      string
+		want_size *svgSize
+		want_err  bool
+	}{
+		"nil":      {"", nil, true},                      // error
+		"empty":    {"", &svgSize{}, true},               // error
+		"bullshit": {bullshitTemplate, &svgSize{}, true}, // error
+		"zeroes":   {svgTemplate, &svgSize{}, false},
+		"ones":     {svgTemplate, &svgSize{1, 1, vbType{1, 1, 1, 1}}, false},
+		"rect":     {svgTemplate, &svgSize{50, 100, vbType{0, 0, 50, 100}}, false},
+	}
 
-func TestGetSvgSize(t *testing.T) {
 	for name, test := range svgTests {
 		t.Run(name, func(t *testing.T) {
 			// build svg from a template
