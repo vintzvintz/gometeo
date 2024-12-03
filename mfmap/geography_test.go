@@ -126,35 +126,63 @@ func TestViewboxToInt(t *testing.T) {
 
 }
 
-/*
-const (
+var svgTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="{{.Width}}px" height="{{.Height}}px" viewBox="{{.Viewbox}}" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+</svg>`
 
-	xmlDirective = `<?xml version="1.0" encoding="UTF-8"?>`
-	svgDoctype = `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">`
-	svgFmtString = `<svg version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="724px" height="565px" viewBox="0 0 724 565" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+var bullshitTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg>bullshit</svg>`
 
-`
-)
-*/
+var svgTests = map[string]struct {
+	tdef      string
+	want_size *svgSize
+	want_err  bool
+}{
+	"nil":      {"", nil, true},                      // error
+	"empty":    {"", &svgSize{}, true},               // error
+	"bullshit": {bullshitTemplate, &svgSize{}, true}, // error
+	"zeroes":   {svgTemplate, &svgSize{}, false},
+	"ones":     {svgTemplate, &svgSize{1, 1, vbType{1, 1, 1, 1}}, false},
+	"rect":     {svgTemplate, &svgSize{50, 100, vbType{0, 0, 50, 100}}, false},
+}
+
 func TestGetSvgSize(t *testing.T) {
+	for name, test := range svgTests {
+		t.Run(name, func(t *testing.T) {
+			// build svg from a template
+			tmpl := template.Must(template.New(name).Parse(test.tdef))
+			buf := &bytes.Buffer{}
+			err := tmpl.Execute(buf, test.want_size)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, _ := io.ReadAll(buf)
+			// parse xml into etree structure
+			doc := etree.NewDocument()
+			err = doc.ReadFromBytes(b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// call tested function retrieve to get dimensions from <svg> root element attributes
+			got_size, err := getSvgSize(doc)
 
-	tmpl := template.Must(template.New("test").Parse("height={{.Height}} width={{.Width}} viewbox={{.Viewbox}}"))
-	buf := &bytes.Buffer{}
-	err := tmpl.Execute(buf, svgSize{})
-	if err != nil {
-		t.Fatal(err)
+			// check restults
+			if test.want_err {
+				if err == nil {
+					t.Fatal("error expected on invalid svg document")
+				}
+				return // test end here
+			}
+			if !test.want_err && err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(test.want_size, got_size) {
+				t.Fatalf("got %v want %v", got_size, test.want_size)
+			}
+		})
 	}
-	doc := etree.NewDocument()
-	b, _ := io.ReadAll(buf)
-	err = doc.ReadFromBytes(b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	size, err := getSvgSize(doc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(size)
 }
 
 /*
@@ -174,8 +202,7 @@ func regexpIntegers(t *testing.T, b []byte, expr string) []int {
 	}
 	return vals
 }
-*/
-/*
+
 func regexpGetSize(t *testing.T, svg []byte) svgSize {
 	width := regexpIntegers(t, svg, `width="(\d+)px"`)
 	height := regexpIntegers(t, svg, `height="(\d+)px"`)

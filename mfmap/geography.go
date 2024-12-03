@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	//"github.com/beevik/etree"
 	"regexp"
 	"strconv"
 
@@ -73,6 +71,10 @@ type svgSize struct {
 
 type vbType [4]int
 
+func (vb vbType) String() string {
+	return fmt.Sprintf("%d %d %d %d", vb[0], vb[1], vb[2], vb[3])
+}
+
 /*
 	var cropParams = struct {
 		left, bottom, right, top float64
@@ -132,7 +134,7 @@ func pxToInt(px []byte) (int, error) {
 }
 
 func viewboxToInt(b []byte) (vbType, error) {
-	const expr = `^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$` // width and height are "666px"-like
+	const expr = `^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$` // 4 integers expected
 	re := regexp.MustCompile(expr)
 	m := re.FindSubmatch(b)
 	if m == nil {
@@ -151,41 +153,42 @@ func viewboxToInt(b []byte) (vbType, error) {
 
 func getSvgSize(doc *etree.Document) (*svgSize, error) {
 
-	_ = doc
-	/*
-		if doc == nil {
-			return nil, fmt.Errorf("null pointer")
-		}
-		root := doc.SelectElement("svg")
-		if root == nil {
-			return nil, fmt.Errorf("<svg> root element not found")
-		}
-		attr_h := root.SelectAttr("height")
-		if attr_h == nil {
-			return nil, fmt.Errorf("height attr not found")
-		}
-		attr_w := root.SelectAttr("width")
-		if attr_w == nil {
-			return nil, fmt.Errorf("width attr not found")
-		}
-		attr_vb := root.SelectAttr("viewBox")
-		if attr_vb == nil {
-			return nil, fmt.Errorf("viewBox attr not found")
-		}
-		vbSplit := []int{}
-		for _, txt := range strings.Split(attr_vb.Value, " ") {
-			if n, err := strconv.Atoi(txt); err == nil {
-				vbSplit = append(vbSplit, n)
-			}
-		}
-		if len(vbSplit) != 4 {
-			return nil, fmt.Errorf("viewBox '%s' is not 4 integers", attr_vb.Value)
-		}
+	// get root element
+	if doc == nil {
+		return nil, fmt.Errorf("null pointer")
+	}
+	root := doc.SelectElement("svg")
+	if root == nil {
+		return nil, fmt.Errorf("<svg> root element not found")
+	}
 
-		//	elt := doc.Element
-	*/
-	//return &svgSize{}, nil
-	return nil, fmt.Errorf("wesh")
+	// extract width & height
+	attrToInt := func(a string) (int, error) {
+		attr := root.SelectAttr(a)
+		if attr == nil {
+			return 0, fmt.Errorf("attr %s not found", a)
+		}
+		return pxToInt([]byte(attr.Value))
+	}
+	h, err := attrToInt("height")
+	if err != nil {
+		return nil, err
+	}
+	w, err := attrToInt("width")
+	if err != nil {
+		return nil, err
+	}
+	// extract viewbox
+	attr_vb := root.SelectAttr("viewBox")
+	if attr_vb == nil {
+		return nil, fmt.Errorf("viewBox attr not found")
+	}
+	vb, err := viewboxToInt([]byte(attr_vb.Value))
+	if err != nil {
+		return nil, err
+	}
+
+	return &svgSize{Height: h, Width: w, Viewbox: vb}, nil
 }
 
 /*
