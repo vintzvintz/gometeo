@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
 	//"github.com/beevik/etree"
 	"regexp"
 	"strconv"
@@ -124,6 +125,26 @@ func pxToInt(px []byte) (int, error) {
 		return 0, err
 	}
 	return n, nil
+}
+
+type vbType [4]int
+
+func viewboxToInt(b []byte) (vbType, error) {
+	const expr = `^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$` // width and height are "666px"-like
+	re := regexp.MustCompile(expr)
+	m := re.FindSubmatch(b)
+	if m == nil {
+		return vbType{}, fmt.Errorf("'%s' does not match `%s`", string(b), expr)
+	}
+	var vb vbType
+	for i:=0; i<4; i++ {
+		n, err := strconv.Atoi(string(m[i+1])) // m[0] is the full match
+		if err != nil {
+			return vbType{}, fmt.Errorf("cant parse '%s' into [4]int : %w", string(m[i+1]),err )
+		}
+		vb[i] = n
+	}
+	return vb, nil
 }
 
 /*
