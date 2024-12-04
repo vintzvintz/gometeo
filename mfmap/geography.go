@@ -1,6 +1,7 @@
 package mfmap
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -171,11 +172,15 @@ func viewboxToInt(b []byte) (vbType, error) {
 type svgTree etree.Document
 type svgRoot etree.Element
 
+const (
+	xmlRoot    = "svg"
+	xmlHeight  = "height"
+	xmlWidth   = "width"
+	xmlViewbox = "viewBox"
+)
+
 func (doc *svgTree) getRoot() (*svgRoot, error) {
-	if doc == nil {
-		return nil, fmt.Errorf("null pointer")
-	}
-	root := doc.SelectElement("svg")
+	root := doc.SelectElement(xmlRoot)
 	if root == nil {
 		return nil, fmt.Errorf("<svg> root element not found")
 	}
@@ -183,9 +188,6 @@ func (doc *svgTree) getRoot() (*svgRoot, error) {
 }
 
 func (root *svgRoot) getAttr(a string) (*etree.Attr, error) {
-	if root == nil {
-		return nil, fmt.Errorf("null pointer")
-	}
 	attr := (*etree.Element)(root).SelectAttr(a)
 	if attr == nil {
 		return nil, fmt.Errorf("attr %s not found", a)
@@ -193,32 +195,52 @@ func (root *svgRoot) getAttr(a string) (*etree.Attr, error) {
 	return attr, nil
 }
 
+func (root *svgRoot) setAttr(name, val string) error {
+	attr := (*etree.Element)(root).SelectAttr(name)
+	if attr == nil {
+		return fmt.Errorf("attr %s not found", name)
+	}
+	attr.Value = val
+	return nil
+}
+
 func (root *svgRoot) getHeight() (int, error) {
-	attr, err := root.getAttr("height")
+	attr, err := root.getAttr(xmlHeight)
 	if err != nil {
 		return 0, err
 	}
 	return pxToInt([]byte(attr.Value))
+}
+
+func (root *svgRoot) setHeight(h int) error {
+	return root.setAttr(xmlHeight, fmt.Sprintf("%dpx", h))
 }
 
 func (root *svgRoot) getWidth() (int, error) {
-	attr, err := root.getAttr("width")
+	attr, err := root.getAttr(xmlWidth)
 	if err != nil {
 		return 0, err
 	}
 	return pxToInt([]byte(attr.Value))
 }
 
+func (root *svgRoot) setWidth(w int) error {
+	return root.setAttr(xmlWidth, fmt.Sprintf("%dpx", w))
+}
+
 func (root *svgRoot) getViewbox() (vbType, error) {
-	attr, err := root.getAttr("viewBox")
+	attr, err := root.getAttr(xmlViewbox)
 	if err != nil {
 		return vbType{}, err
 	}
 	return viewboxToInt([]byte(attr.Value))
 }
 
-func (doc *svgTree) getSize() (*svgSize, error) {
+func (root *svgRoot) setViewbox(vb vbType) error {
+	return root.setAttr(xmlViewbox, vb.String())
+}
 
+func (doc *svgTree) getSize() (*svgSize, error) {
 	// get root element
 	root, err := doc.getRoot()
 	if err != nil {
@@ -240,39 +262,52 @@ func (doc *svgTree) getSize() (*svgSize, error) {
 	return &svgSize{Height: h, Width: w, Viewbox: vb}, nil
 }
 
-/*
+func (doc *svgTree) setSize(sz svgSize) error {
+	// get root element
+	root, err := doc.getRoot()
+	if err != nil {
+		return err
+	}
+	// call setter methods
+	if err = root.setHeight(sz.Height); err != nil {
+		return err
+	}
+	if err = root.setWidth(sz.Width); err != nil {
+		return err
+	}
+	if err = root.setViewbox(sz.Viewbox); err != nil {
+		return err
+	}
+	return nil
+}
+
 func cropSVG(svg io.Reader) (io.Reader, error) {
 
 	xml, err := io.ReadAll(svg)
 	if err != nil {
 		return nil, fmt.Errorf("read error: %w", err)
 	}
+	// parse original svg to get its original size attributes
 	doc := etree.NewDocument()
 	err = doc.ReadFromBytes(xml)
 	if err != nil {
 		return nil, fmt.Errorf("xml parse error: %w", err)
 	}
-	szOrig, err := getSvgSize(doc)
+	tree := (*svgTree)(doc)
+	szOrig, err := tree.getSize()
 	if err != nil {
 		return nil, fmt.Errorf("could not get svg size: %w", err)
 	}
-
+	// set cropped size attributes to the <svg> root element
 	sz := szOrig.crop()
-
-	cropped, err := doc.WriteToBytes()
+	err = tree.setSize(sz)
 	if err != nil {
-		return nil, fmt.Errorf("xml write error: %w", err)
+		return nil, fmt.Errorf("svgTree.setSize(%v) error: %w", sz, err)
+	}
+	// serialize to a byte slice
+	cropped, err := (*etree.Document)(tree).WriteToBytes()
+	if err != nil {
+		return nil, fmt.Errorf("xml serialization error: %w", err)
 	}
 	return bytes.NewReader(cropped), nil
-	//return nil, fmt.Errorf("wesh")
-
 }
-
-*/
-
-/*
-   vb_crop = [ viewbox[0]+crop_O*viewbox[2],  \
-               viewbox[1]+crop_N*viewbox[3],  \
-               viewbox[2]-(crop_O+crop_E)*viewbox[2],   \
-               viewbox[3]-(crop_N+crop_S)*viewbox[3] ]
-*/

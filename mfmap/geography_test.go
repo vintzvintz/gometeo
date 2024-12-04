@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"regexp"
 	"testing"
@@ -185,54 +186,56 @@ func TestGetSvgSize(t *testing.T) {
 	}
 }
 
-/*
 const svgTestFile = "pays007.svg"
 
-	func TestCropSVG(t *testing.T) {
-		name := assets_path + svgTestFile
+func TestCropSVG(t *testing.T) {
+	name := assets_path + svgTestFile
 
-		svg, err := os.ReadFile(name)
-		if err != nil {
-			t.Fatalf("could not read %s: %s", name, err)
-		}
-
-		//  get original size
-		doc := etree.NewDocument()
-		err = doc.ReadFromBytes(svg)
-		if err != nil {
-			t.Fatalf("could not parse '%s' as XML document: %s", name, err)
-		}
-		sz_orig, err := getSvgSize(doc)
-		if err != nil {
-			t.Fatalf("could not determine SVG size of %s: %s", name, err)
-		}
-		want := sz_orig.crop()
-
-		// call cropSVG() to be tested
-		cropReader, err := cropSVG(bytes.NewReader(svg))
-		if err != nil {
-			t.Fatalf("error while cropping %s: %s", name, err)
-		}
-
-		// parse cropped SVG to get its size
-		cropped, _ := io.ReadAll(cropReader)
-		doc = etree.NewDocument()
-		err = doc.ReadFromBytes(cropped)
-		if err != nil {
-			t.Fatalf("could not parse cropped '%s' as XML document: %s", name, err)
-		}
-		got, err := getSvgSize(doc)
-		if err != nil {
-			t.Fatalf("could not determine SVG size of cropped '%s': %s", name, err)
-		}
-		t.Log(string(cropped[:400]))
-
-		// check results
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("got:%v want:%v", *got, want)
-		}
+	buf, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatalf("could not read %s: %s", name, err)
 	}
-*/
+
+	//  get original size
+	doc := etree.NewDocument()
+	err = doc.ReadFromBytes(buf)
+	if err != nil {
+		t.Fatalf("could not parse '%s' as XML document: %s", name, err)
+	}
+
+	tree := (*svgTree)(doc)
+	sz_orig, err := tree.getSize()
+	if err != nil {
+		t.Fatalf("cant get original '%s' size: %s", name, err)
+	}
+	want := sz_orig.crop()
+
+	// call cropSVG() to be tested
+	cropReader, err := cropSVG(bytes.NewReader(buf))
+	if err != nil {
+		t.Fatalf("error while cropping %s: %s", name, err)
+	}
+
+	// parse cropped SVG to get its size
+	cropped, _ := io.ReadAll(cropReader)
+	doc = etree.NewDocument()
+	err = doc.ReadFromBytes(cropped)
+	if err != nil {
+		t.Fatalf("could not parse cropped '%s' as XML document: %s", name, err)
+	}
+	tree = (*svgTree)(doc)
+	got, err := tree.getSize()
+	if err != nil {
+		t.Fatalf("could not determine SVG size of cropped '%s': %s", name, err)
+	}
+	t.Log(string(cropped[:400]))
+
+	// check results
+	if !reflect.DeepEqual(*got, want) {
+		t.Fatalf("got:%v want:%v", *got, want)
+	}
+}
+
 func TestCroppedSize(t *testing.T) {
 
 	w := 724
@@ -256,23 +259,3 @@ func TestCroppedSize(t *testing.T) {
 	}
 }
 
-/*
-	got := regexpGetSize(t, svg)
-
-	// compare with expected results
-	X, Y := float64(s.viewbox[2]), float64(s.viewbox[3])
-	vb := [4]int{
-		s.viewbox[0] + int(X*crop_left),
-		s.viewbox[1] + int(Y*crop_top),
-		s.viewbox[2] - int(X*(crop_right+crop_left)),
-		s.viewbox[3] - int(Y*(crop_top+crop_bottom)),
-	}
-
-	want := svgSize{
-		height:  vb[2],
-		width:   vb[3],
-		viewbox: vb,
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("svgCrop(%v) has size %v want %v", s, got, want)
-	}*/
