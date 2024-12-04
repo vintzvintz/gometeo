@@ -63,9 +63,16 @@ const (
 )
 */
 
+const (
+	cropLeftPx   = 144
+	cropRightPx  = 58
+	cropTopPx    = 45
+	cropBottomPx = 45
+)
+
 type svgSize struct {
-	Height  int
 	Width   int
+	Height  int
 	Viewbox vbType
 }
 
@@ -73,6 +80,16 @@ type vbType [4]int
 
 func (vb vbType) String() string {
 	return fmt.Sprintf("%d %d %d %d", vb[0], vb[1], vb[2], vb[3])
+}
+
+func (sz svgSize) crop() svgSize {
+	w := sz.Width - cropLeftPx - cropRightPx
+	h := sz.Height - cropTopPx - cropBottomPx
+	return svgSize{
+		Width:   w,
+		Height:  h,
+		Viewbox: vbType{cropLeftPx, cropTopPx, w, h},
+	}
 }
 
 /*
@@ -151,9 +168,10 @@ func viewboxToInt(b []byte) (vbType, error) {
 	return vb, nil
 }
 
-func getSvgSize(doc *etree.Document) (*svgSize, error) {
+type svgTree etree.Document
+type svgRoot etree.Element
 
-	// get root element
+func (doc *svgTree) getRoot() (*svgRoot, error) {
 	if doc == nil {
 		return nil, fmt.Errorf("null pointer")
 	}
@@ -161,38 +179,70 @@ func getSvgSize(doc *etree.Document) (*svgSize, error) {
 	if root == nil {
 		return nil, fmt.Errorf("<svg> root element not found")
 	}
+	return (*svgRoot)(root), nil
+}
 
-	// extract width & height
-	attrToInt := func(a string) (int, error) {
-		attr := root.SelectAttr(a)
-		if attr == nil {
-			return 0, fmt.Errorf("attr %s not found", a)
-		}
-		return pxToInt([]byte(attr.Value))
+func (root *svgRoot) getAttr(a string) (*etree.Attr, error) {
+	if root == nil {
+		return nil, fmt.Errorf("null pointer")
 	}
-	h, err := attrToInt("height")
-	if err != nil {
-		return nil, err
+	attr := (*etree.Element)(root).SelectAttr(a)
+	if attr == nil {
+		return nil, fmt.Errorf("attr %s not found", a)
 	}
-	w, err := attrToInt("width")
-	if err != nil {
-		return nil, err
-	}
-	// extract viewbox
-	attr_vb := root.SelectAttr("viewBox")
-	if attr_vb == nil {
-		return nil, fmt.Errorf("viewBox attr not found")
-	}
-	vb, err := viewboxToInt([]byte(attr_vb.Value))
-	if err != nil {
-		return nil, err
-	}
+	return attr, nil
+}
 
+func (root *svgRoot) getHeight() (int, error) {
+	attr, err := root.getAttr("height")
+	if err != nil {
+		return 0, err
+	}
+	return pxToInt([]byte(attr.Value))
+}
+
+func (root *svgRoot) getWidth() (int, error) {
+	attr, err := root.getAttr("width")
+	if err != nil {
+		return 0, err
+	}
+	return pxToInt([]byte(attr.Value))
+}
+
+func (root *svgRoot) getViewbox() (vbType, error) {
+	attr, err := root.getAttr("viewBox")
+	if err != nil {
+		return vbType{}, err
+	}
+	return viewboxToInt([]byte(attr.Value))
+}
+
+func (doc *svgTree) getSize() (*svgSize, error) {
+
+	// get root element
+	root, err := doc.getRoot()
+	if err != nil {
+		return nil, err
+	}
+	// extract width & height & viewBox
+	h, err := root.getHeight()
+	if err != nil {
+		return nil, err
+	}
+	w, err := root.getWidth()
+	if err != nil {
+		return nil, err
+	}
+	vb, err := root.getViewbox()
+	if err != nil {
+		return nil, err
+	}
 	return &svgSize{Height: h, Width: w, Viewbox: vb}, nil
 }
 
 /*
 func cropSVG(svg io.Reader) (io.Reader, error) {
+
 	xml, err := io.ReadAll(svg)
 	if err != nil {
 		return nil, fmt.Errorf("read error: %w", err)
@@ -202,20 +252,24 @@ func cropSVG(svg io.Reader) (io.Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("xml parse error: %w", err)
 	}
+	szOrig, err := getSvgSize(doc)
+	if err != nil {
+		return nil, fmt.Errorf("could not get svg size: %w", err)
+	}
 
-		s, err := getSvgSize(doc)
-		if err != nil {
-			return nil, fmt.Errorf("could not get svg size: %w", err)
-		}
-		_ = s
+	sz := szOrig.crop()
 
 	cropped, err := doc.WriteToBytes()
 	if err != nil {
 		return nil, fmt.Errorf("xml write error: %w", err)
 	}
 	return bytes.NewReader(cropped), nil
+	//return nil, fmt.Errorf("wesh")
+
 }
+
 */
+
 /*
    vb_crop = [ viewbox[0]+crop_O*viewbox[2],  \
                viewbox[1]+crop_N*viewbox[3],  \

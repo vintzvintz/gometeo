@@ -165,7 +165,8 @@ func TestGetSvgSize(t *testing.T) {
 				t.Fatal(err)
 			}
 			// call tested function retrieve to get dimensions from <svg> root element attributes
-			got_size, err := getSvgSize(doc)
+			tree := (*svgTree)(doc)
+			got_size, err := tree.getSize()
 
 			// check restults
 			if test.want_err {
@@ -185,53 +186,80 @@ func TestGetSvgSize(t *testing.T) {
 }
 
 /*
-func regexpIntegers(t *testing.T, b []byte, expr string) []int {
-	re := regexp.MustCompile(expr)
-	matches := re.FindSubmatch(b)
-	if len(matches) < 2 {
-		t.Fatalf("regexp '%s' has no capturing group or it did not match on: '%s'", re.String(), string(b))
-	}
-	vals := make([]int, len(matches)-1)
-	for i, txt := range matches[1:] {
-		n, err := strconv.Atoi(string(txt))
+const svgTestFile = "pays007.svg"
+
+	func TestCropSVG(t *testing.T) {
+		name := assets_path + svgTestFile
+
+		svg, err := os.ReadFile(name)
 		if err != nil {
-			t.Error(err)
+			t.Fatalf("could not read %s: %s", name, err)
 		}
-		vals[i] = n
-	}
-	return vals
-}
 
-func regexpGetSize(t *testing.T, svg []byte) svgSize {
-	width := regexpIntegers(t, svg, `width="(\d+)px"`)
-	height := regexpIntegers(t, svg, `height="(\d+)px"`)
-	viewbox := regexpIntegers(t, svg, `viewBox="(\d+)\s+(\d+)\s+(\d+)\s+(\d+)"`)
-	return svgSize{
-		width:   width[0],
-		height:  height[0],
-		viewbox: [4]int(viewbox[0:]),
+		//  get original size
+		doc := etree.NewDocument()
+		err = doc.ReadFromBytes(svg)
+		if err != nil {
+			t.Fatalf("could not parse '%s' as XML document: %s", name, err)
+		}
+		sz_orig, err := getSvgSize(doc)
+		if err != nil {
+			t.Fatalf("could not determine SVG size of %s: %s", name, err)
+		}
+		want := sz_orig.crop()
+
+		// call cropSVG() to be tested
+		cropReader, err := cropSVG(bytes.NewReader(svg))
+		if err != nil {
+			t.Fatalf("error while cropping %s: %s", name, err)
+		}
+
+		// parse cropped SVG to get its size
+		cropped, _ := io.ReadAll(cropReader)
+		doc = etree.NewDocument()
+		err = doc.ReadFromBytes(cropped)
+		if err != nil {
+			t.Fatalf("could not parse cropped '%s' as XML document: %s", name, err)
+		}
+		got, err := getSvgSize(doc)
+		if err != nil {
+			t.Fatalf("could not determine SVG size of cropped '%s': %s", name, err)
+		}
+		t.Log(string(cropped[:400]))
+
+		// check results
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got:%v want:%v", *got, want)
+		}
 	}
-}
 */
+func TestCroppedSize(t *testing.T) {
+
+	w := 724
+	h := 565
+	szOrig := svgSize{
+		Width:   w,
+		Height:  h,
+		Viewbox: vbType{0, 0, w, h},
+	}
+	got := szOrig.crop()
+
+	wCrop := w - cropLeftPx - cropRightPx
+	hCrop := h - cropTopPx - cropBottomPx
+	want := svgSize{
+		Width:   wCrop,
+		Height:  hCrop,
+		Viewbox: vbType{cropLeftPx, cropTopPx, wCrop, hCrop},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("svgSize.Crop(%v) got%v want %v", szOrig, got, want)
+	}
+}
+
 /*
-func TestCropSVG(t *testing.T) {
-	name := assets_path + svgTestFile
-
-	f, err := os.ReadFile(name)
-	if err != nil {
-		t.Fatalf("could not read %s: %s", name, err)
-	}
-
-	s := regexpGetSize(t, f)
-	cropped, err := cropSVG(bytes.NewReader(f))
-	if err != nil {
-		t.Fatalf("could not crop %s: %s", name, err)
-	}
-	svg, _ := io.ReadAll(cropped)
-	t.Log(string(svg[:400]))
-
 	got := regexpGetSize(t, svg)
 
+	// compare with expected results
 	X, Y := float64(s.viewbox[2]), float64(s.viewbox[3])
 	vb := [4]int{
 		s.viewbox[0] + int(X*crop_left),
@@ -247,6 +275,4 @@ func TestCropSVG(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("svgCrop(%v) has size %v want %v", s, got, want)
-	}
-}
-*/
+	}*/
