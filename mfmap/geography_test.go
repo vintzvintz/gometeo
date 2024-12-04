@@ -191,45 +191,37 @@ const svgTestFile = "pays007.svg"
 func TestCropSVG(t *testing.T) {
 	name := assets_path + svgTestFile
 
-	buf, err := os.ReadFile(name)
+	f, err := os.Open(name)
 	if err != nil {
-		t.Fatalf("could not read %s: %s", name, err)
+		t.Fatalf("os.Open(%s) error: %s", name, err)
 	}
+	defer f.Close()
 
+	buf := bytes.Buffer{}
 	//  get original size
-	doc := etree.NewDocument()
-	err = doc.ReadFromBytes(buf)
+	tree, err := readSVG(io.TeeReader(f, &buf))
 	if err != nil {
-		t.Fatalf("could not parse '%s' as XML document: %s", name, err)
+		t.Fatalf("parse error on '%s': %s", name, err)
 	}
-
-	tree := (*svgTree)(doc)
 	sz_orig, err := tree.getSize()
 	if err != nil {
 		t.Fatalf("cant get original '%s' size: %s", name, err)
 	}
 	want := sz_orig.crop()
-
 	// call cropSVG() to be tested
-	cropReader, err := cropSVG(bytes.NewReader(buf))
+	cropReader, err := cropSVG(&buf)
 	if err != nil {
 		t.Fatalf("error while cropping %s: %s", name, err)
 	}
-
-	// parse cropped SVG to get its size
-	cropped, _ := io.ReadAll(cropReader)
-	doc = etree.NewDocument()
-	err = doc.ReadFromBytes(cropped)
+	// parse result to get size
+	tree, err = readSVG( cropReader)
 	if err != nil {
-		t.Fatalf("could not parse cropped '%s' as XML document: %s", name, err)
+		t.Fatalf("parse error on cropped '%s': %s", name, err)
 	}
-	tree = (*svgTree)(doc)
 	got, err := tree.getSize()
 	if err != nil {
-		t.Fatalf("could not determine SVG size of cropped '%s': %s", name, err)
+		t.Fatalf("error while getting cropped size: %s", err)
 	}
-	t.Log(string(cropped[:400]))
-
 	// check results
 	if !reflect.DeepEqual(*got, want) {
 		t.Fatalf("got:%v want:%v", *got, want)

@@ -55,15 +55,6 @@ type PolygonType string
 
 const polygonStr = "Polygon"
 
-/*
-const (
-	crop_left   = 0.20
-	crop_right  = 0.08
-	crop_top    = 0.08
-	crop_bottom = 0.08
-)
-*/
-
 const (
 	cropLeftPx   = 144
 	cropRightPx  = 58
@@ -93,11 +84,6 @@ func (sz svgSize) crop() svgSize {
 	}
 }
 
-/*
-	var cropParams = struct {
-		left, bottom, right, top float64
-	}{0.20, 0.08, 0.08, 0.08}
-*/
 func (bbox *Bbox) UnmarshalJSON(b []byte) error {
 	var a [4]float64
 	if err := json.Unmarshal(b, &a); err != nil {
@@ -281,8 +267,7 @@ func (doc *svgTree) setSize(sz svgSize) error {
 	return nil
 }
 
-func cropSVG(svg io.Reader) (io.Reader, error) {
-
+func readSVG(svg io.Reader) (*svgTree, error) {
 	xml, err := io.ReadAll(svg)
 	if err != nil {
 		return nil, fmt.Errorf("read error: %w", err)
@@ -293,7 +278,15 @@ func cropSVG(svg io.Reader) (io.Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("xml parse error: %w", err)
 	}
-	tree := (*svgTree)(doc)
+	return (*svgTree)(doc), nil
+}
+
+func cropSVG(svg io.Reader) (io.Reader, error) {
+
+	tree, err := readSVG(svg)
+	if err != nil {
+		return nil, err
+	}
 	szOrig, err := tree.getSize()
 	if err != nil {
 		return nil, fmt.Errorf("could not get svg size: %w", err)
