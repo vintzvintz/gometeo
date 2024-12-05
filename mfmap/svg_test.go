@@ -175,6 +175,10 @@ func TestCropSVG(t *testing.T) {
 	if !reflect.DeepEqual(*got, want) {
 		t.Fatalf("got:%v want:%v", *got, want)
 	}
+	// bonus : write cropped file to check with a browser
+	if err := (*etree.Document)(tree).WriteToFile(assets_path + "cropped.svg"); err != nil {
+		t.Error(err)
+	}
 }
 
 func TestCroppedSize(t *testing.T) {
