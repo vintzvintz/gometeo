@@ -11,25 +11,26 @@ const (
 	sessionCookie       = "mfsession"
 )
 
-type MfCrawler struct {
-	client *MfClient
+type Crawler struct {
+	mainClient *MfClient
+	apiClient *MfClient
 }
 
 // NewCrawler allocates as *MfCrawler
-func NewCrawler() *MfCrawler {
-	return &MfCrawler{
-		client: NewClient(),
+func NewCrawler() *Crawler {
+	return &Crawler{
+		mainClient: NewClient( httpsMeteofranceCom ),
 	}
 }
 
 // GetMap gets https://mf.com/zone html page and related data like
 // svg map, pictos, forecasts and list of subzones
 // related data is stored into MfMap fields
-func (c *MfCrawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error) {
+func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error) {
 	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
 	//m, err := c.getMap(path)
 
-	body, err := c.client.Get(zone, CacheDisabled)
+	body, err := c.mainClient.Get(zone, CacheDisabled)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (c *MfCrawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, erro
 	if err != nil {
 		return nil, err
 	}
-	body, err = c.client.Get(u.String(), CacheDisabled)
+	body, err = c.mainClient.Get(u.String(), CacheDisabled)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func (c *MfCrawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, erro
 	if err != nil {
 		return nil, err
 	}
-	body, err = c.client.Get(u.String(), CacheDisabled)
+	body, err = c.apiClient.Get(u.String(), CacheDisabled)
 	if err != nil {
 		return nil, err
 	}
