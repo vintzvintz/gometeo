@@ -13,13 +13,13 @@ const (
 
 type Crawler struct {
 	mainClient *MfClient
-	apiClient *MfClient
+	apiClient  *MfClient
 }
 
 // NewCrawler allocates as *MfCrawler
 func NewCrawler() *Crawler {
 	return &Crawler{
-		mainClient: NewClient( httpsMeteofranceCom ),
+		mainClient: NewClient(httpsMeteofranceCom),
 	}
 }
 
@@ -36,7 +36,7 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 	}
 	defer body.Close()
 
-	// initialise map 
+	// initialise map
 	m := mfmap.MfMap{
 		//		Nom: nom,
 		Parent: parent,
@@ -76,10 +76,8 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 		return nil, err
 	}
 
-
-/*
 	// create a dedicated client for rpcache-aa host
-    apiBaseUrl, err := m.Data.ApiURL("", nil)
+	apiBaseUrl, err := m.Data.ApiURL("", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +95,9 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 	}
 	defer body.Close()
 	m.ParseMultiforecast(body)
-*/
 
 	return &m, nil
 }
-
-
 
 func SampleRun(path string) error {
 	crawler := NewCrawler()

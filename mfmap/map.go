@@ -119,14 +119,12 @@ func (m *MfMap) ParseSvgMap(r io.Reader) error {
 	return nil
 }
 
-
-
 func (m *MfMap) ParseGeography(r io.Reader) error {
 	geo, err := parseGeoCollection(r)
 	if err != nil {
 		return err
 	}
-	m.Geography= geo
+	m.Geography = geo
 	return nil
 }
 
