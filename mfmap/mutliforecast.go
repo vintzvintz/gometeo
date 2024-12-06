@@ -61,14 +61,14 @@ type Forecast struct {
 }
 
 type Daily struct {
-	Time             time.Time `json:"time"`
-	T_min            float64   `json:"T_min"`
-	T_max            float64   `json:"T_max"`
-	HumidityMin      int       `json:"relative_humidity_min"`
-	HumidityMax      int       `json:"relative_humidity_max"`
-	Uv               int       `json:"uv_index"`
-	DailyWeatherIcon string    `json:"daily_weather_icon"`
-	DailyWeatherDesc string    `json:"daily_weather_description"`
+	Time        time.Time `json:"time"`
+	T_min       float64   `json:"T_min"`
+	T_max       float64   `json:"T_max"`
+	HumidityMin int       `json:"relative_humidity_min"`
+	HumidityMax int       `json:"relative_humidity_max"`
+	Uv          int       `json:"uv_index"`
+	WeatherIcon string    `json:"daily_weather_icon"`
+	WeatherDesc string    `json:"daily_weather_description"`
 }
 
 const (

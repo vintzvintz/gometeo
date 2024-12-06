@@ -184,7 +184,7 @@ func (m *MfMap) forecastURL() (*url.URL, error) {
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
 func (m *MfMap) geographyURL() (*url.URL, error) {
-	elems := []string{ 
+	elems := []string{
 		"modules",
 		"custom",
 		"mf_map_layers_v2",
@@ -192,34 +192,49 @@ func (m *MfMap) geographyURL() (*url.URL, error) {
 		"desktop",
 		m.Data.Info.PathAssets,
 		"geo_json",
-		strings.ToLower(m.Data.Info.IdTechnique)+"-aggrege.json",
+		strings.ToLower(m.Data.Info.IdTechnique) + "-aggrege.json",
 	}
 	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
 	if err != nil {
-		return nil, fmt.Errorf("m.geographyURL() error: %w", err )
+		return nil, fmt.Errorf("m.geographyURL() error: %w", err)
 	}
 	return u, nil
 }
 
-
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg
 func (m *MfMap) svgURL() (*url.URL, error) {
-	elems := []string{ 
+	elems := []string{
 		"modules",
 		"custom",
 		"mf_map_layers_v2",
 		"maps",
 		"desktop",
 		m.Data.Info.PathAssets,
-		fmt.Sprintf( "%s.svg", strings.ToLower(m.Data.Info.IdTechnique)),
+		fmt.Sprintf("%s.svg", strings.ToLower(m.Data.Info.IdTechnique)),
 	}
 	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
 	if err != nil {
-		return nil, fmt.Errorf("m.svgURL() error: %w", err )
+		return nil, fmt.Errorf("m.svgURL() error: %w", err)
 	}
 	return u, nil
 }
 
+// https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/p3j.svg
+func pictoURL(picto string) (*url.URL, error) {
+	elems := []string{
+		"modules",
+		"custom",
+		"mf_tools_common_theme_public",
+		"svg",
+		"weather",
+		fmt.Sprintf("%s.svg", strings.ToLower(picto)),
+	}
+	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	if err != nil {
+		return nil, fmt.Errorf("m.svgURL() error: %w", err)
+	}
+	return u, nil
+}
 
 // UnmarshalJSON unmarshals stringFloat fields
 // lat and lng are received as a mix of float and strings

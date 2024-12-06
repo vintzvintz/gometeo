@@ -222,3 +222,31 @@ func TestApiUrl(t *testing.T) {
 		})
 	}
 }
+
+func TestAssetsURL(t *testing.T) {
+
+	t.Run("map_svg", func(t *testing.T) {
+		m := parseHtml(t, fileHtmlRacine)
+		u, err := m.svgURL()
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := u.String()
+		want := "https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg"
+		if got != want {
+			t.Errorf("svgUrl('%s') got '%s' want '%s'", m.Nom, got, want)
+		}
+	})
+
+	t.Run("picto", func(t *testing.T) {
+		u, err := pictoURL("test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := u.String()
+		want := "https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/test.svg"
+		if got != want {
+			t.Errorf("svgPicto() got '%s' want '%s'", got, want)
+		}
+	})
+}
