@@ -117,7 +117,6 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 //   - error in other cases
 func (cl *MfClient) addUrlBase(path string) (string, error) {
 	base := cl.baseUrl
-	fmt.Printf( "addUrlBase(path=%s, base=%s)", path, base)
 	l := min(len(path), len(base))
 	switch {
 	case len(base) == 0 :

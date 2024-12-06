@@ -60,19 +60,19 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 	if err != nil {
 		return nil, err
 	}
-/*
-	u, err := m.SvgURL()
+
+	u, err = m.SvgURL()
 	if err != nil {
 		return nil, err
 	}
-	body, err = c.client.Get(u.String(), CacheDisabled)
+	body, err = c.mainClient.Get(u.String(), CacheDefault)
 	if err != nil {
 		return nil, err
 	}
 	defer body.Close()
 
 
-*/
+/*
 	// create a dedicated client for rpcache-aa host
     apiBaseUrl, err := m.Data.ApiURL("", nil)
 	if err != nil {
@@ -92,6 +92,8 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 	}
 	defer body.Close()
 	m.ParseMultiforecast(body)
+*/
+
 	return &m, nil
 }
 

@@ -212,7 +212,7 @@ func TestApiUrl(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			u, err := m.Data.apiURL(test.path, nil)
+			u, err := m.Data.ApiURL(test.path, nil)
 			if err != nil {
 				t.Fatalf("ApiURL() error : %s", err)
 			}
