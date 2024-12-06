@@ -16,6 +16,7 @@ type MfMap struct {
 	Parent    *MfMap
 	Data      *MapData
 	Forecasts *MultiforecastData
+	SvgMap    []byte
 }
 
 type MapData struct {
@@ -148,6 +149,26 @@ func mapParser(r io.Reader) (*MapData, error) {
 	return &j, err
 }
 
+/*
+// pictoList() return a list of all pictos used on the map
+func (m *MfMap) pictoList() []string {
+
+	pictos := make([]string, 0)
+	for _, feat := range *m.Forecasts {
+		for _, prop := range feat.Properties.Forecasts {
+			pictos = append(pictos, prop.WeatherIcon, prop.WindIcon)
+		}
+		// dailies (long-term) forecasts have only weather icon, no wind icon
+		for _, prop := range feat.Properties.Dailies {
+			pictos = append(pictos, prop.WeatherIcon)
+		}
+	}
+	// remove duplicates
+	slices.Sort(pictos)
+	pictos = slices.Compact(pictos)
+	return pictos
+}
+*/
 // ApiURL builds API URL from "config" node
 // typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0/path
 func (j *MapData) apiURL(path string, query *url.Values) (*url.URL, error) {

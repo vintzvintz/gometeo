@@ -13,9 +13,10 @@ import (
 const assets_path = "../test_data/"
 
 const (
-	fileHtmlRacine     = "racine.html"
-	fileJsonFilterFail = "json_filter_fail.html"
-	fileJsonRacine     = "racine.json"
+	fileHtmlRacine        = "racine.html"
+	fileJsonFilterFail    = "json_filter_fail.html"
+	fileJsonRacine        = "racine.json"
+	fileJsonMultiforecast = "multiforecast.json"
 )
 
 //const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"

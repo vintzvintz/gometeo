@@ -45,10 +45,13 @@ func TestForecastQuery(t *testing.T) {
 	}
 }
 
-
 func TestParseMultiforecast(t *testing.T) {
+	_ = testReadMultiforecast(t, "multiforecast.json")
+}
 
-	j := openFile(t, "multiforecast.json")
+func testReadMultiforecast(t *testing.T, name string) MultiforecastData {
+
+	j := openFile(t, name)
 	defer j.Close()
 
 	mf, err := parseMultiforecast(j)
@@ -57,5 +60,14 @@ func TestParseMultiforecast(t *testing.T) {
 	}
 	if len(mf) == 0 {
 		t.Fatal("parseMultiforecast() returned no data")
-	} 
+	}
+	return mf
+}
+
+func TestPictoList(t *testing.T) {
+	mf := testReadMultiforecast(t, fileJsonMultiforecast)
+	pics := mf.pictoList()
+	if len(pics) == 0 {
+		t.Errorf("pictoList() returned nothing")
+	}
 }
