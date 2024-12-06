@@ -31,7 +31,7 @@ func TestGeographyQuery(t *testing.T) {
 	m := parseHtml(t, fileHtmlRacine)
 
 	t.Run("geographyURL", func(t *testing.T) {
-		u, err := m.geographyURL()
+		u, err := m.GeographyURL()
 		if err != nil {
 			t.Fatalf("geographyURL() error: %s", err)
 		}
@@ -42,7 +42,7 @@ func TestGeographyQuery(t *testing.T) {
 	})
 
 	t.Run("svgURL", func(t *testing.T) {
-		u, err := m.svgURL()
+		u, err := m.SvgURL()
 		if err != nil {
 			t.Fatalf("svgURL() error: %s", err)
 		}

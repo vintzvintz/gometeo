@@ -228,7 +228,7 @@ func TestAssetsURL(t *testing.T) {
 
 	t.Run("map_svg", func(t *testing.T) {
 		m := parseHtml(t, fileHtmlRacine)
-		u, err := m.svgURL()
+		u, err := m.SvgURL()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -240,7 +240,7 @@ func TestAssetsURL(t *testing.T) {
 	})
 
 	t.Run("picto", func(t *testing.T) {
-		u, err := pictoURL("test")
+		u, err := PictoURL("test")
 		if err != nil {
 			t.Fatal(err)
 		}

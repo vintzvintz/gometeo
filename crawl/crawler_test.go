@@ -24,19 +24,17 @@ func TestGet(t *testing.T) {
 
 //	client := NewClient(nil)
 //	client.Get( )
-
-
 }
 */
 
 
 func TestGetMap(t *testing.T) {
 
+	zone := "/"
 	c := NewCrawler()
-	//c.client.cache
-	m, _ := c.GetMap( "", nil)
-	_ = m
-
-
-
+	m, err := c.GetMap(zone, nil)
+	if err != nil {
+		t.Fatalf( "Getmap('%s') error: %s", zone,err)
+	}
+	t.Log(m.Nom)
 }

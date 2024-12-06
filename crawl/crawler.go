@@ -29,11 +29,14 @@ func (c *MfCrawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, erro
 	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
 	//m, err := c.getMap(path)
 
-	body, err := c.client.Get(zone, CacheDefault)
+	body, err := c.client.Get(zone, CacheDisabled)
 	if err != nil {
 		return nil, err
 	}
-	m := &mfmap.MfMap{
+	defer body.Close()
+
+	// initialise map 
+	m := mfmap.MfMap{
 		//		Nom: nom,
 		Parent: parent,
 	}
@@ -41,8 +44,51 @@ func (c *MfCrawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, erro
 	if err != nil {
 		return nil, err
 	}
-	return m, nil
+
+	// get svg map with geography data
+	u, err := m.SvgURL()
+	if err != nil {
+		return nil, err
+	}
+	body, err = c.client.Get(u.String(), CacheDisabled)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+	err = m.ParseSvgMap(body)
+	if err != nil {
+		return nil, err
+	}
+/*
+	u, err := m.SvgURL()
+	if err != nil {
+		return nil, err
+	}
+	body, err = c.client.Get(u.String(), CacheDisabled)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+
+
+*/
+
+
+	// get all forecasts available on the map
+	u, err = m.ForecastURL()
+	if err != nil {
+		return nil, err
+	}
+	body, err = c.client.Get(u.String(), CacheDisabled)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+	m.ParseMultiforecast(body)
+	return &m, nil
 }
+
+
 
 func SampleRun(path string) error {
 	crawler := NewCrawler()

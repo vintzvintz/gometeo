@@ -17,6 +17,7 @@ type MfMap struct {
 	Data      *MapData
 	Forecasts *MultiforecastData
 	SvgMap    []byte
+	Geography geoCollection
 }
 
 type MapData struct {
@@ -96,6 +97,43 @@ func (m *MfMap) ParseHtml(html io.Reader) error {
 	return nil
 }
 
+
+func (m *MfMap) ParseMultiforecast(r io.Reader) error {
+	fc, err := parseMfCollection(r)
+	if err != nil {
+		return err
+	}
+	m.Forecasts = &fc.Features
+	return nil
+}
+
+func (m *MfMap) ParseSvgMap(r io.Reader) error {
+	r, err := cropSVG(r)
+	if err != nil {
+		return err
+	}
+	svg, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	m.SvgMap = svg
+	return nil
+}
+/*
+
+func (m *MfMap) parseGeography(r io.Reader) error {
+	geo, err := parseGeography(r)
+	if err != nil {
+		return err
+	}
+	m.G
+
+
+
+
+
+}
+*/
 // isJsonTag detecte l'élement contenant les donnnées drupal
 // <script type="application/json" data-drupal-selector="drupal-settings-json">
 func isJsonTag(t html.Token) bool {
@@ -186,7 +224,7 @@ func (j *MapData) apiURL(path string, query *url.Values) (*url.URL, error) {
 	return url.Parse(raw)
 }
 
-func (m *MfMap) forecastURL() (*url.URL, error) {
+func (m *MfMap) ForecastURL() (*url.URL, error) {
 	// zone is described by a seqence of coordinates
 	ids := make([]string, len(m.Data.Children))
 	for i, poi := range m.Data.Children {
@@ -204,7 +242,7 @@ func (m *MfMap) forecastURL() (*url.URL, error) {
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
-func (m *MfMap) geographyURL() (*url.URL, error) {
+func (m *MfMap) GeographyURL() (*url.URL, error) {
 	elems := []string{
 		"modules",
 		"custom",
@@ -223,7 +261,7 @@ func (m *MfMap) geographyURL() (*url.URL, error) {
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg
-func (m *MfMap) svgURL() (*url.URL, error) {
+func (m *MfMap) SvgURL() (*url.URL, error) {
 	elems := []string{
 		"modules",
 		"custom",
@@ -241,7 +279,7 @@ func (m *MfMap) svgURL() (*url.URL, error) {
 }
 
 // https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/p3j.svg
-func pictoURL(picto string) (*url.URL, error) {
+func PictoURL(picto string) (*url.URL, error) {
 	elems := []string{
 		"modules",
 		"custom",

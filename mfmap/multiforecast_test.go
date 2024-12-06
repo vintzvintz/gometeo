@@ -25,7 +25,7 @@ func TestForecastQuery(t *testing.T) {
 		"coords":     coordsRegexp,
 	}
 
-	u, err := m.forecastURL()
+	u, err := m.ForecastURL()
 	if err != nil {
 		t.Fatalf("forecastURL() error: %s", err)
 	}
@@ -54,14 +54,15 @@ func testReadMultiforecast(t *testing.T, name string) MultiforecastData {
 	j := openFile(t, name)
 	defer j.Close()
 
-	mf, err := parseMultiforecast(j)
+	m := MfMap{}
+	err := m.ParseMultiforecast(j)
 	if err != nil {
 		t.Fatal(fmt.Errorf("parseMultiforecast() error: %w", err))
 	}
-	if len(mf) == 0 {
+	if len(*m.Forecasts) == 0 {
 		t.Fatal("parseMultiforecast() returned no data")
 	}
-	return mf
+	return *m.Forecasts
 }
 
 func TestPictoList(t *testing.T) {

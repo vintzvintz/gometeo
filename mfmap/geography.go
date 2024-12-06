@@ -9,8 +9,11 @@ import (
 type geoCollection struct {
 	Type     FeatureCollectionType `json:"type"`
 	Bbox     *Bbox                 `json:"bbox"`
-	Features []*geoFeature         `json:"features"`
+	Features geoFeatures         `json:"features"`
 }
+
+type geoFeatures []*geoFeature
+
 
 type Bbox struct {
 	A, B Coordinates
