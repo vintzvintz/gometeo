@@ -18,9 +18,9 @@ type MfClient struct {
 
 // NewClient allocates a *MfClient.
 // cache is an optional pre-initialized cache. cache=nil is allowed.
-func NewClient() *MfClient {
+func NewClient(baseUrl string) *MfClient {
 	return &MfClient{
-		baseUrl: httpsMeteofranceCom,
+		baseUrl: baseUrl,
 		client:  &http.Client{},
 		cache:   &MfCache{},
 	}
@@ -115,7 +115,9 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 //   - path unchanged if path starts with base
 //   - base+path if path starts with a slash
 //   - error in other cases
-func addUrlBase(path string, base string) (string, error) {
+func (cl *MfClient) addUrlBase(path string) (string, error) {
+	base := cl.baseUrl
+	fmt.Printf( "addUrlBase(path=%s, base=%s)", path, base)
 	l := min(len(path), len(base))
 	switch {
 	case len(base) == 0 :
@@ -147,9 +149,8 @@ func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) 
 		msg := fmt.Sprint("ressource non disponible dans le cache ", path)
 		return nil, errors.New(msg)
 	}
-
 	// cree une requete GET sur path
-	url, err := addUrlBase(path, cl.baseUrl)
+	url, err := cl.addUrlBase(path)
 	if err != nil {
 		return nil, err
 	}

@@ -71,7 +71,8 @@ func TestAddUrlBase(t *testing.T) {
 	}
 
 	t.Run("empty baseUrl", func(t *testing.T) {
-		_, err := addUrlBase("/", "")
+		cl := NewClient("")
+		_, err := cl.addUrlBase("/")
 		if err == nil {
 			t.Errorf("expect error on empty urlBase")
 		}
@@ -80,7 +81,8 @@ func TestAddUrlBase(t *testing.T) {
 	t.Run("invalid paths", func(t *testing.T) {
 		for name, path := range pathInvalid {
 			t.Run(name, func(t *testing.T) {
-				_, err := addUrlBase(path, urlBaseTest)
+				cl := NewClient(urlBaseTest)
+				_, err := cl.addUrlBase(path)
 				if err == nil {
 					t.Errorf("expect error on invalid path '%s'", path)
 				}
@@ -91,7 +93,8 @@ func TestAddUrlBase(t *testing.T) {
 	t.Run("valid paths", func(t *testing.T) {
 		for name, d := range pathValid {
 			t.Run(name, func(t *testing.T) {
-				got, err := addUrlBase(d.path, urlBaseTest)
+				cl := NewClient(urlBaseTest)
+				got, err := cl.addUrlBase(d.path)
 				if err != nil {
 					t.Error(err)
 				}
@@ -155,8 +158,7 @@ func TestUpdaterDoubleClose(t *testing.T) {
 func setupServerAndClient(t *testing.T, filename string, cnt *int) (srv *httptest.Server, client *MfClient) {
 	cookie := &http.Cookie{Name: sessionCookie, Value: "random_auth_token_value"}
 	srv = setupServerCustom(t, filename, cnt, cookie)
-	client = NewClient()
-	client.baseUrl = srv.URL
+	client = NewClient(srv.URL)
 	return
 }
 
@@ -228,7 +230,7 @@ func assertGetEqualsBytes(t *testing.T, client *MfClient, path string, r io.Read
 const fileRacine = "racine.html"
 
 func TestCacheHit(t *testing.T) {
-	cl := NewClient()
+	cl := NewClient("")
 	cl.cache = dataSet01()
 	for path, expected := range *dataSet01() {
 		t.Run(path, func(t *testing.T) {
@@ -246,7 +248,7 @@ func TestCacheHit(t *testing.T) {
 
 func TestCacheMiss(t *testing.T) {
 	key := "missing_key"
-	cl := NewClient()
+	cl := NewClient("")
 	cl.cache = dataSet01()
 	cl.client = nil
 	_, err := cl.Get(key, CacheOnly)
@@ -363,8 +365,7 @@ func TestGetMissingCookie(t *testing.T) {
 	t.Run("missing cookie error", func(t *testing.T) {
 		srv := setupServerCustom(t, "", nil, nil) // no data, no counter, no cookie
 		defer srv.Close()
-		client := NewClient()
-		client.baseUrl = srv.URL
+		client := NewClient(srv.URL)
 
 		// send a request, expect a "missing cookie" error
 		var err error
@@ -400,7 +401,7 @@ func TestGetModifiedCookie(t *testing.T) {
 		cookieValA = "cookie_value_A"
 		cookieValB = "cookie_value_B"
 	)
-	client := NewClient()
+	client := NewClient("")
 	assertCookie(t, client, cookieValA)
 	assertCookie(t, client, cookieValB)
 }
@@ -412,7 +413,7 @@ func TestGetBadPath(t *testing.T) {
 		"noLeadingSlash": "x",
 		"invalid scheme": "://example.com/",
 	}
-	client := NewClient()
+	client := NewClient("")
 	client.client = nil // should prevent real requests
 	for name, path := range badPaths {
 		t.Run(name, func(t *testing.T) {
@@ -425,7 +426,7 @@ func TestGetBadPath(t *testing.T) {
 }
 
 func TestHttpErrors(t *testing.T) {
-	client := NewClient()
+	client := NewClient("")
 	statusCodes := []int{401, 404, 500}
 
 	for _, code := range statusCodes {
