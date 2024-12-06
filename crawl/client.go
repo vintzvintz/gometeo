@@ -16,6 +16,8 @@ type MfClient struct {
 	cache      *MfCache
 }
 
+const userAgentFirefox = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"
+
 // NewClient allocates a *MfClient.
 // cache is an optional pre-initialized cache. cache=nil is allowed.
 func NewClient(baseUrl string) *MfClient {
@@ -119,7 +121,7 @@ func (cl *MfClient) addUrlBase(path string) (string, error) {
 	base := cl.baseUrl
 	l := min(len(path), len(base))
 	switch {
-	case len(base) == 0 :
+	case len(base) == 0:
 		return "", fmt.Errorf("invalid or empty baseUrl: '%s'", base)
 	case path == "":
 		return "", fmt.Errorf("empty path")
@@ -158,16 +160,18 @@ func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) 
 		msg := fmt.Sprintf("erreur de création de la requête http pour %s", path)
 		return nil, errors.New(msg)
 	}
-	// execute la requête avec le token d'authentification
+	// execute la requête avec le token d'authentification et un user agent autre que golang
 	if cl.auth_token != "" {
 		req.Header.Add("Authorization", "Bearer "+cl.auth_token)
 	}
+	req.Header.Add("user-agent", userAgentFirefox)
+
 	resp, err := cl.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s on '%s'", resp.Status, resp.Request.URL )
+		return nil, fmt.Errorf("%s on '%s'", resp.Status, resp.Request.URL)
 	}
 	// met à jour le token de session
 	err = cl.updateAuthToken(resp)
