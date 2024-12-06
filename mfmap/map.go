@@ -97,7 +97,6 @@ func (m *MfMap) ParseHtml(html io.Reader) error {
 	return nil
 }
 
-
 func (m *MfMap) ParseMultiforecast(r io.Reader) error {
 	fc, err := parseMfCollection(r)
 	if err != nil {
@@ -119,6 +118,7 @@ func (m *MfMap) ParseSvgMap(r io.Reader) error {
 	m.SvgMap = svg
 	return nil
 }
+
 /*
 
 func (m *MfMap) parseGeography(r io.Reader) error {
@@ -209,7 +209,7 @@ func (m *MfMap) pictoList() []string {
 */
 // ApiURL builds API URL from "config" node
 // typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0/path
-func (j *MapData) apiURL(path string, query *url.Values) (*url.URL, error) {
+func (j *MapData) ApiURL(path string, query *url.Values) (*url.URL, error) {
 	conf := j.Tools.Config
 	var querystring string
 	if query != nil {
@@ -238,7 +238,7 @@ func (m *MfMap) ForecastURL() (*url.URL, error) {
 	query.Add("instants", "morning,afternoon,evening,night")
 	query.Add("coords", strings.Join(ids, ","))
 
-	return m.Data.apiURL(apiMultiforecast, &query)
+	return m.Data.ApiURL(apiMultiforecast, &query)
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json

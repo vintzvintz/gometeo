@@ -73,7 +73,13 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 
 
 */
-
+	// create a dedicated client for rpcache-aa host
+    apiBaseUrl, err := m.Data.ApiURL("", nil)
+	if err != nil {
+		return nil, err
+	}
+	c.apiClient = NewClient(apiBaseUrl.String())
+	c.apiClient.auth_token = c.mainClient.auth_token
 
 	// get all forecasts available on the map
 	u, err = m.ForecastURL()
