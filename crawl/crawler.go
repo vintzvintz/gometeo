@@ -46,12 +46,12 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 		return nil, err
 	}
 
-	// get svg map with geography data
+	// get svg map
 	u, err := m.SvgURL()
 	if err != nil {
 		return nil, err
 	}
-	body, err = c.mainClient.Get(u.String(), CacheDisabled)
+	body, err = c.mainClient.Get(u.String(), CacheDefault)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,8 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 		return nil, err
 	}
 
-	u, err = m.SvgURL()
+	// get geography data
+	u, err = m.GeographyURL()
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +71,10 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 		return nil, err
 	}
 	defer body.Close()
+	err = m.ParseGeography(body)
+	if err != nil {
+		return nil, err
+	}
 
 
 /*

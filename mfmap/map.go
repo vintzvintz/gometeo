@@ -17,7 +17,7 @@ type MfMap struct {
 	Data      *MapData
 	Forecasts *MultiforecastData
 	SvgMap    []byte
-	Geography geoCollection
+	Geography *geoCollection
 }
 
 type MapData struct {
@@ -79,8 +79,8 @@ const (
 // for coordinates sanity checks
 const (
 	minLat = 35.0
-	maxLat = 50.0
-	minLng = -10.0
+	maxLat = 55.0
+	minLng = -12.0
 	maxLng = 15.0
 )
 
@@ -119,21 +119,17 @@ func (m *MfMap) ParseSvgMap(r io.Reader) error {
 	return nil
 }
 
-/*
 
-func (m *MfMap) parseGeography(r io.Reader) error {
-	geo, err := parseGeography(r)
+
+func (m *MfMap) ParseGeography(r io.Reader) error {
+	geo, err := parseGeoCollection(r)
 	if err != nil {
 		return err
 	}
-	m.G
-
-
-
-
-
+	m.Geography= geo
+	return nil
 }
-*/
+
 // isJsonTag detecte l'élement contenant les donnnées drupal
 // <script type="application/json" data-drupal-selector="drupal-settings-json">
 func isJsonTag(t html.Token) bool {

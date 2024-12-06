@@ -79,7 +79,7 @@ func (pt *PolygonType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func parseGeography(r io.Reader) (*geoCollection, error) {
+func parseGeoCollection(r io.Reader) (*geoCollection, error) {
 	var gc geoCollection
 	j, err := io.ReadAll(r)
 	if err != nil {
