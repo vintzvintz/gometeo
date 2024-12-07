@@ -14,7 +14,7 @@ type mfCollection struct {
 	Features MultiforecastData     `json:"features"`
 }
 
-type MultiforecastData []*mfFeature
+type MultiforecastData []mfFeature
 
 type mfFeature struct {
 	UpdateTime time.Time   `json:"update_time"`

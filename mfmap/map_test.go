@@ -259,10 +259,11 @@ func TestAssetsURL(t *testing.T) {
 func buildTestMap(t *testing.T) *MfMap {
 	
 	d := testMapParser(t, fileJsonRacine )
+	f := testParseMultiforecast(t, fileJsonMultiforecast)
 
 	return &MfMap {
 		Data:d,
-//		Forecast:,
+		Forecasts:f,
 // 		Geography:,
 	}
 }

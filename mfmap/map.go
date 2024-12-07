@@ -15,7 +15,7 @@ type MfMap struct {
 	Nom       string
 	Parent    *MfMap
 	Data      *MapData
-	Forecasts *MultiforecastData
+	Forecasts MultiforecastData
 	SvgMap    []byte
 	Geography *geoCollection
 }
@@ -102,7 +102,7 @@ func (m *MfMap) ParseMultiforecast(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	m.Forecasts = &fc.Features
+	m.Forecasts = fc.Features
 	return nil
 }
 
