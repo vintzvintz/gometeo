@@ -153,28 +153,19 @@ func (ctry *countryFr) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (coords *Coordinates) UnmarshalJSON(b []byte) error {
+func (c *Coordinates) UnmarshalJSON(b []byte) error {
 	var a [2]float64
 	if err := json.Unmarshal(b, &a); err != nil {
 		return fmt.Errorf("coordinates unmarshal error: %w. Want a [2]float64 array", err)
 	}
-	c, err := NewCoordinates(a[0], a[1])
-	if err != nil {
+	if err := checkLng(a[0]); err != nil {
 		return err
 	}
-	*coords = *c
+	if err := checkLat(a[1]); err != nil {
+		return err
+	}
+	c.Lng, c.Lat = a[0], a[1]
 	return nil
-}
-
-func NewCoordinates(lng, lat float64) (*Coordinates, error) {
-	// validate coordinates
-	if (lat < minLat) || (lat > maxLat) {
-		return nil, fmt.Errorf("latitude %f out of bound [%f %f]", lat, minLat, maxLat)
-	}
-	if (lng < minLng) || (lng > maxLng) {
-		return nil, fmt.Errorf("longitude %f out of bound [%f %f]", lng, minLng, maxLng)
-	}
-	return &Coordinates{Lat: lat, Lng: lng}, nil
 }
 
 func (code *CodeInsee) UnmarshalJSON(b []byte) error {
@@ -190,11 +181,11 @@ func (code *CodeInsee) UnmarshalJSON(b []byte) error {
 }
 
 func (m *MomentName) UnmarshalJSON(b []byte) error {
-	allowedNames := []string{morningStr, afternoonStr, eveningStr, nightStr}
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return fmt.Errorf("moment unmarshal error: %w", err)
 	}
+	allowedNames := []string{morningStr, afternoonStr, eveningStr, nightStr}
 	for _, name := range allowedNames {
 		if s == name {
 			*m = MomentName(s)

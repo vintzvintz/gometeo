@@ -83,7 +83,7 @@ var mapParseTests = map[string]struct {
 		got:  func(j *MapData) interface{} { return j.Children[0].Taxonomy },
 	},
 	"Subzone": {
-		want: SubzoneType{
+		want: Subzone{
 			Path: "/previsions-meteo-france/auvergne-rhone-alpes/10",
 			Name: "Auvergne-Rhône-Alpes",
 		},

@@ -21,19 +21,19 @@ type MfMap struct {
 }
 
 type MapData struct {
-	Path     PathType               `json:"path"`
-	Info     MapInfoType            `json:"mf_map_layers_v2"`
-	Children []POIType              `json:"mf_map_layers_v2_children_poi"`
-	Subzones map[string]SubzoneType `json:"mf_map_layers_v2_sub_zone"`
-	Tools    ToolsType              `json:"mf_tools_common"`
+	Path     MapPath            `json:"path"`
+	Info     MapInfo            `json:"mf_map_layers_v2"`
+	Children []Poi              `json:"mf_map_layers_v2_children_poi"`
+	Subzones map[string]Subzone `json:"mf_map_layers_v2_sub_zone"`
+	Tools    MapTools           `json:"mf_tools_common"`
 }
 
-type PathType struct {
+type MapPath struct {
 	BaseUrl    string `json:"baseUrl"`
 	ScriptPath string `json:"scriptPath"`
 }
 
-type MapInfoType struct {
+type MapInfo struct {
 	Nid         string `json:"nid"`
 	Name        string `json:"name"`
 	Path        string `json:"path"`
@@ -45,7 +45,7 @@ type MapInfoType struct {
 // lat et lgn are mixed type float / string
 type stringFloat float64
 
-type POIType struct {
+type Poi struct {
 	Title      string      `json:"title"`
 	Lat        stringFloat `json:"lat"`
 	Lng        stringFloat `json:"lng"`
@@ -56,17 +56,17 @@ type POIType struct {
 	Timezone   string      `json:"timezone"`
 }
 
-type SubzoneType struct {
+type Subzone struct {
 	Path string `json:"path"`
 	Name string `json:"name"`
 }
 
-type ToolsType struct {
-	Alias  string     `json:"alias"`
-	Config ConfigType `json:"config"`
+type MapTools struct {
+	Alias  string    `json:"alias"`
+	Config MapConfig `json:"config"`
 }
 
-type ConfigType struct {
+type MapConfig struct {
 	BaseUrl string `json:"base_url"`
 	Site    string `json:"site"`
 	Domain  string `json:"domain"`
@@ -290,7 +290,7 @@ func PictoURL(picto string) (*url.URL, error) {
 }
 
 // UnmarshalJSON unmarshals stringFloat fields
-// lat and lng are received as a mix of float and strings
+// lat and lng have mixed float and string types sometimes
 func (sf *stringFloat) UnmarshalJSON(b []byte) error {
 	// convert the bytes into an interface
 	// this will help us check the type of our value
