@@ -11,7 +11,7 @@ import (
 	"github.com/beevik/etree"
 )
 
-const svgTestFile = "pays007.svg"
+const fileSvgRacine = "pays007.svg"
 
 func TestPxToInt(t *testing.T) {
 	type testType struct {
@@ -137,9 +137,8 @@ func TestGetSvgSize(t *testing.T) {
 	}
 }
 
-func TestCropSVG(t *testing.T) {
-	name := assets_path + svgTestFile
-
+func testCropSVG(t *testing.T, file string) (*svgTree, *bytes.Buffer) {
+	name := assets_path + file
 	f, err := os.Open(name)
 	if err != nil {
 		t.Fatalf("os.Open(%s) error: %s", name, err)
@@ -147,25 +146,30 @@ func TestCropSVG(t *testing.T) {
 	defer f.Close()
 
 	buf := bytes.Buffer{}
-	//  get original size
 	tree, err := readSVG(io.TeeReader(f, &buf))
 	if err != nil {
 		t.Fatalf("parse error on '%s': %s", name, err)
 	}
+	return tree, &buf
+}
+
+func TestCropSVG(t *testing.T) {
+	file := fileSvgRacine
+	tree, buf := testCropSVG(t, file)
 	sz_orig, err := tree.getSize()
 	if err != nil {
-		t.Fatalf("cant get original '%s' size: %s", name, err)
+		t.Fatalf("cant get original '%s' size: %s", file, err)
 	}
 	want := sz_orig.crop()
 	// call cropSVG() to be tested
-	cropReader, err := cropSVG(&buf)
+	cropReader, err := cropSVG(buf)
 	if err != nil {
-		t.Fatalf("error while cropping %s: %s", name, err)
+		t.Fatalf("error while cropping %s: %s", file, err)
 	}
 	// parse result to get size
 	tree, err = readSVG(cropReader)
 	if err != nil {
-		t.Fatalf("parse error on cropped '%s': %s", name, err)
+		t.Fatalf("parse error on cropped '%s': %s", file, err)
 	}
 	got, err := tree.getSize()
 	if err != nil {
@@ -208,3 +212,21 @@ func TestCroppedSize(t *testing.T) {
 		t.Errorf("svgSize.Crop(%v) got%v want %v", szOrig, got, want)
 	}
 }
+
+/*
+TODO: déplacer ici ce code venu de geography_test.go
+
+func TestSvgQuery(t *testing.T) {
+t.Run("svgURL", func(t *testing.T) {
+	u, err := m.SvgURL()
+	if err != nil {
+		t.Fatalf("svgURL() error: %s", err)
+	}
+	expr := regexp.MustCompile(svgRegexp)
+	if !expr.Match([]byte(u.String())) {
+		t.Errorf("svgUrl()='%s' does not match '%s'", u.String(), svgRegexp)
+	}
+})
+}
+
+*/

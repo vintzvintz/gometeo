@@ -6,16 +6,21 @@ import (
 	"testing"
 )
 
-func TestParseGeoCollection(t *testing.T) {
-	file := "geography.json"
+const fileJsonGeography = "geography.json"
+
+func testParseGeoCollection(t *testing.T, file string) *geoCollection {
 	j := openFile(t, file)
 	defer j.Close()
 
 	geo, err := parseGeoCollection(j)
-
 	if err != nil {
 		t.Fatal(fmt.Errorf("parseGeoCollection() error: %w", err))
 	}
+	return geo
+}
+
+func TestParseGeoCollection(t *testing.T) {
+	geo := testParseGeoCollection(t, fileJsonGeography)
 	if geo == nil {
 		t.Fatal("parseGeography() returned no data")
 	}
