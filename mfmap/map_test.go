@@ -19,8 +19,6 @@ const (
 	fileJsonMultiforecast = "multiforecast.json"
 )
 
-//const apiUrl = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
-
 func TestHtmlFilter(t *testing.T) {
 	name := fileHtmlRacine
 	f := openFile(t, name)
@@ -93,17 +91,21 @@ var mapParseTests = map[string]struct {
 	},
 }
 
-func TestMapParser(t *testing.T) {
-	f := openFile(t, fileJsonRacine)
+func testMapParser(t *testing.T, file string) *MapData {
+	f := openFile(t, file)
 	defer f.Close()
-
-	j, err := mapParser(f)
+	data, err := mapParser(f)
 	if err != nil {
-		t.Fatalf("mapParser(%s) error: %v", fileJsonRacine, err)
+		t.Fatalf("mapParser(%s) error: %v", file, err)
 	}
+	return data
+}
+
+func TestMapParser(t *testing.T) {
+	data := testMapParser(t, fileJsonRacine)
 	for key, test := range mapParseTests {
 		t.Run(key, func(t *testing.T) {
-			got := test.got(j)
+			got := test.got(data)
 			if !reflect.DeepEqual(got, test.want) {
 				t.Errorf("%s got '%s' want '%s'", key, got, test.want)
 			}
@@ -250,4 +252,17 @@ func TestAssetsURL(t *testing.T) {
 			t.Errorf("svgPicto() got '%s' want '%s'", got, want)
 		}
 	})
+}
+
+
+// buildTestMap returns a JsonMap structure filled form test files
+func buildTestMap(t *testing.T) *MfMap {
+	
+	d := testMapParser(t, fileJsonRacine )
+
+	return &MfMap {
+		Data:d,
+//		Forecast:,
+// 		Geography:,
+	}
 }
