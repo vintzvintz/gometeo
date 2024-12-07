@@ -10,10 +10,11 @@ import (
 )
 
 type MfClient struct {
-	baseUrl    string
-	auth_token string
-	client     *http.Client
-	cache      *MfCache
+	baseUrl         string
+	noSessionCookie bool     // do not expect mfsession cookie
+	authToken       string
+	client          *http.Client
+	cache           *MfCache
 }
 
 const userAgentFirefox = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"
@@ -94,6 +95,9 @@ func (cu *cacheUpdater) Close() error {
 // a Set-Cookie "mfsession" header present in every response.
 // Warns if token changes during a session
 func (cl *MfClient) updateAuthToken(resp *http.Response) error {
+	if cl.noSessionCookie {  // do not expect a session cookie from api server (rpcache-aa)
+		return nil
+	}
 	var tok string
 	for _, cookie := range resp.Cookies() {
 		if cookie.Name == sessionCookie {
@@ -102,14 +106,14 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 		}
 	}
 	if tok == "" {
-		msg := fmt.Sprintf("Set-Cookie mfsession absent url=%s", resp.Request.URL.String())
+		msg := fmt.Sprintf("no Set-Cookie mfsession from url '%s'", resp.Request.URL.String())
 		return MissingCookieError(msg)
 	}
 	tok, _ = Rot13(tok)
-	if cl.auth_token != "" && cl.auth_token != tok {
+	if cl.authToken != "" && cl.authToken != tok {
 		log.Println("Cookie de session modifié.")
 	}
-	cl.auth_token = tok
+	cl.authToken = tok
 	return nil
 }
 
@@ -160,9 +164,9 @@ func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) 
 		msg := fmt.Sprintf("erreur de création de la requête http pour %s", path)
 		return nil, errors.New(msg)
 	}
-	// execute la requête avec le token d'authentification et un user agent autre que golang
-	if cl.auth_token != "" {
-		req.Header.Add("Authorization", "Bearer "+cl.auth_token)
+	// execute la requête avec le token d'authentification et un user agent courant
+	if cl.authToken != "" {
+		req.Header.Add("Authorization", "Bearer "+cl.authToken)
 	}
 	req.Header.Add("user-agent", userAgentFirefox)
 

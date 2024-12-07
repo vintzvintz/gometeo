@@ -230,7 +230,7 @@ func (m *MfMap) ForecastURL() (*url.URL, error) {
 	query.Add("end_time", "")
 	query.Add("time", "")
 	query.Add("instants", "morning,afternoon,evening,night")
-	query.Add("coords", strings.Join(ids, ","))
+	query.Add("liste_id", strings.Join(ids, ","))
 
 	return m.Data.ApiURL(apiMultiforecast, &query)
 }

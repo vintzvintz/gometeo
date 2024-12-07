@@ -22,7 +22,7 @@ func TestForecastQuery(t *testing.T) {
 		"end_time":   emptyRegexp,
 		"time":       emptyRegexp,
 		"instants":   instantsRegexp,
-		"coords":     coordsRegexp,
+		"liste_id":   coordsRegexp,
 	}
 
 	u, err := m.ForecastURL()

@@ -390,7 +390,7 @@ func assertCookie(t *testing.T, client *MfClient, cookieVal string) {
 	_ = testClientGet(t, client, "/", CacheDisabled)
 
 	// check if cookie has expected value
-	got, _ := Rot13(client.auth_token)
+	got, _ := Rot13(client.authToken)
 	if got != cookieVal {
 		t.Errorf("auth token mismatch. got '%s', expected:'%s'", got, cookieVal)
 	}

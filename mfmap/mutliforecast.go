@@ -203,20 +203,10 @@ func (m *MomentName) UnmarshalJSON(b []byte) error {
 	}
 	return fmt.Errorf("moment '%s' not in known values  %v", s, allowedNames)
 }
-/*
-func parseMultiforecast(r io.Reader) (MultiforecastData, error) {
-	fc, err := parseMfCollection(r)
-	if err != nil {
-		return nil, err
-	}
-	return fc.Features, nil
-}
-*/
-func parseMfCollection(r io.Reader) (*mfCollection, error) {
 
+func parseMfCollection(r io.Reader) (*mfCollection, error) {
 	var fc mfCollection
 	j, err := io.ReadAll(r)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not read multiforecast data: %w", err)
 	}

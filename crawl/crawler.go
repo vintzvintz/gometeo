@@ -82,7 +82,8 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 		return nil, err
 	}
 	c.apiClient = NewClient(apiBaseUrl.String())
-	c.apiClient.auth_token = c.mainClient.auth_token
+	c.apiClient.authToken = c.mainClient.authToken
+	c.apiClient.noSessionCookie = true   // api server do not send auth tokens
 
 	// get all forecasts available on the map
 	u, err = m.ForecastURL()
