@@ -76,14 +76,6 @@ const (
 	apiMultiforecast = "/multiforecast"
 )
 
-// for coordinates sanity checks
-const (
-	minLat = 35.0
-	maxLat = 55.0
-	minLng = -12.0
-	maxLng = 15.0
-)
-
 func (m *MfMap) ParseHtml(html io.Reader) error {
 	j, err := htmlFilter(html)
 	if err != nil {
@@ -167,7 +159,7 @@ loop:
 			}
 		}
 	}
-	return nil, fmt.Errorf("données JSON non trouvées")
+	return nil, fmt.Errorf("JSON data not found")
 }
 
 // mapParser parses json data to initialise a MfMap data structure
@@ -312,7 +304,6 @@ func (sf *stringFloat) UnmarshalJSON(b []byte) error {
 			// the string might not be of float type
 			// so return an error
 			return err
-
 		}
 		*sf = stringFloat(i)
 	}

@@ -48,6 +48,14 @@ type Paths struct {
 
 type PolygonType string
 
+// for coordinates sanity checks
+const (
+	minLat = 35.0
+	maxLat = 55.0
+	minLng = -12.0
+	maxLng = 15.0
+)
+
 const polygonStr = "Polygon"
 
 func (bbox *Bbox) UnmarshalJSON(b []byte) error {
