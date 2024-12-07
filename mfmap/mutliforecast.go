@@ -229,3 +229,25 @@ func (mf MultiforecastData) pictoList() []string {
 	}
 	return pictos
 }
+
+type termShort struct {
+	Time   time.Time
+	Moment MomentName
+}
+
+type termLong struct {
+	Time time.Time
+}
+
+func (mf MultiforecastData) UniqueTerms() (ts []termShort, tl []termLong) {
+	for _, feat := range mf {
+		for _, short := range feat.Properties.Forecasts {
+			ts = append(ts, termShort{
+				short.Time, short.Moment})
+		}
+		for _, daily := range feat.Properties.Dailies {
+			tl = append(tl, termLong{daily.Time})
+		}
+	}
+	return ts, tl
+}

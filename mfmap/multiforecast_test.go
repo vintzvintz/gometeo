@@ -72,3 +72,14 @@ func TestPictoList(t *testing.T) {
 		t.Errorf("pictoList() returned nothing")
 	}
 }
+
+func TestEcheances(t *testing.T) {
+	mf := testParseMultiforecast(t, fileJsonMultiforecast)
+	echs, dailies := mf.UniqueTerms()
+	if len(echs) == 0 {
+		t.Errorf("No short-term forecast found in %s", fileJsonMultiforecast)
+	}
+	if len(dailies) == 0 {
+		t.Errorf("No long-term (daily) forecast found in %s", fileJsonMultiforecast)
+	}
+}
