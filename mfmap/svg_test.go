@@ -192,12 +192,17 @@ func TestCroppedSize(t *testing.T) {
 	}
 	got := szOrig.crop()
 
-	wCrop := w - cropLeftPx - cropRightPx
-	hCrop := h - cropTopPx - cropBottomPx
+	wCrop := int(float64(w) * (1 - cropPcLeft - cropPcRight))
+	hCrop := int(float64(h) * (1 - cropPcTop - cropPcBottom))
 	want := svgSize{
-		Width:   wCrop,
-		Height:  hCrop,
-		Viewbox: vbType{cropLeftPx, cropTopPx, wCrop, hCrop},
+		Width:  wCrop,
+		Height: hCrop,
+		Viewbox: vbType{
+			int(float64(w) * cropPcLeft),
+			int(float64(h) * cropPcTop),
+			wCrop,
+			hCrop,
+		},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("svgSize.Crop(%v) got%v want %v", szOrig, got, want)

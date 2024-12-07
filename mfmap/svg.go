@@ -23,10 +23,10 @@ type svgSize struct {
 type vbType [4]int
 
 const (
-	cropLeftPx   = 144
-	cropRightPx  = 58
-	cropTopPx    = 45
-	cropBottomPx = 45
+	cropPcLeft   = 0.20
+	cropPcRight  = 0.08
+	cropPcTop    = 0.08
+	cropPcBottom = 0.08
 )
 
 const (
@@ -41,12 +41,18 @@ func (vb vbType) String() string {
 }
 
 func (sz svgSize) crop() svgSize {
-	w := sz.Width - cropLeftPx - cropRightPx
-	h := sz.Height - cropTopPx - cropBottomPx
+	newW := int(float64(sz.Viewbox[2]) * (1 - cropPcLeft - cropPcRight))
+	newH := int(float64(sz.Viewbox[3]) * (1 - cropPcTop - cropPcBottom))
+
 	return svgSize{
-		Width:   w,
-		Height:  h,
-		Viewbox: vbType{cropLeftPx, cropTopPx, w, h},
+		Width:   newW,
+		Height:  newH,
+		Viewbox: vbType{
+			sz.Viewbox[0] + int(float64(sz.Viewbox[2]) * cropPcLeft),
+			sz.Viewbox[1] + int(float64(sz.Viewbox[3]) * cropPcTop),
+			newW,
+			newH,
+		},
 	}
 }
 
