@@ -260,10 +260,17 @@ func buildTestMap(t *testing.T) *MfMap {
 	
 	d := testMapParser(t, fileJsonRacine )
 	f := testParseMultiforecast(t, fileJsonMultiforecast)
+	g := testParseGeoCollection(t, fileJsonGeography)
+	_, svgBuf := testCropSVG(t, fileSvgRacine)
+	s, err := io.ReadAll(svgBuf)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	return &MfMap {
 		Data:d,
 		Forecasts:f,
-// 		Geography:,
+ 		Geography:g,
+		SvgMap: s,
 	}
 }
