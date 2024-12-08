@@ -338,3 +338,11 @@ func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
 	}
 	return nil
 }
+
+type Graphdata []struct {
+	wesh int
+}
+
+func (pl PrevList) toChroniques() Graphdata {
+	return nil
+}
