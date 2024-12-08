@@ -6,6 +6,7 @@ type JsonMap struct {
 	Taxonomy string
 	SubZones []geoFeature
 	Bbox     Bbox
+	Prevs    PrevList
 }
 
 func (m *MfMap) BuildJson() (*JsonMap, error) {
@@ -15,6 +16,7 @@ func (m *MfMap) BuildJson() (*JsonMap, error) {
 		Taxonomy: m.Data.Info.Taxonomy,
 		SubZones: m.Geography.Features,
 		Bbox:     m.Geography.Bbox.Crop(),
+		Prevs:    m.Forecasts.ByEcheance(),
 	}
 	return &j, nil
 }
