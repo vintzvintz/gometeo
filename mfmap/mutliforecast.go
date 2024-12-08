@@ -231,13 +231,13 @@ func (mf MultiforecastData) pictoList() []string {
 }
 /*
 type PrevList map[Echeance]PrevsAtEch
-
+*/
 // Prevlist key is a composite type
 type Echeance struct {
 	Moment MomentName
 	Day    time.Time // yyyy-mm-dd @ 00-00-00 UTC
 }
-
+/*
 // all available forecasts for a single point of interest
 type PrevsAtEch struct {
 	Time    time.Time
@@ -312,14 +312,14 @@ type PrevAtPoi struct {
 		}
 		return pl
 	}
-
+*/
 func (e Echeance) String() string {
 	return fmt.Sprintf("%s %s",
 		e.Day.Format(time.DateOnly),
 		e.Moment,
 	)
 }
-*/
+
 func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
 	for _, feat := range *mf {
 		if feat.Properties.Insee != id {

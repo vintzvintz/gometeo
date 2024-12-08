@@ -91,7 +91,15 @@ func TestByEcheances(t *testing.T) {
 
 func TestEcheanceString(t *testing.T) {
 
+	m := morningStr
+	d, _ := time.Parse( time.RFC3339, "2024-12-02T15:51:12.000Z" )
+	e := Echeance{MomentName(m), d}
+	want := fmt.Sprintf( "%4d-%02d-%02d %s", d.Year(), d.Month(), d.Day(), m)
 
+	got := e.String()
+	if got != want {
+		t.Errorf( "Echeance.String()='%s' want '%s'", got, want)
+	}
 }
 
 
