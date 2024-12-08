@@ -75,13 +75,12 @@ func TestPictoList(t *testing.T) {
 }
 
 func TestByEcheances(t *testing.T) {
-/*
+
 	mf := testParseMultiforecast(t, fileJsonMultiforecast)
 	prevs := mf.ByEcheance()
 	if len(prevs) == 0 {
 		t.Errorf("No forecast found in %s", fileJsonMultiforecast)
 	}
-*/
 	/*
 	if len(dailies) == 0 {
 		t.Errorf("No long-term (daily) forecast found in %s", fileJsonMultiforecast)

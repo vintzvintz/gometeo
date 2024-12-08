@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"slices"
 	"time"
 )
@@ -229,15 +230,15 @@ func (mf MultiforecastData) pictoList() []string {
 	}
 	return pictos
 }
-/*
+
 type PrevList map[Echeance]PrevsAtEch
-*/
+
 // Prevlist key is a composite type
 type Echeance struct {
 	Moment MomentName
 	Day    time.Time // yyyy-mm-dd @ 00-00-00 UTC
 }
-/*
+
 // all available forecasts for a single point of interest
 type PrevsAtEch struct {
 	Time    time.Time
@@ -249,70 +250,73 @@ type PrevsAtEch struct {
 type PrevAtPoi struct {
 	Title  string
 	Coords Coordinates
-	Short  *Forecast // empty or zero values after 10 days
+	Short  *Forecast
 	Daily  *Daily
 }
-*/
 
-/*
-	func (mf MultiforecastData) ByEcheance() PrevList {
-		pl := make(PrevList)
+func (mf MultiforecastData) ByEcheance() PrevList {
+	pl := make(PrevList)
 
-		// iterate over POIs ( known as "Features" in json data )
-		for _, feat := range mf {
+	// iterate over POIs, known as "Features" in json data
+	for i := range mf {
+		shorts := &(mf[i].Properties.Forecasts)
+		coords := mf[i].Geometry.Coords
+		name := mf[i].Properties.Name
+		insee := mf[i].Properties.Insee
 
-			// process short-term forecasts first
-			for _, short := range feat.Properties.Forecasts {
+		// process short-term forecasts first
+		for j := range *shorts {
+			short := &((*shorts)[j])
 
-				// build an Echeance to use as PrevList key
-				e := Echeance{
-					Moment: short.Moment,
-					Day: time.Date(
-						short.Time.Year(),
-						short.Time.Month(),
-						short.Time.Day(),
-						0, 0, 0, 0, // hour, min, sec, nano
-						time.UTC),
-				}
-
-				// get prevsions@echeance struct
-				pae, ok := pl[e]
-				if !ok {
-					// create Prev@Ech slice if it does not already exist
-					pae = PrevsAtEch{
-						Time:    short.Time,
-						Updated: feat.UpdateTime,
-						Prevs:   []PrevAtPoi{},
-					}
-				} else {
-					// warns if echeances are not unique for different POIs on a same day+moment key
-					if pae.Time != short.Time {
-						log.Default().Printf("Inconsistent times for [%s] '%t' != '%t'",
-							e, pae.Time, short.Time,
-						)
-					}
-				}
-
-				// get daily prev for the day/poi
-
-				// wrap forecast and daily in a struct
-				p := PrevAtPoi{
-					Title:    feat.Properties.Name,
-					Coords:   feat.Geometry.Coords,
-					Forecast: short,
-				}
-				pae.Prevs = append(pae.Prevs, p)
-
+			// build an Echeance to use as PrevList key
+			e := Echeance{
+				Moment: short.Moment,
+				Day: time.Date(
+					short.Time.Year(), short.Time.Month(), short.Time.Day(),
+					0, 0, 0, 0, time.UTC), // hour, min, sec, nano
 			}
 
-			// add daily data to each "short-term" forecast
-			for _, daily := range feat.Properties.Dailies {
-				dailies[daily.Time] = ""
+			// get previsions@echeance struct
+			var pae PrevsAtEch
+			_, ok := pl[e]
+			if !ok {
+				// create Prev@Ech slice if it does not already exist
+				pae = PrevsAtEch{
+					Time:    short.Time,
+					Updated: mf[i].UpdateTime,
+					Prevs:   []PrevAtPoi{},
+				}
+			} else {
+				pae = pl[e]
+				// warns if echeances are not unique for different POIs
+				// on a same day/moment key
+				if pae.Time != short.Time {
+					log.Default().Printf("Inconsistent times for [%s] '%s' != '%s'",
+						e, pae.Time, short.Time)
+				}
 			}
+
+			// get daily prev for the day/poi
+			daily := mf.FindDaily(mf[i].Properties.Insee, e.Day)
+			if daily == nil {
+				log.Default().Printf("Missing daily data for id=%s (%s) echeance %s",
+					insee, name, e)
+			}
+
+			// wrap forecast and daily in a struct
+			pap := PrevAtPoi{
+				Title:  name,
+				Coords: coords,
+				Short:  short,
+				Daily:  daily,
+			}
+			pae.Prevs = append(pae.Prevs, pap)
+			pl[e] = pae
 		}
-		return pl
 	}
-*/
+	return pl
+}
+
 func (e Echeance) String() string {
 	return fmt.Sprintf("%s %s",
 		e.Day.Format(time.DateOnly),
