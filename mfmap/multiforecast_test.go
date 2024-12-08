@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"testing"
+	"time"
 )
 
 const (
@@ -73,13 +74,36 @@ func TestPictoList(t *testing.T) {
 	}
 }
 
-func TestEcheances(t *testing.T) {
+func TestByEcheances(t *testing.T) {
+/*
 	mf := testParseMultiforecast(t, fileJsonMultiforecast)
-	echs, dailies := mf.UniqueTerms()
-	if len(echs) == 0 {
-		t.Errorf("No short-term forecast found in %s", fileJsonMultiforecast)
+	prevs := mf.ByEcheance()
+	if len(prevs) == 0 {
+		t.Errorf("No forecast found in %s", fileJsonMultiforecast)
 	}
+*/
+	/*
 	if len(dailies) == 0 {
 		t.Errorf("No long-term (daily) forecast found in %s", fileJsonMultiforecast)
+	}*/
+}
+
+
+func TestEcheanceString(t *testing.T) {
+
+
+}
+
+
+func TestFindDaily(t *testing.T) {
+	mf := testParseMultiforecast(t, fileJsonMultiforecast)
+	id := CodeInsee("440360")   // "name": "Châteaubriant"
+	ech, err := time.Parse(time.RFC3339, "2024-12-02T00:00:00.000Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := mf.FindDaily( id, ech )
+	if d == nil {
+		t.Fatalf("FindDaily() did not found daily forecast for location '%s' at '%s'", id, ech )
 	}
 }

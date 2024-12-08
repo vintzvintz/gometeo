@@ -56,17 +56,17 @@ type Forecast struct {
 	CloudCover    int        `json:"total_cloud_cover"`
 	WeatherIcon   string     `json:"weather_icon"`
 	WeatherDesc   string     `json:"weather_description"`
-	Humidity      int        `json:"relative_humidity"`
+	Hrel          int        `json:"relative_humidity"`
 	Pression      float64    `json:"P_sea"`
 	Confiance     int        `json:"weather_confidence_index"`
 }
 
 type Daily struct {
 	Time        time.Time `json:"time"`
-	T_min       float64   `json:"T_min"`
-	T_max       float64   `json:"T_max"`
-	HumidityMin int       `json:"relative_humidity_min"`
-	HumidityMax int       `json:"relative_humidity_max"`
+	Tmin        float64   `json:"T_min"`
+	Tmax        float64   `json:"T_max"`
+	Hmin        int       `json:"relative_humidity_min"`
+	Hmax        int       `json:"relative_humidity_max"`
 	Uv          int       `json:"uv_index"`
 	WeatherIcon string    `json:"daily_weather_icon"`
 	WeatherDesc string    `json:"daily_weather_description"`
@@ -229,25 +229,108 @@ func (mf MultiforecastData) pictoList() []string {
 	}
 	return pictos
 }
+/*
+type PrevList map[Echeance]PrevsAtEch
 
-type termShort struct {
-	Time   time.Time
+// Prevlist key is a composite type
+type Echeance struct {
 	Moment MomentName
+	Day    time.Time // yyyy-mm-dd @ 00-00-00 UTC
 }
 
-type termLong struct {
-	Time time.Time
+// all available forecasts for a single point of interest
+type PrevsAtEch struct {
+	Time    time.Time
+	Updated time.Time
+	Prevs   []PrevAtPoi
 }
 
-func (mf MultiforecastData) UniqueTerms() (ts []termShort, tl []termLong) {
-	for _, feat := range mf {
-		for _, short := range feat.Properties.Forecasts {
-			ts = append(ts, termShort{
-				short.Time, short.Moment})
+// forecast data for a single (poi, date) point
+type PrevAtPoi struct {
+	Title  string
+	Coords Coordinates
+	Short  *Forecast // empty or zero values after 10 days
+	Daily  *Daily
+}
+*/
+
+/*
+	func (mf MultiforecastData) ByEcheance() PrevList {
+		pl := make(PrevList)
+
+		// iterate over POIs ( known as "Features" in json data )
+		for _, feat := range mf {
+
+			// process short-term forecasts first
+			for _, short := range feat.Properties.Forecasts {
+
+				// build an Echeance to use as PrevList key
+				e := Echeance{
+					Moment: short.Moment,
+					Day: time.Date(
+						short.Time.Year(),
+						short.Time.Month(),
+						short.Time.Day(),
+						0, 0, 0, 0, // hour, min, sec, nano
+						time.UTC),
+				}
+
+				// get prevsions@echeance struct
+				pae, ok := pl[e]
+				if !ok {
+					// create Prev@Ech slice if it does not already exist
+					pae = PrevsAtEch{
+						Time:    short.Time,
+						Updated: feat.UpdateTime,
+						Prevs:   []PrevAtPoi{},
+					}
+				} else {
+					// warns if echeances are not unique for different POIs on a same day+moment key
+					if pae.Time != short.Time {
+						log.Default().Printf("Inconsistent times for [%s] '%t' != '%t'",
+							e, pae.Time, short.Time,
+						)
+					}
+				}
+
+				// get daily prev for the day/poi
+
+				// wrap forecast and daily in a struct
+				p := PrevAtPoi{
+					Title:    feat.Properties.Name,
+					Coords:   feat.Geometry.Coords,
+					Forecast: short,
+				}
+				pae.Prevs = append(pae.Prevs, p)
+
+			}
+
+			// add daily data to each "short-term" forecast
+			for _, daily := range feat.Properties.Dailies {
+				dailies[daily.Time] = ""
+			}
 		}
-		for _, daily := range feat.Properties.Dailies {
-			tl = append(tl, termLong{daily.Time})
+		return pl
+	}
+
+func (e Echeance) String() string {
+	return fmt.Sprintf("%s %s",
+		e.Day.Format(time.DateOnly),
+		e.Moment,
+	)
+}
+*/
+func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
+	for _, feat := range *mf {
+		if feat.Properties.Insee != id {
+			continue
+		}
+		for _, d := range feat.Properties.Dailies {
+			if d.Time != ech {
+				continue
+			}
+			return &d
 		}
 	}
-	return ts, tl
+	return nil
 }
