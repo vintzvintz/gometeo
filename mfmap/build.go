@@ -39,18 +39,66 @@ type PrevAtPoi struct {
 	Daily  *Daily
 }
 
+type ChroValueFloat struct {
+	ts  int64 // milliseconds since 1/1/1970
+	val float64
+}
+
+type ChroValueInt struct {
+	ts  int64 // milliseconds since 1/1/1970
+	val int
+}
+
+// default marshalling is ok
+// but need an interface type to implement only once
+type ChroValue interface{}
+
+type Chronique []ChroValue
+
+type Graphdata map[string][]Chronique
+
+var jsEpoch = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+
+var ErrNoSuchData = fmt.Errorf("no such data")
+
+// series in Forecasts objects
+const (
+	Temperature   = "T"
+	Windspeed     = "Windspeed"
+	WindspeedGust = "Windgust"
+	Iso0          = "Iso0"
+	CloudCover    = "CloudCover"
+	Hrel          = "Hrel"
+	Psea          = "Psea"
+)
+
 const daysChronique = 10
 
 var forecastsChroniques = []string{
-	"wesh",
-	TEMP,
-	WINDSPEED,
-	WINDSPEEDGUST,
+	Temperature,
+	Windspeed,
+	WindspeedGust,
+	Iso0,
+	CloudCover,
+	Hrel,
+	Psea,
 }
 
+// series in Dailies objects
+const (
+	Tmin = "Tmin"
+	Tmax = "Tmax"
+	Hmin = "Hmin"
+	Hmax = "Hmax"
+	Uv   = "Uv"
+)
+
 var dailiesChroniques = []string{
-	TMAX,
-	TMIN,
+	Tmin,
+	Tmax,
+	Hmin,
+	Hmax,
+	Uv,
 }
 
 func (m *MfMap) BuildJson() (*JsonMap, error) {
@@ -150,39 +198,6 @@ func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
 	return nil
 }
 
-type ChroValueFloat struct {
-	ts  int64 // milliseconds since 1/1/1970
-	val float64
-}
-
-type ChroValueInt struct {
-	ts  int64 // milliseconds since 1/1/1970
-	val int
-}
-
-// default marshalling is ok
-// but need an interface type to implement only once
-type ChroValue interface{}
-
-type Chronique []ChroValue
-
-type Graphdata map[string][]Chronique
-
-var jsEpoch = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
-
-var ErrNoSuchData = fmt.Errorf("no such data")
-
-const (
-	// Forecasts object
-	TEMP          = "T"
-	WINDSPEED     = "Windspeed"
-	WINDSPEEDGUST = "Windgust"
-
-	// Dailies object
-	TMIN = "T_min"
-	TMAX = "T_max"
-)
-
 type timeStamper interface {
 	withTimestamp(data string) (ChroValue, error)
 }
@@ -190,19 +205,19 @@ type timeStamper interface {
 func (f Forecast) withTimestamp(data string) (ChroValue, error) {
 	ts := int64(f.Time.Sub(jsEpoch) / time.Millisecond)
 	switch data {
-	case TEMP:
+	case Temperature:
 		return ChroValueFloat{ts, f.T}, nil
-	case WINDSPEED:
+	case Windspeed:
 		return ChroValueInt{ts, f.WindSpeed}, nil
-	case WINDSPEEDGUST:
+	case WindspeedGust:
 		return ChroValueInt{ts, f.WindSpeedGust}, nil
-	case "Cloudcover":
+	case CloudCover:
 		return ChroValueInt{ts, f.CloudCover}, nil
-	case "Iso0":
+	case Iso0:
 		return ChroValueInt{ts, f.Iso0}, nil
-	case "Hrel":
+	case Hrel:
 		return ChroValueInt{ts, f.Hrel}, nil
-	case "Pression":
+	case Psea:
 		return ChroValueFloat{ts, f.Pression}, nil
 	default:
 		return nil, ErrNoSuchData
@@ -210,8 +225,21 @@ func (f Forecast) withTimestamp(data string) (ChroValue, error) {
 }
 
 func (d Daily) withTimestamp(data string) (ChroValue, error) {
-	//return nil, ErrNoSuchData
-	return nil, fmt.Errorf("ErrWesh")
+	ts := int64(d.Time.Sub(jsEpoch) / time.Millisecond)
+	switch data {
+	case Tmin:
+		return ChroValueFloat{ts, d.Tmin}, nil
+	case Tmax:
+		return ChroValueFloat{ts, d.Tmax}, nil
+	case Hmin:
+		return ChroValueInt{ts, d.Hmin}, nil
+	case Hmax:
+		return ChroValueInt{ts, d.Hmax}, nil
+	case Uv:
+		return ChroValueInt{ts, d.Uv}, nil
+	default:
+		return nil, ErrNoSuchData
+	}
 }
 
 func getChroniques[T timeStamper](forecasts []T, series []string) (Graphdata, error) {

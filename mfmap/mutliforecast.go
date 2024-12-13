@@ -17,10 +17,10 @@ type mfCollection struct {
 type MultiforecastData []mfFeature
 
 type mfFeature struct {
-	UpdateTime time.Time   `json:"update_time"`
-	Type       FeatureType `json:"type"`
-	Geometry   MfGeometry  `json:"geometry"`
-	Properties MfProperty  `json:"properties"`
+	UpdateTime time.Time    `json:"update_time"`
+	Type       FeatureType  `json:"type"`
+	Geometry   MfGeometry   `json:"geometry"`
+	Properties MfProperties `json:"properties"`
 }
 
 type MfGeometry struct {
@@ -32,7 +32,7 @@ type Coordinates struct {
 	Lat, Lng float64
 }
 
-type MfProperty struct {
+type MfProperties struct {
 	Name      string     `json:"name"`
 	Country   countryFr  `json:"country"`
 	Dept      string     `json:"french_department"`

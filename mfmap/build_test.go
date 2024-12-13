@@ -43,7 +43,7 @@ func TestToChronique(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toChronique() error: %s", err)
 	}
-	if (d == nil) || (len(d) == 0) || (len(d[TEMP]) == 0){
+	if (d == nil) || (len(d) == 0) || (len(d[Temperature]) == 0){
 		t.Errorf("toChroniques() returned nothing from '%s'", fileJsonMultiforecast)
 	}
 }
