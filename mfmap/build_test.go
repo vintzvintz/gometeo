@@ -37,13 +37,14 @@ func TestByEcheances(t *testing.T) {
 	}
 }
 
-func TestGraphData(t *testing.T) {
+func TestToChronique(t *testing.T) {
 	mf := testParseMultiforecast(t, fileJsonMultiforecast)
-	prevs := mf.ByEcheance()
-
-	d := prevs.toChroniques()
-	if (d == nil) || (len(d) == 0) {
-		t.Errorf("Graphdata returned nothing from '%s'", fileJsonMultiforecast)
+	d, err := mf.toChroniques()
+	if err != nil {
+		t.Fatalf("toChronique() error: %s", err)
+	}
+	if (d == nil) || (len(d) == 0) || (len(d[TEMP]) == 0){
+		t.Errorf("toChroniques() returned nothing from '%s'", fileJsonMultiforecast)
 	}
 }
 

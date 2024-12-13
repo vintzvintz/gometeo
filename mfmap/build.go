@@ -1,6 +1,7 @@
 package mfmap
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -13,18 +14,6 @@ type JsonMap struct {
 	SubZones []geoFeature
 	Bbox     Bbox
 	Prevs    PrevList
-}
-
-func (m *MfMap) BuildJson() (*JsonMap, error) {
-	j := JsonMap{
-		Name:     m.Data.Info.Name,
-		Idtech:   m.Data.Info.IdTechnique,
-		Taxonomy: m.Data.Info.Taxonomy,
-		SubZones: m.Geography.Features,
-		Bbox:     m.Geography.Bbox.Crop(),
-		Prevs:    m.Forecasts.ByEcheance(),
-	}
-	return &j, nil
 }
 
 type PrevList map[Echeance]PrevsAtEch
@@ -48,6 +37,32 @@ type PrevAtPoi struct {
 	Coords Coordinates
 	Short  *Forecast
 	Daily  *Daily
+}
+
+const daysChronique = 10
+
+var forecastsChroniques = []string{
+	"wesh",
+	TEMP,
+	WINDSPEED,
+	WINDSPEEDGUST,
+}
+
+var dailiesChroniques = []string{
+	TMAX,
+	TMIN,
+}
+
+func (m *MfMap) BuildJson() (*JsonMap, error) {
+	j := JsonMap{
+		Name:     m.Data.Info.Name,
+		Idtech:   m.Data.Info.IdTechnique,
+		Taxonomy: m.Data.Info.Taxonomy,
+		SubZones: m.Geography.Features,
+		Bbox:     m.Geography.Bbox.Crop(),
+		Prevs:    m.Forecasts.ByEcheance(),
+	}
+	return &j, nil
 }
 
 func (mf MultiforecastData) ByEcheance() PrevList {
@@ -135,10 +150,116 @@ func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
 	return nil
 }
 
-type Graphdata []struct {
-	wesh int
+type ChroValueFloat struct {
+	ts  int64 // milliseconds since 1/1/1970
+	val float64
 }
 
-func (pl PrevList) toChroniques() Graphdata {
-	return nil
+type ChroValueInt struct {
+	ts  int64 // milliseconds since 1/1/1970
+	val int
+}
+
+// default marshalling is ok
+// but need an interface type to implement only once
+type ChroValue interface{}
+
+type Chronique []ChroValue
+
+type Graphdata map[string][]Chronique
+
+var jsEpoch = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+
+var ErrNoSuchData = fmt.Errorf("no such data")
+
+const (
+	// Forecasts object
+	TEMP          = "T"
+	WINDSPEED     = "Windspeed"
+	WINDSPEEDGUST = "Windgust"
+
+	// Dailies object
+	TMIN = "T_min"
+	TMAX = "T_max"
+)
+
+type timeStamper interface {
+	withTimestamp(data string) (ChroValue, error)
+}
+
+func (f Forecast) withTimestamp(data string) (ChroValue, error) {
+	ts := int64(f.Time.Sub(jsEpoch) / time.Millisecond)
+	switch data {
+	case TEMP:
+		return ChroValueFloat{ts, f.T}, nil
+	case WINDSPEED:
+		return ChroValueInt{ts, f.WindSpeed}, nil
+	case WINDSPEEDGUST:
+		return ChroValueInt{ts, f.WindSpeedGust}, nil
+	case "Cloudcover":
+		return ChroValueInt{ts, f.CloudCover}, nil
+	case "Iso0":
+		return ChroValueInt{ts, f.Iso0}, nil
+	case "Hrel":
+		return ChroValueInt{ts, f.Hrel}, nil
+	case "Pression":
+		return ChroValueFloat{ts, f.Pression}, nil
+	default:
+		return nil, ErrNoSuchData
+	}
+}
+
+func (d Daily) withTimestamp(data string) (ChroValue, error) {
+	//return nil, ErrNoSuchData
+	return nil, fmt.Errorf("ErrWesh")
+}
+
+func getChroniques[T timeStamper](forecasts []T, series []string) (Graphdata, error) {
+	g := Graphdata{}
+seriesLoop:
+	for _, serie := range series {
+		//c, err := getChronique(forecasts, serie)
+		var chro = make(Chronique, len(forecasts))
+		for i := range forecasts {
+			f := forecasts[i]
+			v, err := f.withTimestamp(serie)
+			if errors.Is(err, ErrNoSuchData) {
+				continue seriesLoop // shortcut to next serie
+			}
+			if err != nil {
+				return nil, fmt.Errorf("getChroniques(%s) error: %w", serie, err)
+			}
+			chro[i] = v
+		}
+		g[serie] = append(g[serie], chro)
+	}
+	return g, nil
+}
+
+// toChroniques() formats Multiforecastdata into Graphdata
+// for client-side plottings
+func (mf MultiforecastData) toChroniques() (Graphdata, error) {
+	g := Graphdata{}
+	for i := range mf {
+		//lieu := mf[i].Properties.Insee
+
+		forecasts := mf[i].Properties.Forecasts
+		g1, err := getChroniques(forecasts, forecastsChroniques)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range g1 {
+			g[k] = v
+		}
+
+		dailies := mf[i].Properties.Dailies
+		g2, err := getChroniques(dailies, dailiesChroniques)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range g2 {
+			g[k] = v
+		}
+	}
+	return g, nil
 }
