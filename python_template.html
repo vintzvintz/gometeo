@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr_FR">
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="${head_description} ">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title> ${head_title} </title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/meteo.css" />
+  <!-- Favicon stuff -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+</head>
+<body>
+  <div id="vuejs_root">
+    <header>
+      <nav class="topnav">
+        ${breadcrumb}
+      </nav>
+      <section class="selecteurs">
+        <data-picker></data-picker>
+      <div>
+        <timespan-picker></timespan-picker>
+        <tooltips-toggler></tooltips-toggler>
+      </div>
+      <highchart-graph v-if="display_graph"></highchart-graph>
+      </section>
+    </header>
+    <!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
+    <main class="content">
+      <div class="map_grid_container">
+        <map-component v-for='rang in get_rangs' v-bind:key="rang" v-bind:rang="rang">Chargement...</map-component>
+      </div>
+    </main>
+  </div>
+<!--
+  <footer class="footer">     <p>Footer</p>   </footer>
+-->
+  <script src="https://unpkg.com/vuex@3.5.1/dist/vuex.js"></script>
+  <script src="https://unpkg.com/vue@2.6.12/dist/vue.js"></script>
+  <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
+  <script src="js/highcharts.js"></script>
+  <script src="js/highcharts-debugger.js"></script>
+  <script src="data/${idtech}-data.js"></script>
+  <script src="js/meteo.js"></script>
+</body>
+</html>
