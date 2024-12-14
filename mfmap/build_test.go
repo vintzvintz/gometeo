@@ -42,7 +42,7 @@ func TestBuildGraphdata(t *testing.T) {
 func TestByEcheances(t *testing.T) {
 
 	mf := testParseMultiforecast(t, fileJsonMultiforecast)
-	prevs := mf.ByEcheance()
+	prevs := mf.byEcheance()
 	if len(prevs) == 0 {
 		t.Errorf("No forecast found in %s", fileJsonMultiforecast)
 	}

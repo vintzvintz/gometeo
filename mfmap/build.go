@@ -126,12 +126,16 @@ func (m *MfMap) BuildJson() (*JsonMap, error) {
 		Taxonomy: m.Data.Info.Taxonomy,
 		SubZones: m.Geography.Features,
 		Bbox:     m.Geography.Bbox.Crop(),
-		Prevs:    m.Forecasts.ByEcheance(),
+		Prevs:    m.Forecasts.byEcheance(),
 	}
 	return &j, nil
 }
 
-func (mf MultiforecastData) ByEcheance() PrevList {
+func (m *MfMap) BuildGraphdata() (Graphdata, error) {
+	return m.Forecasts.toChroniques()
+}
+
+func (mf MultiforecastData) byEcheance() PrevList {
 	pl := make(PrevList)
 
 	// iterate over POIs, known as "Features" in json data
@@ -201,8 +205,32 @@ func (e Echeance) String() string {
 	)
 }
 
-func (m *MfMap) BuildGraphdata() (Graphdata, error) {
-	return m.Forecasts.toChroniques()
+// toChroniques() formats Multiforecastdata into Graphdata
+// for client-side plottings
+func (mf MultiforecastData) toChroniques() (Graphdata, error) {
+	g := Graphdata{}
+	for i := range mf {
+		//lieu := mf[i].Properties.Insee
+
+		forecasts := mf[i].Properties.Forecasts
+		g1, err := getChroniques(forecasts, forecastsChroniques)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range g1 {
+			g[k] = v
+		}
+
+		dailies := mf[i].Properties.Dailies
+		g2, err := getChroniques(dailies, dailiesChroniques)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range g2 {
+			g[k] = v
+		}
+	}
+	return g, nil
 }
 
 // TemplateData contains data for htmlTemplate.Execute()
@@ -214,14 +242,13 @@ type TemplateData struct {
 }
 
 func (m *MfMap) BuildHtml(wr io.Writer) error {
-
 	data := TemplateData{
 		HeadDescription: fmt.Sprintf("Description de %s", m.Data.Info.Name),
 		HeadTitle:       fmt.Sprintf("Titre de %s", m.Data.Info.Name),
 		Breadcrumb:      "TODO : generer le breadcrumb",
 		Idtech:          m.Data.Info.IdTechnique,
 	}
-	return htmlTemplate.Execute(wr, data)
+	return htmlTemplate.Execute(wr, &data)
 }
 
 func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
@@ -241,6 +268,28 @@ func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
 
 type timeStamper interface {
 	withTimestamp(data string) (ChroValue, error)
+}
+
+func getChroniques[T timeStamper](forecasts []T, series []string) (Graphdata, error) {
+	g := Graphdata{}
+seriesLoop:
+	for _, serie := range series {
+		//c, err := getChronique(forecasts, serie)
+		var chro = make(Chronique, len(forecasts))
+		for i := range forecasts {
+			f := forecasts[i]
+			v, err := f.withTimestamp(serie)
+			if errors.Is(err, ErrNoSuchData) {
+				continue seriesLoop // shortcut to next serie
+			}
+			if err != nil {
+				return nil, fmt.Errorf("getChroniques(%s) error: %w", serie, err)
+			}
+			chro[i] = v
+		}
+		g[serie] = append(g[serie], chro)
+	}
+	return g, nil
 }
 
 func (f Forecast) withTimestamp(data string) (ChroValue, error) {
@@ -281,54 +330,4 @@ func (d Daily) withTimestamp(data string) (ChroValue, error) {
 	default:
 		return nil, ErrNoSuchData
 	}
-}
-
-func getChroniques[T timeStamper](forecasts []T, series []string) (Graphdata, error) {
-	g := Graphdata{}
-seriesLoop:
-	for _, serie := range series {
-		//c, err := getChronique(forecasts, serie)
-		var chro = make(Chronique, len(forecasts))
-		for i := range forecasts {
-			f := forecasts[i]
-			v, err := f.withTimestamp(serie)
-			if errors.Is(err, ErrNoSuchData) {
-				continue seriesLoop // shortcut to next serie
-			}
-			if err != nil {
-				return nil, fmt.Errorf("getChroniques(%s) error: %w", serie, err)
-			}
-			chro[i] = v
-		}
-		g[serie] = append(g[serie], chro)
-	}
-	return g, nil
-}
-
-// toChroniques() formats Multiforecastdata into Graphdata
-// for client-side plottings
-func (mf MultiforecastData) toChroniques() (Graphdata, error) {
-	g := Graphdata{}
-	for i := range mf {
-		//lieu := mf[i].Properties.Insee
-
-		forecasts := mf[i].Properties.Forecasts
-		g1, err := getChroniques(forecasts, forecastsChroniques)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range g1 {
-			g[k] = v
-		}
-
-		dailies := mf[i].Properties.Dailies
-		g2, err := getChroniques(dailies, dailiesChroniques)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range g2 {
-			g[k] = v
-		}
-	}
-	return g, nil
 }
