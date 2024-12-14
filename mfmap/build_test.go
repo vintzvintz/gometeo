@@ -43,8 +43,14 @@ func TestToChronique(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toChronique() error: %s", err)
 	}
-	if (d == nil) || (len(d) == 0) || (len(d[Temperature]) == 0){
-		t.Errorf("toChroniques() returned nothing from '%s'", fileJsonMultiforecast)
+	if d == nil {
+		t.Errorf("toChroniques() returned nothing from '%s'", fileJsonMultiforecast)	}
+	for _, key := range append(forecastsChroniques, dailiesChroniques...) {
+		series, ok := d[key]
+		if !ok || len(series) == 0 {
+			t.Errorf("missing or empty serie: '%s'", key)
+			continue
+		}
 	}
 }
 
