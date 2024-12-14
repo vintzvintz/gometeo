@@ -28,6 +28,17 @@ func TestBuildJson(t *testing.T) {
 	*/
 }
 
+
+func TestBuildGraphdata(t *testing.T) {
+	m := buildTestMap(t)
+	g, err := m.BuildGraphdata()
+	if err != nil {
+		t.Fatalf("BuildGraphdata() error: %s", err)
+	}
+	inspectGraphdata(t, g)
+}
+
+
 func TestByEcheances(t *testing.T) {
 
 	mf := testParseMultiforecast(t, fileJsonMultiforecast)
@@ -37,21 +48,25 @@ func TestByEcheances(t *testing.T) {
 	}
 }
 
-func TestToChronique(t *testing.T) {
-	mf := testParseMultiforecast(t, fileJsonMultiforecast)
-	d, err := mf.toChroniques()
-	if err != nil {
-		t.Fatalf("toChronique() error: %s", err)
-	}
-	if d == nil {
-		t.Errorf("toChroniques() returned nothing from '%s'", fileJsonMultiforecast)	}
+func inspectGraphdata(t *testing.T, g Graphdata) {
+	if g == nil {
+		t.Fatal("Graphdata is nil")	}
 	for _, key := range append(forecastsChroniques, dailiesChroniques...) {
-		series, ok := d[key]
+		series, ok := g[key]
 		if !ok || len(series) == 0 {
 			t.Errorf("missing or empty serie: '%s'", key)
 			continue
 		}
 	}
+}
+
+func TestToChronique(t *testing.T) {
+	mf := testParseMultiforecast(t, fileJsonMultiforecast)
+	g, err := mf.toChroniques()
+	if err != nil {
+		t.Fatalf("toChronique() error: %s", err)
+	}
+	inspectGraphdata(t, g)
 }
 
 func TestEcheanceString(t *testing.T) {
