@@ -187,6 +187,12 @@ func (m *MfMap) BuildGraphdata() (Graphdata, error) {
 	return m.Forecasts.toChroniques()
 }
 
+func (m *MfMap) BuildHtml() ([]byte, error) {
+	//return nil, fmt.Errorf("wesh")
+	return []byte("wesh"), nil
+}
+
+
 func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
 	for _, feat := range *mf {
 		if feat.Properties.Insee != id {

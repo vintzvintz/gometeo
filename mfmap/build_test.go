@@ -28,7 +28,6 @@ func TestBuildJson(t *testing.T) {
 	*/
 }
 
-
 func TestBuildGraphdata(t *testing.T) {
 	m := buildTestMap(t)
 	g, err := m.BuildGraphdata()
@@ -37,7 +36,6 @@ func TestBuildGraphdata(t *testing.T) {
 	}
 	inspectGraphdata(t, g)
 }
-
 
 func TestByEcheances(t *testing.T) {
 
@@ -50,7 +48,8 @@ func TestByEcheances(t *testing.T) {
 
 func inspectGraphdata(t *testing.T, g Graphdata) {
 	if g == nil {
-		t.Fatal("Graphdata is nil")	}
+		t.Fatal("Graphdata is nil")
+	}
 	for _, key := range append(forecastsChroniques, dailiesChroniques...) {
 		series, ok := g[key]
 		if !ok || len(series) == 0 {
@@ -93,4 +92,15 @@ func TestFindDaily(t *testing.T) {
 	if d == nil {
 		t.Fatalf("FindDaily() did not found daily forecast for location '%s' at '%s'", id, ech)
 	}
+}
+
+func TestBuildHtml(t *testing.T) {
+	m := buildTestMap(t)
+	h, err := m.BuildHtml()
+	if err != nil {
+		t.Fatalf("BuildHtml() error: %s", err)
+	}
+	// check html content
+	// TODO
+	_ = h
 }
