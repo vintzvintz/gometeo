@@ -2,6 +2,7 @@ package mfmap
 
 import (
 	"errors"
+	_ "embed"
 	"fmt"
 	"io"
 	"log"
@@ -67,7 +68,9 @@ var ErrNoSuchData = fmt.Errorf("no such data")
 // this global variable is set up once at startup by the init() function
 var htmlTemplate *template.Template
 
-const templateFile = "template.html"
+//go:embed template.html
+var templateFile string
+
 
 // series in Forecasts objects
 const (
@@ -111,12 +114,7 @@ var dailiesChroniques = []string{
 
 // init() initialises global package-level variables
 func init() {
-	var err error
-	htmlTemplate, err = template.ParseFiles(templateFile)
-	if err != nil {
-		panic(err)
-	}
-	_ = htmlTemplate
+	htmlTemplate = template.Must(template.New("").Parse(templateFile))
 }
 
 func (m *MfMap) BuildJson() (*JsonMap, error) {
