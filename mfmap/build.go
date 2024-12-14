@@ -205,16 +205,23 @@ func (m *MfMap) BuildGraphdata() (Graphdata, error) {
 	return m.Forecasts.toChroniques()
 }
 
+// TemplateData contains data for htmlTemplate.Execute()
+type TemplateData struct {
+	HeadDescription string
+	HeadTitle       string
+	Breadcrumb      string
+	Idtech          string
+}
+
 func (m *MfMap) BuildHtml(wr io.Writer) error {
-	tmpl, err := template.ParseFiles(templateFile)
-	if err != nil {
-		return fmt.Errorf("error parsing '%s': %w", templateFile, err)
+
+	data := TemplateData{
+		HeadDescription: fmt.Sprintf("Description de %s", m.Data.Info.Name),
+		HeadTitle:       fmt.Sprintf("Titre de %s", m.Data.Info.Name),
+		Breadcrumb:      "TODO : generer le breadcrumb",
+		Idtech:          m.Data.Info.IdTechnique,
 	}
-	err = tmpl.Execute(wr, nil)
-	if err != nil {
-		return fmt.Errorf("error executing template '%s': %w", templateFile, err)
-	}
-	return nil
+	return htmlTemplate.Execute(wr, data)
 }
 
 func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {

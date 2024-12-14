@@ -3,6 +3,7 @@ package mfmap
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 )
@@ -97,12 +98,14 @@ func TestFindDaily(t *testing.T) {
 
 func TestBuildHtml(t *testing.T) {
 	m := buildTestMap(t)
-	buf := bytes.Buffer{}
-	err := m.BuildHtml(&buf)
+	buf := &bytes.Buffer{}
+	err := m.BuildHtml(buf)
 	if err != nil {
 		t.Fatalf("BuildHtml() error: %s", err)
 	}
 	// check html content
 	// TODO
-	_ = buf
+	b, _ := io.ReadAll(buf)
+	t.Log( string(b[:500]))
 }
+
