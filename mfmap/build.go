@@ -3,7 +3,9 @@ package mfmap
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"text/template"
 	"time"
 )
 
@@ -61,6 +63,12 @@ var jsEpoch = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
 var ErrNoSuchData = fmt.Errorf("no such data")
 
+// htmlTemplate is a global html/template for html rendering
+// this global variable is set up once at startup by the init() function
+var htmlTemplate *template.Template
+
+const templateFile = "template.html"
+
 // series in Forecasts objects
 const (
 	Temperature   = "T"
@@ -99,6 +107,16 @@ var dailiesChroniques = []string{
 	Hmin,
 	Hmax,
 	Uv,
+}
+
+// init() initialises global package-level variables
+func init() {
+	var err error
+	htmlTemplate, err = template.ParseFiles(templateFile)
+	if err != nil {
+		panic(err)
+	}
+	_ = htmlTemplate
 }
 
 func (m *MfMap) BuildJson() (*JsonMap, error) {
@@ -187,11 +205,17 @@ func (m *MfMap) BuildGraphdata() (Graphdata, error) {
 	return m.Forecasts.toChroniques()
 }
 
-func (m *MfMap) BuildHtml() ([]byte, error) {
-	//return nil, fmt.Errorf("wesh")
-	return []byte("wesh"), nil
+func (m *MfMap) BuildHtml(wr io.Writer) error {
+	tmpl, err := template.ParseFiles(templateFile)
+	if err != nil {
+		return fmt.Errorf("error parsing '%s': %w", templateFile, err)
+	}
+	err = tmpl.Execute(wr, nil)
+	if err != nil {
+		return fmt.Errorf("error executing template '%s': %w", templateFile, err)
+	}
+	return nil
 }
-
 
 func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
 	for _, feat := range *mf {
