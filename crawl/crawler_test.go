@@ -36,5 +36,5 @@ func TestGetMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf( "Getmap('%s') error: %s", zone,err)
 	}
-	t.Log(m.Nom)
+	t.Log(m.Name())
 }

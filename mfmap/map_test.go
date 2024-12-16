@@ -237,7 +237,7 @@ func TestAssetsURL(t *testing.T) {
 		got := u.String()
 		want := "https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg"
 		if got != want {
-			t.Errorf("svgUrl('%s') got '%s' want '%s'", m.Nom, got, want)
+			t.Errorf("svgUrl('%s') got '%s' want '%s'", m.Name(), got, want)
 		}
 	})
 
@@ -272,5 +272,17 @@ func buildTestMap(t *testing.T) *MfMap {
 		Forecasts:f,
  		Geography:g,
 		SvgMap: s,
+	}
+}
+
+
+func TestName(t *testing.T) {
+	m := MfMap{
+		Data: testMapParser(t, fileJsonRacine ),
+	}
+	want := "france"
+	got := m.Name()
+	if m.Name() != want {
+		t.Fatalf("MfMap.Name() got '%s' want '%s'", got, want)
 	}
 }

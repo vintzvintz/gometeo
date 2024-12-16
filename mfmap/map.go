@@ -12,12 +12,15 @@ import (
 )
 
 type MfMap struct {
-	Nom       string
-	Parent    *MfMap
-	Data      *MapData
+	// data embedded in main html
+	Data *MapData
+	// other data called from main page
 	Forecasts MultiforecastData
 	SvgMap    []byte
 	Geography *geoCollection
+
+	// parent map are used to build breadcrumbs
+	Parent *MfMap
 }
 
 type MapData struct {
@@ -308,4 +311,8 @@ func (sf *stringFloat) UnmarshalJSON(b []byte) error {
 		*sf = stringFloat(i)
 	}
 	return nil
+}
+
+func (m *MfMap) Name() string {
+	return strings.ToLower(m.Data.Info.Name)
 }
