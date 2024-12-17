@@ -95,8 +95,10 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 		return nil, err
 	}
 	defer body.Close()
-	m.ParseMultiforecast(body)
-
+	err = m.ParseMultiforecast(body)
+	if err != nil {
+		return nil, err
+	}
 	return &m, nil
 }
 
