@@ -56,3 +56,17 @@ func makeRedirectHandler(url string) func(http.ResponseWriter, *http.Request) {
 		http.Redirect(resp, req, url, http.StatusMovedPermanently)
 	}
 }
+
+
+func StartSimple(maps MapCollection) error {
+
+	mux, err := NewMeteoMux(maps)
+	if err != nil {
+		return err
+	}
+	err = http.ListenAndServe(":5151", mux)
+	if err != http.ErrServerClosed {
+		return err
+	}
+	return nil
+}

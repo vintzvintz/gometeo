@@ -55,7 +55,7 @@ func TestServer(t *testing.T) {
 			t.Fatal(err)
 		}
 		_ = b
-		//t.Log(b[:300])
+
 	})
 }
 

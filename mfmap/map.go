@@ -289,7 +289,7 @@ func PictoURL(picto string) (*url.URL, error) {
 func (sf *stringFloat) UnmarshalJSON(b []byte) error {
 	// convert the bytes into an interface
 	// this will help us check the type of our value
-	// if it is a string that can be converted into aa float we convert it
+	// if it is a string that can be converted into a float we convert it
 	// otherwise we return an error
 	var item interface{}
 	if err := json.Unmarshal(b, &item); err != nil {
