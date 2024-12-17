@@ -230,6 +230,11 @@ func TestAssetsURL(t *testing.T) {
 
 	t.Run("map_svg", func(t *testing.T) {
 		m := parseHtml(t, fileHtmlRacine)
+
+		name, err := m.Name()
+		if err != nil {
+			t.Fatal(err)
+		}
 		u, err := m.SvgURL()
 		if err != nil {
 			t.Fatal(err)
@@ -237,7 +242,7 @@ func TestAssetsURL(t *testing.T) {
 		got := u.String()
 		want := "https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg"
 		if got != want {
-			t.Errorf("svgUrl('%s') got '%s' want '%s'", m.Name(), got, want)
+			t.Errorf("svgUrl('%s') got '%s' want '%s'", name, got, want)
 		}
 	})
 
@@ -254,11 +259,9 @@ func TestAssetsURL(t *testing.T) {
 	})
 }
 
-
 // buildTestMap returns a JsonMap structure filled form test files
 func buildTestMap(t *testing.T) *MfMap {
-	
-	d := testMapParser(t, fileJsonRacine )
+	d := testMapParser(t, fileJsonRacine)
 	f := testParseMultiforecast(t, fileJsonMultiforecast)
 	g := testParseGeoCollection(t, fileJsonGeography)
 	_, svgBuf := testCropSVG(t, fileSvgRacine)
@@ -267,22 +270,24 @@ func buildTestMap(t *testing.T) *MfMap {
 		t.Fatal(err)
 	}
 
-	return &MfMap {
-		Data:d,
-		Forecasts:f,
- 		Geography:g,
-		SvgMap: s,
+	return &MfMap{
+		Data:      d,
+		Forecasts: f,
+		Geography: g,
+		SvgMap:    s,
 	}
 }
 
-
 func TestName(t *testing.T) {
 	m := MfMap{
-		Data: testMapParser(t, fileJsonRacine ),
+		Data: testMapParser(t, fileJsonRacine),
 	}
 	want := "france"
-	got := m.Name()
-	if m.Name() != want {
+	got, err := m.Name()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
 		t.Fatalf("MfMap.Name() got '%s' want '%s'", got, want)
 	}
 }
