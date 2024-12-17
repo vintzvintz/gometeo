@@ -32,6 +32,23 @@ func TestMainHandler(t *testing.T) {
 	resp.Result()
 }
 
+var testUrls = map[string][]string{
+	"homepage": {
+		"/",
+		"/france",
+	},
+	"js": {
+		"/js/meteo.js",
+		"/js/highcharts.js",
+	},
+	"css": {
+		"/css/meteo.css",
+	},
+	"fonts": {
+		"/fonts/fa.woff2",
+	},
+}
+
 func TestServer(t *testing.T) {
 	maps := MapCollection{
 		getMapTest(t, "/"),
@@ -41,13 +58,13 @@ func TestServer(t *testing.T) {
 	defer srv.Close()
 	cl := srv.Client()
 
-	t.Run("france", func(t *testing.T) {
-		testPathOk(t, cl, srv.URL+"/france")
-	})
-
-	t.Run("home page redirection", func(t *testing.T) {
-		testPathOk(t, cl, srv.URL+"/")
-	})
+	for name, urls := range testUrls {
+		t.Run(name, func(t *testing.T) {
+			for _, u := range urls {
+				testPathOk(t, cl, srv.URL+u)
+			}
+		})
+	}
 }
 
 func spawnServer(t *testing.T, maps MapCollection) *httptest.Server {
@@ -59,7 +76,6 @@ func spawnServer(t *testing.T, maps MapCollection) *httptest.Server {
 }
 
 func testPathOk(t *testing.T, cl *http.Client, path string) {
-	//testMainPage(t, srv, "/france")
 	resp, err := cl.Get(path)
 	if err != nil {
 		t.Fatal(err)
@@ -73,8 +89,3 @@ func testPathOk(t *testing.T, cl *http.Client, path string) {
 		t.Fatal(err)
 	}
 }
-/*
-func TestStatic(t *testing.T) {
-
-}
-*/
