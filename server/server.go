@@ -2,8 +2,8 @@ package server
 
 import (
 	"bytes"
-	"log"
 	"io"
+	"log"
 	"net/http"
 
 	"gometeo/mfmap"
@@ -22,13 +22,18 @@ func NewMeteoMux(maps MapCollection) (*http.ServeMux, error) {
 		}
 		log.Printf("Registering map '%s'", name)
 		mux.HandleFunc("/"+name, makeMainHandler(m))
+
+		// redirect root path '/' to '/france'
+		if name == "france" {
+			mux.HandleFunc("/", makeRedirectHandler("/france"))
+		}
 	}
-	return &mux,nil
+	return &mux, nil
 }
 
-//makeMainHandler wraps a map into an handler function
-func makeMainHandler(m *mfmap.MfMap ) func (http.ResponseWriter, *http.Request) {
-	return func (resp http.ResponseWriter, req *http.Request) {
+// makeMainHandler wraps a map into an handler function
+func makeMainHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
 		// do not stream directly to resp before knowing error status
 		buf := bytes.Buffer{}
 		err := m.BuildHtml(&buf)
@@ -42,5 +47,12 @@ func makeMainHandler(m *mfmap.MfMap ) func (http.ResponseWriter, *http.Request) 
 			log.Printf("send error: %s", err)
 		}
 		log.Printf("GET %s sent %d bytes", req.URL, n)
+	}
+}
+
+func makeRedirectHandler(url string) func(http.ResponseWriter, *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		log.Printf("redirect from %s to %s", req.URL, url)
+		http.Redirect(resp, req, url, http.StatusMovedPermanently)
 	}
 }

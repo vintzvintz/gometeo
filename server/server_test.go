@@ -42,7 +42,7 @@ func TestServer(t *testing.T) {
 
 	t.Run("main page", func(t *testing.T) {
 		//testMainPage(t, srv, "/france")
-		resp, err := cl.Get(srv.URL + "/france")
+		resp, err := cl.Get(srv.URL + "/")
 		if err != nil {
 			t.Fatal(err)
 		}
