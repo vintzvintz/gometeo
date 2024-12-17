@@ -1,8 +1,8 @@
 package mfmap
 
 import (
-	"errors"
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -70,7 +70,6 @@ var htmlTemplate *template.Template
 
 //go:embed template.html
 var templateFile string
-
 
 // series in Forecasts objects
 const (
