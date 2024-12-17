@@ -33,29 +33,20 @@ func TestMainHandler(t *testing.T) {
 }
 
 func TestServer(t *testing.T) {
-	m := getMapTest(t, "/")
-	maps := MapCollection{m}
+	maps := MapCollection{
+		getMapTest(t, "/"),
+	}
+
 	srv := spawnServer(t, maps)
 	defer srv.Close()
-
 	cl := srv.Client()
 
-	t.Run("main page", func(t *testing.T) {
-		//testMainPage(t, srv, "/france")
-		resp, err := cl.Get(srv.URL + "/")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("status code %d expect %d", resp.StatusCode, http.StatusOK)
-		}
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_ = b
+	t.Run("france", func(t *testing.T) {
+		testPathOk(t, cl, srv.URL+"/france")
+	})
 
+	t.Run("home page redirection", func(t *testing.T) {
+		testPathOk(t, cl, srv.URL+"/")
 	})
 }
 
@@ -67,9 +58,23 @@ func spawnServer(t *testing.T, maps MapCollection) *httptest.Server {
 	return httptest.NewServer(mux)
 }
 
+func testPathOk(t *testing.T, cl *http.Client, path string) {
+	//testMainPage(t, srv, "/france")
+	resp, err := cl.Get(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status code %d expect %d", resp.StatusCode, http.StatusOK)
+	}
+	_, err = io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 /*
-func testMainPage(t *testing.T, srv MeteoServer, path string) bool {
+func TestStatic(t *testing.T) {
 
-	return true
 }
 */
