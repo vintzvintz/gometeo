@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"gometeo/mfmap"
+	"gometeo/static"
 )
 
 type MapCollection []*mfmap.MfMap
@@ -15,6 +16,9 @@ type MeteoServer *http.ServeMux
 
 func NewMeteoMux(maps MapCollection) (*http.ServeMux, error) {
 	mux := http.ServeMux{}
+
+	static.AddHandlers(&mux)
+
 	for _, m := range maps {
 		name, err := m.Name()
 		if err != nil {
@@ -25,7 +29,7 @@ func NewMeteoMux(maps MapCollection) (*http.ServeMux, error) {
 
 		// redirect root path '/' to '/france'
 		if name == "france" {
-			mux.HandleFunc("/", makeRedirectHandler("/france"))
+			mux.HandleFunc("/{$}", makeRedirectHandler("/france"))
 		}
 	}
 	return &mux, nil
@@ -56,7 +60,6 @@ func makeRedirectHandler(url string) func(http.ResponseWriter, *http.Request) {
 		http.Redirect(resp, req, url, http.StatusMovedPermanently)
 	}
 }
-
 
 func StartSimple(maps MapCollection) error {
 
