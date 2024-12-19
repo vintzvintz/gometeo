@@ -10,7 +10,7 @@ import (
 
 func TestBuildJson(t *testing.T) {
 	m := buildTestMap(t)
-	j, err := m.BuildJson()
+	j, err := m.buildJson()
 	if err != nil {
 		t.Fatalf("BuildJson() error: %s", err)
 	}
@@ -90,7 +90,7 @@ func TestFindDaily(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := mf.FindDaily(id, ech)
+	d := mf.findDaily(id, ech)
 	if d == nil {
 		t.Fatalf("FindDaily() did not found daily forecast for location '%s' at '%s'", id, ech)
 	}

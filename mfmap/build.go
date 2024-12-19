@@ -1,7 +1,9 @@
 package mfmap
 
 import (
+	"bytes"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -116,7 +118,7 @@ func init() {
 	htmlTemplate = template.Must(template.New("").Parse(templateFile))
 }
 
-func (m *MfMap) BuildJson() (*JsonMap, error) {
+func (m *MfMap) buildJson() (*JsonMap, error) {
 	j := JsonMap{
 		Name:     m.Data.Info.Name,
 		Idtech:   m.Data.Info.IdTechnique,
@@ -126,6 +128,22 @@ func (m *MfMap) BuildJson() (*JsonMap, error) {
 		Prevs:    m.Forecasts.byEcheance(),
 	}
 	return &j, nil
+}
+
+func (m *MfMap) BuildJson(wr io.Writer) error {
+	obj, err := m.buildJson()
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(wr, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *MfMap) BuildGraphdata() (Graphdata, error) {
@@ -175,7 +193,7 @@ func (mf MultiforecastData) byEcheance() PrevList {
 			}
 
 			// get daily prev for the day/poi
-			daily := mf.FindDaily(mf[i].Properties.Insee, e.Day)
+			daily := mf.findDaily(mf[i].Properties.Insee, e.Day)
 			if daily == nil {
 				log.Default().Printf("Missing daily data for id=%s (%s) echeance %s",
 					insee, name, e)
@@ -236,6 +254,7 @@ type TemplateData struct {
 	HeadTitle       string
 	Breadcrumb      string
 	Idtech          string
+	Path            string
 }
 
 func (m *MfMap) BuildHtml(wr io.Writer) error {
@@ -245,10 +264,16 @@ func (m *MfMap) BuildHtml(wr io.Writer) error {
 		Breadcrumb:      "TODO : generer le breadcrumb",
 		Idtech:          m.Data.Info.IdTechnique,
 	}
+	p, err := m.Name()
+	if err != nil {
+		return err
+	}
+	data.Path = p
+
 	return htmlTemplate.Execute(wr, &data)
 }
 
-func (mf *MultiforecastData) FindDaily(id CodeInsee, ech time.Time) *Daily {
+func (mf *MultiforecastData) findDaily(id CodeInsee, ech time.Time) *Daily {
 	for _, feat := range *mf {
 		if feat.Properties.Insee != id {
 			continue
@@ -327,4 +352,8 @@ func (d Daily) withTimestamp(data string) (ChroValue, error) {
 	default:
 		return nil, ErrNoSuchData
 	}
+}
+
+func (e Echeance) MarshalText() (text []byte, err error) {
+	return []byte(fmt.Sprintf("%s %s", e.Day, e.Moment)), nil
 }
