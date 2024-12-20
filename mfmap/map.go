@@ -117,17 +117,25 @@ func (m *MfMap) ParseSvgMap(r io.Reader) error {
 }
 
 func (m *MfMap) ParseGeography(r io.Reader) error {
+	if m.Geography != nil {
+		return fmt.Errorf("MfMap.Geography already populated")
+	}
 	geo, err := parseGeoCollection(r)
 	if err != nil {
 		return err
 	}
-
 	// remove unavailable subzones like "marine" or "montagne"
 	subzones := make(geoFeatures, 0, len(geo.Features))
 	for _, feat := range geo.Features {
 		if m.Data.Subzones.Has(feat.Properties.Prop0.Nom) {
 			subzones = append(subzones, feat)
 		}
+	}
+	// check consistency
+	got := len(subzones)
+	want := len(m.Data.Subzones)
+	if got != want {
+		return fmt.Errorf("all subzones declared in map metadata should exist in geography data (got %d want %d)", got, want)
 	}
 	geo.Features = subzones
 	m.Geography = geo

@@ -303,6 +303,6 @@ func TestParseGeography(t *testing.T) {
 	}
 	err :=  m.ParseGeography( j )
 	if err != nil {
-		t.Fatalf("parseGeography() error: %s", err)
+		t.Fatalf("ParseGeography() error: %s", err)
 	}
 }
