@@ -291,3 +291,18 @@ func TestName(t *testing.T) {
 		t.Fatalf("MfMap.Name() got '%s' want '%s'", got, want)
 	}
 }
+
+
+func TestParseGeography(t *testing.T) {
+
+	j := openFile(t, fileJsonGeography)
+	defer j.Close()
+
+	m := MfMap{
+		Data: testMapParser(t, fileJsonRacine),
+	}
+	err :=  m.ParseGeography( j )
+	if err != nil {
+		t.Fatalf("parseGeography() error: %s", err)
+	}
+}

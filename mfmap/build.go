@@ -16,10 +16,12 @@ type JsonMap struct {
 	Name     string
 	Idtech   string
 	Taxonomy string
-	SubZones []geoFeature
+	SubZones geoFeatures
 	Bbox     Bbox
 	Prevs    PrevList
 }
+
+type geoFeatures []*geoFeature
 
 type PrevList map[Echeance]PrevsAtEch
 

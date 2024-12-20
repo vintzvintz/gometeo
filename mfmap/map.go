@@ -24,11 +24,11 @@ type MfMap struct {
 }
 
 type MapData struct {
-	Path     MapPath            `json:"path"`
-	Info     MapInfo            `json:"mf_map_layers_v2"`
-	Children []Poi              `json:"mf_map_layers_v2_children_poi"`
-	Subzones map[string]Subzone `json:"mf_map_layers_v2_sub_zone"`
-	Tools    MapTools           `json:"mf_tools_common"`
+	Path     MapPath  `json:"path"`
+	Info     MapInfo  `json:"mf_map_layers_v2"`
+	Children []Poi    `json:"mf_map_layers_v2_children_poi"`
+	Subzones Subzones `json:"mf_map_layers_v2_sub_zone"`
+	Tools    MapTools `json:"mf_tools_common"`
 }
 
 type MapPath struct {
@@ -63,6 +63,8 @@ type Subzone struct {
 	Path string `json:"path"`
 	Name string `json:"name"`
 }
+
+type Subzones map[string]Subzone
 
 type MapTools struct {
 	Alias  string    `json:"alias"`
@@ -119,6 +121,15 @@ func (m *MfMap) ParseGeography(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+
+	// remove unavailable subzones like "marine" or "montagne"
+	subzones := make(geoFeatures, 0, len(geo.Features))
+	for _, feat := range geo.Features {
+		if m.Data.Subzones.Has(feat.Properties.Prop0.Nom) {
+			subzones = append(subzones, feat)
+		}
+	}
+	geo.Features = subzones
 	m.Geography = geo
 	return nil
 }
@@ -315,4 +326,13 @@ func (sf *stringFloat) UnmarshalJSON(b []byte) error {
 
 func (m *MfMap) Name() (string, error) {
 	return strings.ToLower(m.Data.Info.Name), nil
+}
+
+func (sz Subzones) Has(zone string) bool {
+	for k := range sz {
+		if sz[k].Name == zone {
+			return true
+		}
+	}
+	return false
 }
