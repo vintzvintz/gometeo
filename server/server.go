@@ -49,22 +49,30 @@ func makeMainHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 			log.Printf("BuildHtml on req '%s' error: %s", req.URL, err)
 			return
 		}
-		n, err := io.Copy(resp, &buf)
+		_, err = io.Copy(resp, &buf)
 		if err != nil {
 			log.Printf("send error: %s", err)
 		}
-		log.Printf("GET %s sent %d bytes", req.URL, n)
+		//		log.Printf("GET %s sent %d bytes", req.URL, n)
 	}
 }
 
 func makeDataHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		err := m.BuildJson(resp)
+		buf := bytes.Buffer{}
+		buf.WriteString("\"use strict\";\nvar globalMapData = ")
+		err := m.BuildJson(&buf)
 		if err != nil {
 			resp.WriteHeader(http.StatusInternalServerError)
 			log.Printf("BuildHtml on req '%s' error: %s", req.URL, err)
 			return
 		}
+		resp.Header().Add("Content-Type", "text/javascript")
+		_, err = io.Copy(resp, &buf)
+		if err != nil {
+			log.Printf("send error: %s", err)
+		}
+		//		log.Printf("GET %s sent %d bytes", req.URL, n)
 	}
 }
 
