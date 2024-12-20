@@ -64,7 +64,7 @@ type Subzone struct {
 	Name string `json:"name"`
 }
 
-type Subzones map[string]Subzone
+type Subzones map[string]Subzone // key = IdTechnique
 
 type MapTools struct {
 	Alias  string    `json:"alias"`
@@ -80,6 +80,10 @@ type MapConfig struct {
 const (
 	apiMultiforecast = "/multiforecast"
 )
+
+var blockedIds = []string{
+	"DEPT988", // nouvelle caledonie
+}
 
 func (m *MfMap) ParseHtml(html io.Reader) error {
 	j, err := htmlFilter(html)
@@ -343,4 +347,21 @@ func (sz Subzones) Has(zone string) bool {
 		}
 	}
 	return false
+}
+
+func (sz *Subzones) UnmarshalJSON(b []byte) error {
+
+	// call default json unmarshalling to a map[string]Subzone
+	tmp := make(map[string]Subzone)
+	err := json.Unmarshal(b, &tmp)
+	if err != nil {
+		return err
+	}
+
+	// filter out unavailable zones
+	for _, id := range blockedIds {
+		delete(tmp, id)
+	}
+	*sz = tmp
+	return nil
 }
