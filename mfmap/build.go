@@ -74,8 +74,10 @@ type ChroValue interface{}
 
 type Chronique []ChroValue
 
+// time-series for charts
 type Graphdata map[string][]Chronique
 
+// time reference javascript
 var jsEpoch = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
 var ErrNoSuchData = fmt.Errorf("no such data")
