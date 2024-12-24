@@ -24,7 +24,27 @@ type JsonMap struct {
 type geoFeatures []*geoFeature
 
 type PrevList map[Echeance]PrevsAtEch
+/*
+type PrevList map[Jour]PrevsAtDay
 
+// relative day from "today" (-1:yesterday, +1 tomorrow, ...)
+type Jour int   
+
+// data for a day, to be displayed as a row of 4 moments
+type PrevsAtDay struct {
+	Matin     *PrevsAtMoment
+	AprèsMidi *PrevsAtMoment
+	Soiree    *PrevsAtMoment
+	Nuit      *PrevsAtMoment
+}
+
+// all available forecasts for a given point in time (moment + day)
+type PrevsAtMoment struct {
+	Time    time.Time
+	Updated time.Time
+	Prevs   []PrevAtPoi
+}
+*/
 // Prevlist key is a composite type
 type Echeance struct {
 	Moment MomentName
@@ -254,24 +274,25 @@ func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 type TemplateData struct {
 	HeadDescription string
 	HeadTitle       string
-	Breadcrumb      string
-	Idtech          string
-	Path            string
+	// Breadcrumb      string
+	// Idtech          string
+	// Path            string
 }
 
 func (m *MfMap) BuildHtml(wr io.Writer) error {
 	data := TemplateData{
 		HeadDescription: fmt.Sprintf("Description de %s", m.Data.Info.Name),
 		HeadTitle:       fmt.Sprintf("Titre de %s", m.Data.Info.Name),
-		Breadcrumb:      "TODO : generer le breadcrumb",
-		Idtech:          m.Data.Info.IdTechnique,
+		//Breadcrumb:      "TODO : generer le breadcrumb",
+		//Idtech:          m.Data.Info.IdTechnique,
 	}
-	p, err := m.Name()
-	if err != nil {
-		return err
-	}
-	data.Path = p
-
+	/*
+		p, err := m.Name()
+		if err != nil {
+			return err
+		}
+		data.Path = p
+	*/
 	return htmlTemplate.Execute(wr, &data)
 }
 
@@ -356,6 +377,7 @@ func (d Daily) withTimestamp(data string) (ChroValue, error) {
 	}
 }
 
+// MarshalText marshals an Echeance (composite type) to a json object key (string)
 func (e Echeance) MarshalText() (text []byte, err error) {
 	return []byte(fmt.Sprintf("%s %s", e.Day, e.Moment)), nil
 }
