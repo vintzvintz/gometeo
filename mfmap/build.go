@@ -31,10 +31,10 @@ type Jour int
 // data for a day, to be displayed as a row of 4 moments
 // use pointers so unavailable entries can be nil
 type PrevsAtDay struct {
-	Matin     *PrevsAtMoment
-	AprèsMidi *PrevsAtMoment
-	Soiree    *PrevsAtMoment
-	Nuit      *PrevsAtMoment
+	Matin     *PrevsAtMoment `json:"matin"`
+	AprèsMidi *PrevsAtMoment `json:"après-midi"`
+	Soiree    *PrevsAtMoment `json:"soirée"`
+	Nuit      *PrevsAtMoment `json:"nuit"`
 }
 
 // all available forecasts for a given point in time (moment + day)
@@ -164,6 +164,55 @@ func (m *MfMap) BuildGraphdata() (Graphdata, error) {
 	return m.Forecasts.toChroniques()
 }
 
+// momPtr simplifies and reduce duplication of the switch
+func (pad *PrevsAtDay) getMomentPtr(e Echeance, prevTime, updateTime time.Time) **PrevsAtMoment {
+	var momPtr **PrevsAtMoment
+	switch e.Moment {
+	case morningStr:
+		momPtr = &pad.Matin
+	case afternoonStr:
+		momPtr = &pad.AprèsMidi
+	case eveningStr:
+		momPtr = &pad.Soiree
+	case nightStr:
+		momPtr = &pad.Nuit
+	default:
+		log.Panicf("invalid moment %s ", e.Moment)
+	}
+
+	// create Prev@Moment struct / slice on first pass
+	if *momPtr == nil {
+		*momPtr = &PrevsAtMoment{
+			Time:    prevTime,
+			Updated: updateTime,
+			Prevs:   []PrevAtPoi{},
+		}
+	} else {
+		// warns if echeances are not unique for different POIs
+		// on a same day/moment key
+		if (*momPtr).Time != prevTime {
+			log.Default().Printf("Inconsistent times for [%s] '%s' != '%s'",
+				e, (*momPtr).Time, prevTime)
+		}
+	}
+	return momPtr
+}
+
+func (prev *Forecast) getEcheance() Echeance {
+
+	// build an Echeance to use as PrevList key
+	year, month, day := prev.Time.Date()
+	// "night" moment is equal or after midnight, but displayed with previous day
+	if prev.Moment == nightStr {
+		day -= 1
+	}
+	e := Echeance{
+		Moment: prev.Moment,
+		Day:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
+	}
+	return e
+}
+
 func (mf MultiforecastData) byEcheance() PrevList {
 	pl := make(PrevList)
 
@@ -173,81 +222,43 @@ func (mf MultiforecastData) byEcheance() PrevList {
 		coords := mf[i].Geometry.Coords
 		name := mf[i].Properties.Name
 		insee := mf[i].Properties.Insee
+		updateTime := mf[i].UpdateTime
 
 		// process short-term forecasts first
 		for j := range *prevs {
+
 			prev := &((*prevs)[j])
+			e := prev.getEcheance()
+			jour := e.DaysFrom(time.Now())
 
-			// build an Echeance to use as PrevList key
-			year, month, day := prev.Time.Date()
-			// "night" moment is equal or after midnight, but displayed with previous day
-			if prev.Moment == nightStr {
-				day -= 1
-			}
-			e := Echeance{
-				Moment: prev.Moment,
-				Day:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
-			}
-			j := e.DaysFrom(time.Now())
-
-			// pad struct contains 4 pointers,
 			// pl[j] is not directly adressable, so we work on a local struct,
-			// then we'll overwrite pl[j] map entry
-			pad, ok := pl[j]
+			// copy is OK because pad struct contains just 4 pointers.
+			// we'll overwrite pl[j] map entry at loop end.
+			pad, ok := pl[jour]
 			if !ok {
 				pad = PrevsAtDay{}
 			}
 
-			// momPtr simplifies and reduce duplication of the switch
-			var momPtr **PrevsAtMoment
-			switch e.Moment {
-			case morningStr:
-				momPtr = &pad.Matin
-			case afternoonStr:
-				momPtr = &pad.AprèsMidi
-			case eveningStr:
-				momPtr = &pad.Soiree
-			case nightStr:
-				momPtr = &pad.Nuit
-			default:
-				log.Panicf("invalid moment %s ", e.Moment)
-			}
-
-			// create Prev@Moment struct / slice on first pass
-			if *momPtr == nil {
-				*momPtr = &PrevsAtMoment{
-					Time:    prev.Time,
-					Updated: mf[i].UpdateTime,
-					Prevs:   []PrevAtPoi{},
-				}
-			} else {
-				// warns if echeances are not unique for different POIs
-				// on a same day/moment key
-				if (*momPtr).Time != prev.Time {
-					log.Default().Printf("Inconsistent times for [%s] '%s' != '%s'",
-						e, (*momPtr).Time, prev.Time)
-				}
-			}
+			momPtr := pad.getMomentPtr(e, prev.Time, updateTime)
 
 			// get daily prev for the day/poi
-			daily := mf.findDaily(mf[i].Properties.Insee, e.Day)
+			daily := mf.findDaily(insee, e.Day)
 			if daily == nil {
 				log.Default().Printf("Missing daily data for id=%s (%s) echeance %s",
 					insee, name, e)
 			}
 
-			// wrap forecast and daily in a struct
+			// wrap forecast and daily together and append to the time-serie of current poi
 			pap := PrevAtPoi{
 				Title:  name,
 				Coords: coords,
 				Prev:   prev,
 				Daily:  daily,
 			}
-
 			(*momPtr).Prevs = append((*momPtr).Prevs, pap)
 
 			// update Prevs@Day in PrevList map
-			pl[j] = pad
+			pl[jour] = pad
 		}
 	}
 	return pl
@@ -331,13 +342,13 @@ func (m *MfMap) BuildHtml(wr io.Writer) error {
 	return htmlTemplate.Execute(wr, &data)
 }
 
-func (mf *MultiforecastData) findDaily(id CodeInsee, ech time.Time) *Daily {
+func (mf *MultiforecastData) findDaily(id CodeInsee, day time.Time) *Daily {
 	for _, feat := range *mf {
 		if feat.Properties.Insee != id {
 			continue
 		}
 		for _, d := range feat.Properties.Dailies {
-			if d.Time != ech {
+			if d.Time != day {
 				continue
 			}
 			return &d
