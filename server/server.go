@@ -30,10 +30,9 @@ func NewMeteoMux(maps MapCollection) (http.Handler, error) {
 
 		// redirect root path '/' to '/france'
 		if name == "france" {
-			mux.HandleFunc("/{$}", makeRedirectHandler("/france/"))
+			mux.HandleFunc("/{$}", makeRedirectHandler("/france"))
 		}
 	}
-
 	hdl := wrapLogger(&mux)
 	return hdl, nil
 }
@@ -60,14 +59,13 @@ func makeMainHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 func makeDataHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		buf := bytes.Buffer{}
-		buf.WriteString("\"use strict\";\nvar globalMapData = ")
 		err := m.BuildJson(&buf)
 		if err != nil {
 			resp.WriteHeader(http.StatusInternalServerError)
 			log.Printf("BuildHtml on req '%s' error: %s", req.URL, err)
 			return
 		}
-		resp.Header().Add("Content-Type", "text/javascript")
+		resp.Header().Add("Content-Type", "application/json")
 		_, err = io.Copy(resp, &buf)
 		if err != nil {
 			log.Printf("send error: %s", err)

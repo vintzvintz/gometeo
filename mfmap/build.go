@@ -13,12 +13,12 @@ import (
 )
 
 type JsonMap struct {
-	Name     string
-	Idtech   string
-	Taxonomy string
-	SubZones geoFeatures
-	Bbox     Bbox
-	Prevs    PrevList
+	Name     string      `json:"name"`
+	Idtech   string      `json:"idtech"`
+	Taxonomy string      `json:"taxonomy"`
+	SubZones geoFeatures `json:"subzones"`
+	Bbox     Bbox        `json:"bbox"`
+	Prevs    PrevList    `json:"prevs"`
 }
 
 type geoFeatures []*geoFeature
