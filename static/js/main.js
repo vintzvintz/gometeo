@@ -1,7 +1,15 @@
 
 import { createApp, ref } from 'vue'
 
-import {LeVincent, ElVincenzo} from './components/LeVincent.js'
+import {
+  RootComponent, 
+  Breadcrumb, 
+  DataPicker,
+  TimespanPicker,
+  TooltipsToggler,
+  MapGridComponent,
+  MapComponent,
+} from './components/LeVincent.js'
 
 const app = createApp({
   setup() {
@@ -9,14 +17,15 @@ const app = createApp({
     return { message }
   },
 
-  template: /*html*/`
-  <LeVincent title="message"></LeVincent>
-  <LeVincent2 title="weshito"></LeVincent2>`
+  template: /*html*/`<RootComponent/>`
 })
 
-
-app.component("LeVincent", LeVincent)
-app.component("LeVincent2", ElVincenzo)
-
+app.component("RootComponent", RootComponent)
+app.component("Breadcrumb", Breadcrumb)
+app.component("DataPicker", DataPicker)
+app.component("TimespanPicker", TimespanPicker)
+app.component("TooltipsToggler", TooltipsToggler)
+app.component("MapGridComponent", MapGridComponent)
+app.component("MapComponent", MapComponent)
 
 app.mount('#vuejs_root')
