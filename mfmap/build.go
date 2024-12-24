@@ -23,14 +23,13 @@ type JsonMap struct {
 
 type geoFeatures []*geoFeature
 
-type PrevList map[Echeance]PrevsAtEch
-/*
 type PrevList map[Jour]PrevsAtDay
 
 // relative day from "today" (-1:yesterday, +1 tomorrow, ...)
-type Jour int   
+type Jour int
 
 // data for a day, to be displayed as a row of 4 moments
+// use pointers so unavailable entries can be nil
 type PrevsAtDay struct {
 	Matin     *PrevsAtMoment
 	AprèsMidi *PrevsAtMoment
@@ -44,25 +43,18 @@ type PrevsAtMoment struct {
 	Updated time.Time
 	Prevs   []PrevAtPoi
 }
-*/
+
 // Prevlist key is a composite type
 type Echeance struct {
 	Moment MomentName
 	Day    time.Time // yyyy-mm-dd @ 00-00-00 UTC
 }
 
-// all available forecasts for a single point of interest
-type PrevsAtEch struct {
-	Time    time.Time
-	Updated time.Time
-	Prevs   []PrevAtPoi
-}
-
 // forecast data for a single (poi, date) point
 type PrevAtPoi struct {
 	Title  string
 	Coords Coordinates
-	Short  *Forecast
+	Prev   *Forecast
 	Daily  *Daily
 }
 
@@ -177,40 +169,63 @@ func (mf MultiforecastData) byEcheance() PrevList {
 
 	// iterate over POIs, known as "Features" in json data
 	for i := range mf {
-		shorts := &(mf[i].Properties.Forecasts)
+		prevs := &(mf[i].Properties.Forecasts)
 		coords := mf[i].Geometry.Coords
 		name := mf[i].Properties.Name
 		insee := mf[i].Properties.Insee
 
 		// process short-term forecasts first
-		for j := range *shorts {
-			short := &((*shorts)[j])
+		for j := range *prevs {
+			prev := &((*prevs)[j])
 
 			// build an Echeance to use as PrevList key
+			year, month, day := prev.Time.Date()
+			// "night" moment is equal or after midnight, but displayed with previous day
+			if prev.Moment == nightStr {
+				day -= 1
+			}
 			e := Echeance{
-				Moment: short.Moment,
-				Day: time.Date(
-					short.Time.Year(), short.Time.Month(), short.Time.Day(),
-					0, 0, 0, 0, time.UTC), // hour, min, sec, nano
+				Moment: prev.Moment,
+				Day:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
+			}
+			j := e.DaysFrom(time.Now())
+
+			// pad struct contains 4 pointers,
+			// pl[j] is not directly adressable, so we work on a local struct,
+			// then we'll overwrite pl[j] map entry
+			pad, ok := pl[j]
+			if !ok {
+				pad = PrevsAtDay{}
 			}
 
-			// get previsions@echeance struct
-			var pae PrevsAtEch
-			_, ok := pl[e]
-			if !ok {
-				// create Prev@Ech slice if it does not already exist
-				pae = PrevsAtEch{
-					Time:    short.Time,
+			// momPtr simplifies and reduce duplication of the switch
+			var momPtr **PrevsAtMoment
+			switch e.Moment {
+			case morningStr:
+				momPtr = &pad.Matin
+			case afternoonStr:
+				momPtr = &pad.AprèsMidi
+			case eveningStr:
+				momPtr = &pad.Soiree
+			case nightStr:
+				momPtr = &pad.Nuit
+			default:
+				log.Panicf("invalid moment %s ", e.Moment)
+			}
+
+			// create Prev@Moment struct / slice on first pass
+			if *momPtr == nil {
+				*momPtr = &PrevsAtMoment{
+					Time:    prev.Time,
 					Updated: mf[i].UpdateTime,
 					Prevs:   []PrevAtPoi{},
 				}
 			} else {
-				pae = pl[e]
 				// warns if echeances are not unique for different POIs
 				// on a same day/moment key
-				if pae.Time != short.Time {
+				if (*momPtr).Time != prev.Time {
 					log.Default().Printf("Inconsistent times for [%s] '%s' != '%s'",
-						e, pae.Time, short.Time)
+						e, (*momPtr).Time, prev.Time)
 				}
 			}
 
@@ -225,11 +240,14 @@ func (mf MultiforecastData) byEcheance() PrevList {
 			pap := PrevAtPoi{
 				Title:  name,
 				Coords: coords,
-				Short:  short,
+				Prev:   prev,
 				Daily:  daily,
 			}
-			pae.Prevs = append(pae.Prevs, pap)
-			pl[e] = pae
+
+			(*momPtr).Prevs = append((*momPtr).Prevs, pap)
+
+			// update Prevs@Day in PrevList map
+			pl[j] = pad
 		}
 	}
 	return pl
@@ -242,8 +260,25 @@ func (e Echeance) String() string {
 	)
 }
 
+// MarshalText marshals an Echeance (composite type) to a json object key (string)
+func (e Echeance) MarshalText() (text []byte, err error) {
+	//return []byte(fmt.Sprintf("%s %s", e.Day, e.Moment)), nil
+	return []byte(e.String()), nil
+}
+
+// RelDay is the number of days since "now"; may be negative for past Echeances
+// used to decide on which "row" of the map is displayed
+// now : only year, month and days are considered,
+// hours/minutes/seconds and timezone are discarded.
+func (e Echeance) DaysFrom(now time.Time) Jour {
+	year, month, day := now.Date()
+	today := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	d := e.Day.Sub(today).Round(24*time.Hour).Hours() / 24
+	return Jour(d)
+}
+
 // toChroniques() formats Multiforecastdata into Graphdata
-// for client-side plottings
+// for client-side charts
 func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 	g := Graphdata{}
 	for i := range mf {
@@ -375,9 +410,4 @@ func (d Daily) withTimestamp(data string) (ChroValue, error) {
 	default:
 		return nil, ErrNoSuchData
 	}
-}
-
-// MarshalText marshals an Echeance (composite type) to a json object key (string)
-func (e Echeance) MarshalText() (text []byte, err error) {
-	return []byte(fmt.Sprintf("%s %s", e.Day, e.Moment)), nil
 }

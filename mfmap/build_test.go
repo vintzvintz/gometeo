@@ -19,6 +19,7 @@ func TestBuildJson(t *testing.T) {
 		t.Errorf("jsonMap.Name=%s expected %s", j.Name, "France")
 	}
 
+	// TODO check other fields
 	/*
 		type JsonMap struct {
 			Name string
@@ -26,6 +27,7 @@ func TestBuildJson(t *testing.T) {
 			Taxonomy string
 			SubZones geoFeatures
 			Bbox Bbox
+			Prevs
 		}
 	*/
 }
@@ -71,7 +73,6 @@ func TestToChronique(t *testing.T) {
 }
 
 func TestEcheanceString(t *testing.T) {
-
 	m := morningStr
 	d, _ := time.Parse(time.RFC3339, "2024-12-02T15:51:12.000Z")
 	e := Echeance{MomentName(m), d}
@@ -80,6 +81,28 @@ func TestEcheanceString(t *testing.T) {
 	got := e.String()
 	if got != want {
 		t.Errorf("Echeance.String()='%s' want '%s'", got, want)
+	}
+}
+
+func TestDaysFrom(t *testing.T) {
+	now := time.Date(2024, 12, 28, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		e    Echeance
+		want Jour
+	}{
+		{e: Echeance{Day: time.Date(2024, 12, 26, 0, 0, 0, 0, time.UTC)}, want: -2},
+		{e: Echeance{Day: time.Date(2024, 12, 27, 0, 0, 0, 0, time.UTC)}, want: -1},
+		{e: Echeance{Day: time.Date(2024, 12, 28, 0, 0, 0, 0, time.UTC)}, want: 0},
+		{e: Echeance{Day: time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)}, want: 3},
+		{e: Echeance{Day: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}, want: 4},
+		{e: Echeance{Day: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)}, want: 5},
+		{e: Echeance{Day: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, want: 365 + 4},
+	}
+	for i, test := range tests {
+		got := test.e.DaysFrom(now)
+		if got != test.want {
+			t.Errorf("DaysFrom() test #%d : %s -> %s got %d want %d", i, now, test.e, got, test.want)
+		}
 	}
 }
 
@@ -106,6 +129,5 @@ func TestBuildHtml(t *testing.T) {
 	// check html content
 	// TODO
 	b, _ := io.ReadAll(buf)
-	t.Log( string(b[:500]))
+	t.Log(string(b[:500]))
 }
-
