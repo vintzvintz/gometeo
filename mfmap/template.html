@@ -2,20 +2,33 @@
 <html lang="fr_FR">
 <head>
   <meta charset="utf-8">
+  <script type="importmap">
+    {
+      "imports": {
+        "vue": "/js/vue.esm-browser.js"
+      }
+    }
+  </script>
+  <script type="module" src="/js/main.js"></script>
+
+  <!--   TODO : add gzip compression on static files 
+  "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js" -->
+
   <meta name="description" content="{{.HeadDescription}}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title> {{.HeadTitle}} </title>
   <link rel="stylesheet" href="css/leaflet.css" />
   <link rel="stylesheet" href="css/meteo.css" />
-  <!-- Favicon stuff -->
+  <!-- Favicon stuff
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="manifest" href="/site.webmanifest">
+  <link rel="manifest" href="/site.webmanifest"> -->
 </head>
+
 <body>
   <div id="vuejs_root">
-    <header>
+    <!-- <header>
       <nav class="topnav">
         {{.Breadcrumb}}
       </nav>
@@ -28,22 +41,22 @@
       <highchart-graph v-if="display_graph"></highchart-graph>
       </section>
     </header>
-    <!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
+    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> 
     <main class="content">
       <div class="map_grid_container">
         <map-component v-for='rang in get_rangs' v-bind:key="rang" v-bind:rang="rang">Chargement...</map-component>
       </div>
     </main>
-  </div>
-<!--
-  <footer class="footer">     <p>Footer</p>   </footer>
 -->
+  </div>
+
+  <!--
   <script src="/js/vuex.js"></script>
   <script src="/js/vue.js"></script>
   <script src="/js/leaflet.js"></script>
   <script src="/js/highcharts.js"></script>
   <script src="/js/highcharts-debugger.js"></script>
-  <script src="/{{.Path}}/data"></script>
-  <script src="/js/meteo.js"></script>
+  <script src="/{{.Path}}/data"></script>  -->
 </body>
+
 </html>
