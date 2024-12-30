@@ -192,9 +192,12 @@ export const MapComponent = {
   },
 
   template: /*html*/`
-<div class="map_grid_item"><div class="titre_carte">
-  {{getWeatherTitle()}} - {{getEcheance()}}
-</div></div>`
+<div class="map_grid_item">
+  <div class="titre_carte">
+    {{getWeatherTitle()}} - {{getEcheance()}}
+  </div>
+  <div id="get_mapid" class="map_component">MapComponent</div>
+</div>`
 
 }
 
