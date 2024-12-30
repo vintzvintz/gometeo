@@ -75,29 +75,6 @@ export const RootComponent = {
 </main>`,
 }
 
-
-
-export const MapRowComponent = {
-
-  props:{
-    prevsDuJour: Array,
-    activeWeather: String,
-  },
-
-  setup(props) {
-  },
-
-  template: /*html*/`
-  <p> ... inside MapRowComponent ... </p>
-  <MapComponent v-for="(prev, idx) in prevsDuJour"
-  :key="idx"
-  :prev="prev"
-  :activeWeather="activeWeather">
-</MapComponent> 
-  `
-}
-
-
 export const Breadcrumb = {
   props: {
     breadcrumb: Array
@@ -176,18 +153,50 @@ export const MapGridComponent = {
 }
 
 
+export const MapRowComponent = {
+
+  props:{
+    prevsDuJour: Array,
+    activeWeather: String,
+  },
+
+  setup(props) {
+  },
+
+  template: /*html*/`
+  <p> ... inside MapRowComponent ... </p>
+  <MapComponent v-for="(prev, idx) in prevsDuJour"
+  :key="idx"
+  :prev="prev"
+  :activeWeather="activeWeather">
+</MapComponent>`
+}
+
+
 export const MapComponent = {
   props: {
     prev : Object,
     activeWeather : String,
   },
 
-  setup() {
+  setup(props) {
+
+    const getWeatherTitle = function () { 
+      return "title"
+    }
+
+    const getEcheance = (() => {
+      return "echeance"
+    })
+    return {getWeatherTitle, getEcheance}
   },
 
   template: /*html*/`
-  <p>MapComponent activeWeather={{activeWeather}}</p>
-  <p>updated {{prev.updated}} - échéance {{prev.echeance}}</p>
-  `,
+<div class="map_grid_item"><div class="titre_carte">
+  {{getWeatherTitle()}} - {{getEcheance()}}
+</div></div>`
+
 }
+
+
 
