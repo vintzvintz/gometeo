@@ -8,6 +8,7 @@ import {
   TimespanPicker,
   TooltipsToggler,
   MapGridComponent,
+  MapRowComponent,
   MapComponent,
 } from './components/LeVincent.js'
 
@@ -26,6 +27,7 @@ app.component("DataPicker", DataPicker)
 app.component("TimespanPicker", TimespanPicker)
 app.component("TooltipsToggler", TooltipsToggler)
 app.component("MapGridComponent", MapGridComponent)
+app.component("MapRowComponent", MapRowComponent)
 app.component("MapComponent", MapComponent)
 
 app.mount('#vuejs_root')

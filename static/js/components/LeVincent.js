@@ -5,13 +5,21 @@ export const RootComponent = {
 
   setup() {
 
+    // map data properties must be declared at component creation 
+    // filled asynchronously by fetchMapdata() later
+    const mapData = reactive({
+      'name':'',
+      'idtech':'',
+      'taxonomy':'',
+      'bbox': {},
+      'subzones':new Array(),
+      'prevs':{},
+    })
 
-    const mapData = reactive({})
-
-
+    // selection of displayed data
     const tooltipsEnabled = ref( false )
-    const activeWeather = ref("")
-    const activeTimespan = ref("")
+    const activeWeather = ref("default_activeWeather")
+    //const activeTimespan = ref("")
 
     const breadcrumb = reactive([ 
       {name: "pays", path: "/path_france"},
@@ -19,9 +27,8 @@ export const RootComponent = {
       {name: "dept", path: "/path_dept" },
     ])
 
-//    const prevs = reactive(new Map())
-
     async function fetchMapdata() {
+      console.log("enter fetchMapdata()")
       const res = await fetch( "/france/data")
       const data = await res.json() 
 
@@ -31,31 +38,24 @@ export const RootComponent = {
       mapData.bbox = data.bbox
       mapData.subzones = data.subzones
       mapData.prevs = data.prevs
+      console.log("exit fetchMapdata()")
     }
 
-    // get Prevs
+    // get Prevs when static page is loaded
     onMounted( fetchMapdata )
 
     // only returned items are available in template
     return {
-      mapData,
+      mapData, activeWeather, breadcrumb
     }
   },
 
 
-  template:/*html*/`
-  <p>Wesh root</p>
-  <p>mapname={{mapData.name}}</p>
-  <p>bbox={{mapData.bbox}}</p>
-  <p>subzones={{mapData.subzones}}</p>
-  <p>prevs={{mapData.prevs}}</p>
-  `,
-
-  templatexxx: /*html*/ `
+  template: /*html*/ `
   <header>
   <Breadcrumb :breadcrumb="breadcrumb"/>
   <section class="selecteurs">
-  <p>mapname={{mapname}}</p>
+  <p>mapname={{mapData.name}}</p>
   <!--  <DataPicker/>
     <div>
     <TimespanPicker/>
@@ -67,11 +67,36 @@ export const RootComponent = {
 <!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
 <main class="content">
   <MapGridComponent
-   :bbox='bbox'
-   :subzones='subzones'
-   :prevs='prevs'/>
+   :bbox='mapData.bbox'
+   :subzones='mapData.subzones'
+   :prevs='mapData.prevs'
+   :activeWeather='activeWeather'
+   />
 </main>`,
 }
+
+
+
+export const MapRowComponent = {
+
+  props:{
+    prevsDuJour: Array,
+    activeWeather: String,
+  },
+
+  setup(props) {
+  },
+
+  template: /*html*/`
+  <p> ... inside MapRowComponent ... </p>
+  <MapComponent v-for="(prev, idx) in prevsDuJour"
+  :key="idx"
+  :prev="prev"
+  :activeWeather="activeWeather">
+</MapComponent> 
+  `
+}
+
 
 export const Breadcrumb = {
   props: {
@@ -107,30 +132,30 @@ export const TimespanPicker = {
   <p>TimespanPicker component</p>`
 }
 
+
 export const MapGridComponent = {
 
   props: {
     prevs: Object,
     bbox: Object,
     subzones:Array,
-    activeweather : String,
+    activeWeather : String,
   },
 
   setup(props) {
 
     //const moments = ref(['matin', 'après-midi', 'soirée', 'nuit' ])
     const displayedJours = (() => {
-/*      const ret = []
+      console.log( 'in displayedJours() ')
+      const ret = []
       for( let jour in props.prevs) {
         let n = parseInt(jour)
-        if ( n<5 && n>=0) {
-          ret.push( jour )
+        if ( n<3 && n>=0) {
+          ret.push( props.prevs[jour] )
         }
       }
+      console.log( ret )
       return ret
-      */
-     console.log( 'in displayedJours()' )
-    return props.prevs.length
     })
 
     return {displayedJours}
@@ -138,18 +163,18 @@ export const MapGridComponent = {
 
   template: /*html*/`
 <div class="map_grid_container">
-  <p>MapGrid component displayedJours={{displayedJours()}} </p> <p>prevs.length={{prevs.length}}</p>
-  <!--    <map-component v-for='rang in get_rangs' v-bind:key="rang" v-bind:rang="rang">Chargement...</map-component> -->
-  <div v-for="jour in displayedJours" :key="jour">  
-
-    <MapComponent v-for="(prev, idx) in prevs[jour]"
-      :key="idx"
-      :prev="prev"
-      :activeweather="activeweather">
-    </MapComponent>
+  <div>
+    <p>  before MapRowComponent </p> 
+    <MapRowComponent
+    v-for="(jour, idx) in displayedJours()"
+    :key="idx"
+    :prevsDuJour="jour"
+    :activeWeather="activeWeather"
+    />
   </div>
 </div>`
 }
+
 
 export const MapComponent = {
   props: {
@@ -157,10 +182,12 @@ export const MapComponent = {
     activeWeather : String,
   },
 
+  setup() {
+  },
+
   template: /*html*/`
   <p>MapComponent activeWeather={{activeWeather}}</p>
-  <p>updated {{prev.Updated}} - échéance {{prev.Time}}</p>
-  `
+  <p>updated {{prev.updated}} - échéance {{prev.echeance}}</p>
+  `,
 }
-
 

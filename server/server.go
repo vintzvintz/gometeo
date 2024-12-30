@@ -59,8 +59,9 @@ func makeMainHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 
 func makeDataHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		log.Printf("DEBUG : attente 2 sec avant envoi données JSON")
-		time.Sleep(2 * time.Second)
+		const latence = 100
+		log.Printf("DEBUG : attente %d sec avant envoi données JSON", latence)
+		time.Sleep(latence * time.Millisecond)
 		buf := bytes.Buffer{}
 		err := m.BuildJson(&buf)
 		if err != nil {
