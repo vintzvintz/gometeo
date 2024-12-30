@@ -16,8 +16,8 @@ type JsonMap struct {
 	Name     string      `json:"name"`
 	Idtech   string      `json:"idtech"`
 	Taxonomy string      `json:"taxonomy"`
-	SubZones geoFeatures `json:"subzones"`
 	Bbox     Bbox        `json:"bbox"`
+	SubZones geoFeatures `json:"subzones"`
 	Prevs    PrevList    `json:"prevs"`
 }
 
@@ -39,9 +39,9 @@ type PrevsAtDay struct {
 
 // all available forecasts for a given point in time (moment + day)
 type PrevsAtMoment struct {
-	Time    time.Time
-	Updated time.Time
-	Prevs   []PrevAtPoi
+	Time    time.Time   `json:"echeance"`
+	Updated time.Time   `json:"updated"`
+	Prevs   []PrevAtPoi `json:"prevs"`
 }
 
 // Prevlist key is a composite type
@@ -52,10 +52,10 @@ type Echeance struct {
 
 // forecast data for a single (poi, date) point
 type PrevAtPoi struct {
-	Title  string
-	Coords Coordinates
-	Prev   *Forecast
-	Daily  *Daily
+	Title  string      `json:"titre"`
+	Coords Coordinates `json:"coords"`
+	Prev   *Forecast   `json:"prev"`
+	Daily  *Daily      `json:"daily"`
 }
 
 type ChroValueFloat struct {
@@ -423,4 +423,30 @@ func (d Daily) withTimestamp(data string) (ChroValue, error) {
 	default:
 		return nil, ErrNoSuchData
 	}
+}
+
+/*
+// Marshal all previsions into an array (ordered)
+// instead of object (unordered) to avoid client-side sorting
+func (pl PrevList) MarshalJSON() ([]byte, error) {
+
+	// find bounds
+	days := make([]Jour, 0, len(pl))
+	for d := range pl {
+		days = append(days, d)
+	}
+	slices.Sort[[]Jour, Jour](days)
+
+	prevs := make([]PrevsAtDay, 0, len(pl))
+	for _, i := range days {
+		prevs = append(prevs, pl[i])
+	}
+	return json.Marshal(prevs)
+}
+*/
+// 4 prevs of a day are marshalled into an array (ordered)
+// instead of object (unordered) to avoid client-side sorting
+func (pad PrevsAtDay) MarshalJSON() ([]byte, error) {
+	a := []*PrevsAtMoment{pad.Matin, pad.AprèsMidi, pad.Soiree, pad.Nuit}
+	return json.Marshal(a)
 }

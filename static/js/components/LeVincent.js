@@ -1,16 +1,17 @@
 
-import { ref,reactive } from 'vue'
+import { ref,reactive, onMounted } from 'vue'
 
 export const RootComponent = {
 
-  setup: function()  {
+  setup() {
 
-    const mapname = ref("default map name")
-    const idtech = ref("")
-    const taxonomy = ref("")
-    const bbox = reactive({})
 
-    const subzones = reactive([])
+    const mapData = reactive({})
+
+
+    const tooltipsEnabled = ref( false )
+    const activeWeather = ref("")
+    const activeTimespan = ref("")
 
     const breadcrumb = reactive([ 
       {name: "pays", path: "/path_france"},
@@ -18,53 +19,58 @@ export const RootComponent = {
       {name: "dept", path: "/path_dept" },
     ])
 
-    const prevs = reactive({})
+//    const prevs = reactive(new Map())
 
-    const tooltipsEnabled = ref( false )
-    const activeWeather = ref("")
-    const activeTimespan = ref("")
-
-    async function fetchPrevs() {
+    async function fetchMapdata() {
       const res = await fetch( "/france/data")
       const data = await res.json() 
-      console.log(data)
-      
-      mapname.value = data.name
-      idtech.value = data.idtech
-      taxonomy.value = data.taxonomy
-      bbox.value = data.bbox
-      subzones.value = data.subzones
-      prevs.value = data.Prevs
+
+      mapData.name = data.name
+      mapData.idtech = data.idtech
+      mapData.taxonomy = data.taxonomy
+      mapData.bbox = data.bbox
+      mapData.subzones = data.subzones
+      mapData.prevs = data.prevs
     }
 
     // get Prevs
-    fetchPrevs()
-    console.log("FetchPrev() returned")
+    onMounted( fetchMapdata )
 
     // only returned items are available in template
     return {
-      breadcrumb,
+      mapData,
     }
   },
 
 
-  template: /*html*/ `
+  template:/*html*/`
+  <p>Wesh root</p>
+  <p>mapname={{mapData.name}}</p>
+  <p>bbox={{mapData.bbox}}</p>
+  <p>subzones={{mapData.subzones}}</p>
+  <p>prevs={{mapData.prevs}}</p>
+  `,
+
+  templatexxx: /*html*/ `
   <header>
   <Breadcrumb :breadcrumb="breadcrumb"/>
   <section class="selecteurs">
-    <DataPicker/>
-  <div>
+  <p>mapname={{mapname}}</p>
+  <!--  <DataPicker/>
+    <div>
     <TimespanPicker/>
     <TooltipsToggler/>
-  </div>
+  </div> -->
 <!--  <highchart-graph v-if="display_graph"></highchart-graph> -->
   </section>
 </header>
 <!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
 <main class="content">
-  <MapGridComponent/>
-</main>`
-
+  <MapGridComponent
+   :bbox='bbox'
+   :subzones='subzones'
+   :prevs='prevs'/>
+</main>`,
 }
 
 export const Breadcrumb = {
@@ -82,7 +88,6 @@ export const Breadcrumb = {
   </ul>
 </nav>`
 }
-
 
 export const DataPicker = {
 
@@ -103,21 +108,59 @@ export const TimespanPicker = {
 }
 
 export const MapGridComponent = {
+
+  props: {
+    prevs: Object,
+    bbox: Object,
+    subzones:Array,
+    activeweather : String,
+  },
+
+  setup(props) {
+
+    //const moments = ref(['matin', 'après-midi', 'soirée', 'nuit' ])
+    const displayedJours = (() => {
+/*      const ret = []
+      for( let jour in props.prevs) {
+        let n = parseInt(jour)
+        if ( n<5 && n>=0) {
+          ret.push( jour )
+        }
+      }
+      return ret
+      */
+     console.log( 'in displayedJours()' )
+    return props.prevs.length
+    })
+
+    return {displayedJours}
+  },
+
   template: /*html*/`
 <div class="map_grid_container">
-  <p>MapGrid component</p>
+  <p>MapGrid component displayedJours={{displayedJours()}} </p> <p>prevs.length={{prevs.length}}</p>
   <!--    <map-component v-for='rang in get_rangs' v-bind:key="rang" v-bind:rang="rang">Chargement...</map-component> -->
-  <MapComponent title="Carte 1"/>
-  <MapComponent title="Carte 2"/>
-  <MapComponent title="Carte 3"/>
+  <div v-for="jour in displayedJours" :key="jour">  
+
+    <MapComponent v-for="(prev, idx) in prevs[jour]"
+      :key="idx"
+      :prev="prev"
+      :activeweather="activeweather">
+    </MapComponent>
+  </div>
 </div>`
 }
 
 export const MapComponent = {
-
   props: {
-    title: String,
+    prev : Object,
+    activeWeather : String,
   },
+
   template: /*html*/`
-  <p>MapComponent {{title}}</p>`
+  <p>MapComponent activeWeather={{activeWeather}}</p>
+  <p>updated {{prev.Updated}} - échéance {{prev.Time}}</p>
+  `
 }
+
+
