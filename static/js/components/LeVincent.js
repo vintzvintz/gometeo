@@ -213,11 +213,8 @@ export const MapComponent = {
       // setup Leaflet
       let bbox = props.data.bbox
       let bounds = L.latLngBounds([[bbox.s,bbox.w], [bbox.n,bbox.e]])
-    
-      //lMap.center = bounds.getCenter()
-
       let lMap = L.map( mapId(), {
-        //center: bounds.center,
+        center: bounds.center,
         fullscreenControl: true,
         cursor: true,
         scrollWheelZoom: false,
@@ -236,12 +233,12 @@ export const MapComponent = {
       lMap.addLayer(overlay);
       lMap.setMaxBounds(bounds);
       lMap.fitBounds(bounds);
-      lMap.setMinZoom(lMap.getBoundsZoom(bounds, false))
+      lMap.setMinZoom(lMap.getBoundsZoom(bounds, true))
     }
 
     function svgPath() { 
       var img = new Image;
-      img.src = '/svg/' + props.data.idtech + '.svg';
+      img.src = '/france/svg';
       return img
     }
 

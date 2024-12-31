@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"time"
 
 	"gometeo/mfmap"
 	"gometeo/static"
@@ -59,9 +58,6 @@ func makeMainHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 
 func makeDataHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		const latence = 50
-		log.Printf("DEBUG : attente %d sec avant envoi données JSON", latence)
-		time.Sleep(latence * time.Millisecond)
 		buf := bytes.Buffer{}
 		err := m.BuildJson(&buf)
 		if err != nil {
@@ -81,7 +77,7 @@ func makeSvgHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 
 		if len(m.SvgMap) == 0 {
-			resp.WriteHeader( http.StatusNotFound )
+			resp.WriteHeader(http.StatusNotFound)
 			log.Printf("SVG map unavailable (req.URL='%s'", req.URL)
 			return
 		}

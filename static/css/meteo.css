@@ -397,6 +397,10 @@ ul {
   width:370px;
 }
 
+.map_grid_item {
+  margin: 5px;
+}
+
 .map_grid_container {
   display: grid;
   grid-template-columns: auto auto auto auto;

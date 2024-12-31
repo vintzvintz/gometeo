@@ -89,7 +89,7 @@ func (b Bbox) Crop() Bbox {
 	return Bbox{
 		LngW: b.LngW + cropPcLeft*(b.LngE-b.LngW),
 		LatS: b.LatS + cropPcBottom*(b.LatN-b.LatS),
-		LngE: b.LngE + cropPcRight*(b.LngE-b.LngW),
+		LngE: b.LngE - cropPcRight*(b.LngE-b.LngW),
 		LatN: b.LatN - cropPcTop*(b.LatN-b.LatS),
 	}
 }
