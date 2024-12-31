@@ -46,11 +46,47 @@ func TestSvgHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	checkSvgTag(t, body)
+}
+
+func TestPictosHandler(t *testing.T) {
+	m := getMapTest(t, "/")
+	maps := MapCollection{m, m, m}
+
+	path := "/picto/wesh"
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	record := httptest.NewRecorder()
+
+	hdl := maps.makePictosHandler()
+	hdl(record, req)
+
+	body, err := io.ReadAll(record.Result().Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := http.StatusNotFound
+	got := record.Result().StatusCode
+
+	if got != want {
+		t.Fatalf("GET %s wrong response status code. got %d want %d", req.URL, got, want)
+	}
+
+	if len(body) == 0 {
+		return
+	}
+	checkSvgTag(t, body)
+}
+
+
+func checkSvgTag(t *testing.T, b []byte)  {
 	re := regexp.MustCompile(`<svg`)
-	if !re.Match(body) {
+	if !re.Match(b) {
 		t.Fatalf("missing <svg> tag")
 	}
 }
+
+
 
 var testUrls = map[string][]string{
 	"homepage": {

@@ -12,12 +12,23 @@ import (
 
 type MapCollection []*mfmap.MfMap
 
+// makePictosHandler() returns a handler serving pictos for all maps
+// picto name is last part of the request URL
+// resp receives a []byte representing a SVG picture
+func (maps MapCollection) makePictosHandler() func(http.ResponseWriter, *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		resp.WriteHeader( http.StatusNotFound )
+	}
+}
+
 type MeteoServer *http.ServeMux
 
 func NewMeteoMux(maps MapCollection) (http.Handler, error) {
 	mux := http.ServeMux{}
 
 	static.AddHandlers(&mux)
+
+	mux.HandleFunc("/picto/{name}{$}", maps.makePictosHandler())
 
 	for _, m := range maps {
 		name, err := m.Name()
