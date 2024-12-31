@@ -17,9 +17,11 @@ export const RootComponent = {
     })
 
     // selection of displayed data
-    const tooltipsEnabled = ref( false )
-    const activeWeather = ref("default_activeWeather")
-    //const activeTimespan = ref("")
+    const selections = reactive( { 
+      tooltipsEnabled: false,
+      activeWeather: String("default")
+      //activeTimespan: String("")
+    })
 
     const breadcrumb = reactive([ 
       {name: "pays", path: "/path_france"},
@@ -46,7 +48,7 @@ export const RootComponent = {
 
     // only returned items are available in template
     return {
-      mapData, activeWeather, breadcrumb
+      mapData, selections, breadcrumb
     }
   },
 
@@ -66,12 +68,9 @@ export const RootComponent = {
 </header>
 <!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
 <main class="content">
-  <MapGridComponent
-   :bbox='mapData.bbox'
-   :subzones='mapData.subzones'
-   :prevs='mapData.prevs'
-   :activeWeather='activeWeather'
-   />
+  <MapGridComponent 
+    :data="mapData" 
+    :selections="selections" />
 </main>`,
 }
 
@@ -113,10 +112,8 @@ export const TimespanPicker = {
 export const MapGridComponent = {
 
   props: {
-    prevs: Object,
-    bbox: Object,
-    subzones:Array,
-    activeWeather : String,
+    data: Object,
+    selections: Object,
   },
 
   setup(props) {
@@ -125,10 +122,10 @@ export const MapGridComponent = {
     const displayedJours = (() => {
       console.log( 'in displayedJours() ')
       const ret = []
-      for( let jour in props.prevs) {
+      for( let jour in props.data.prevs) {
         let n = parseInt(jour)
         if ( n<3 && n>=0) {
-          ret.push( props.prevs[jour] )
+          ret.push( props.data.prevs[jour] )
         }
       }
       console.log( ret )
@@ -146,8 +143,8 @@ export const MapGridComponent = {
     v-for="(jour, idx) in displayedJours()"
     :key="idx"
     :prevsDuJour="jour"
-    :activeWeather="activeWeather"
-    />
+    :data="data"
+    :selections="selections"/>
   </div>
 </div>`
 }
@@ -157,7 +154,8 @@ export const MapRowComponent = {
 
   props:{
     prevsDuJour: Array,
-    activeWeather: String,
+    data: Object,
+    selections:Object,
   },
 
   setup(props) {
@@ -168,35 +166,77 @@ export const MapRowComponent = {
   <MapComponent v-for="(prev, idx) in prevsDuJour"
   :key="idx"
   :prev="prev"
-  :activeWeather="activeWeather">
+  :data="data"
+  :selections="selections">
 </MapComponent>`
 }
 
 
 export const MapComponent = {
   props: {
-    prev : Object,
-    activeWeather : String,
+    prev: Object,
+    data : Object,
+    selections : Object,
   },
 
   setup(props) {
 
-    const getWeatherTitle = function () { 
-      return "title"
+    const weatherNames = new Map( [
+      ["default_weather_name", "Default"],
+    ])
+/*
+    const lMap = L.map( "todoMapId", {
+      //center: bounds.center,
+      fullscreenControl: true,
+      cursor: true,
+      scrollWheelZoom: false,
+      zoomSnap: 1e-4,
+      zoomDelta: .1,
+      zoomControl: false,
+      dragging: false,
+      tap: false,
+      maxBoundsViscosity: 1,
+      keyboard: false,
+      doubleClickZoom: false,
+      attributionControl: false,
+    })
+
+    function initMap() {
+      //  when timespan changes, components are cached/re-used by v-for algorithm
+      // so just skip initMap because map and subzones do not change.
+      // if (this.map) 
+      //  return true;
+
+      // setup Leaflet
+      let bbox = props.data.bbox
+      let bounds = L.latLngBounds([[bbox.s,bbox.w], [bbox.n,bbox.e]])
+    
+      //lMap.center = bounds.getCenter()
+
+      let overlay = L.imageOverlay(svgPath(), bounds);
+      lMap.addLayer(overlay);
+      lMap.setMaxBounds(bounds);
+      lMap.fitBounds(bounds);
+      lMap.setMinZoom(lMap.getBoundsZoom(bounds, false))
     }
 
-    const getEcheance = (() => {
-      return "echeance"
-    })
-    return {getWeatherTitle, getEcheance}
+    function svgPath() { 
+      var img = new Image;
+      img.src = '/svg/' + props.data.idtech + '.svg';
+      return img
+    }
+
+    initMap()*/
+    return {weatherNames}
   },
+
 
   template: /*html*/`
 <div class="map_grid_item">
   <div class="titre_carte">
-    {{getWeatherTitle()}} - {{getEcheance()}}
+    {{weatherNames[selections.activeWeather]}} - {{data.echeance}}
   </div>
-  <div id="get_mapid" class="map_component">MapComponent</div>
+  <div id="todoMapId" class="map_component">MapComponent</div>
 </div>`
 
 }
