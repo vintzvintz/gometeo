@@ -28,7 +28,7 @@ func NewMeteoMux(maps MapCollection) (http.Handler, error) {
 		log.Printf("Registering map '%s'", name)
 		mux.HandleFunc("/"+name, makeMainHandler(m))
 		mux.HandleFunc("/"+name+"/data", makeDataHandler(m))
-		//mux.HandleFunc("/"+name+"/svg", makeSvgHandler(m))
+		mux.HandleFunc("/"+name+"/svg", makeSvgHandler(m))
 
 		// redirect root path '/' to '/france'
 		if name == "france" {
