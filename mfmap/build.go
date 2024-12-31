@@ -226,7 +226,7 @@ func (mf MultiforecastData) byEcheance() PrevList {
 		insee := mf[i].Properties.Insee
 		updateTime := mf[i].UpdateTime
 
-		// process short-term forecasts first
+		// iterate over echeances
 		for j := range *prevs {
 
 			prev := &((*prevs)[j])
@@ -235,7 +235,7 @@ func (mf MultiforecastData) byEcheance() PrevList {
 
 			// pl[j] is not directly adressable, so we work on a local struct,
 			// copy is OK because pad struct contains just 4 pointers.
-			// we'll overwrite pl[j] map entry at loop end.
+			// we update pl[j] map entry at loop end.
 			pad, ok := pl[jour]
 			if !ok {
 				pad = PrevsAtDay{}

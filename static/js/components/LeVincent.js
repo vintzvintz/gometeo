@@ -182,24 +182,27 @@ export const MapComponent = {
   setup(props) {
 
     const weatherNames = new Map( [
-      ["default_weather_name", "Default"],
+      ["default", "Default"],
     ])
+
 /*
-    const lMap = L.map( "todoMapId", {
-      //center: bounds.center,
-      fullscreenControl: true,
-      cursor: true,
-      scrollWheelZoom: false,
-      zoomSnap: 1e-4,
-      zoomDelta: .1,
-      zoomControl: false,
-      dragging: false,
-      tap: false,
-      maxBoundsViscosity: 1,
-      keyboard: false,
-      doubleClickZoom: false,
-      attributionControl: false,
-    })
+      ["matin", "Matin"],
+      ["après-midi", "Aprèm"],
+      ["soirée", "Soir"],
+      ["nuit", "Nuit"],
+*/
+
+    const mapId = function() {
+      let t = Date.parse( props.prev.echeance )
+      return String(t)
+    }
+
+    const mapTitle = function () {
+      console.log( props.prev )
+      console.log( props.data )
+      console.log( props.selections)
+      return weatherNames.get(props.selections.activeWeather) + ' - ' + props.prev.echeance
+    }
 
     function initMap() {
       //  when timespan changes, components are cached/re-used by v-for algorithm
@@ -212,6 +215,22 @@ export const MapComponent = {
       let bounds = L.latLngBounds([[bbox.s,bbox.w], [bbox.n,bbox.e]])
     
       //lMap.center = bounds.getCenter()
+
+      let lMap = L.map( mapId(), {
+        //center: bounds.center,
+        fullscreenControl: true,
+        cursor: true,
+        scrollWheelZoom: false,
+        zoomSnap: 1e-4,
+        zoomDelta: .1,
+        zoomControl: false,
+        dragging: false,
+        tap: false,
+        maxBoundsViscosity: 1,
+        keyboard: false,
+        doubleClickZoom: false,
+        attributionControl: false,
+      })
 
       let overlay = L.imageOverlay(svgPath(), bounds);
       lMap.addLayer(overlay);
@@ -226,17 +245,15 @@ export const MapComponent = {
       return img
     }
 
-    initMap()*/
-    return {weatherNames}
+    onMounted( initMap )
+    return {mapTitle, mapId}
   },
 
 
   template: /*html*/`
 <div class="map_grid_item">
-  <div class="titre_carte">
-    {{weatherNames[selections.activeWeather]}} - {{data.echeance}}
-  </div>
-  <div id="todoMapId" class="map_component">MapComponent</div>
+  <div class="titre_carte"> {{ mapTitle() }} </div>
+  <div :id="mapId()" class="map_component"></div>
 </div>`
 
 }
