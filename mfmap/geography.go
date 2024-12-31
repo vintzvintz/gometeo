@@ -13,7 +13,10 @@ type geoCollection struct {
 }
 
 type Bbox struct {
-	LngW, LngE, LatN, LatS float64
+	LngW float64       `json:"w"`
+	LngE float64       `json:"e"`
+	LatN float64       `json:"n"`
+	LatS float64       `json:"s"`
 }
 
 type geoFeature struct {
