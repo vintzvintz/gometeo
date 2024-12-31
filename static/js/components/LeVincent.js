@@ -1,5 +1,5 @@
 
-import { ref,reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 
 export const RootComponent = {
 
@@ -8,31 +8,31 @@ export const RootComponent = {
     // map data properties must be declared at component creation 
     // filled asynchronously by fetchMapdata() later
     const mapData = reactive({
-      'name':'',
-      'idtech':'',
-      'taxonomy':'',
+      'name': '',
+      'idtech': '',
+      'taxonomy': '',
       'bbox': {},
-      'subzones':new Array(),
-      'prevs':{},
+      'subzones': new Array(),
+      'prevs': {},
     })
 
     // selection of displayed data
-    const selections = reactive( { 
+    const selections = reactive({
       tooltipsEnabled: false,
       activeWeather: String("default")
       //activeTimespan: String("")
     })
 
-    const breadcrumb = reactive([ 
-      {name: "pays", path: "/path_france"},
-      {name: "région", path: "/path_region" },
-      {name: "dept", path: "/path_dept" },
+    const breadcrumb = reactive([
+      { name: "pays", path: "/path_france" },
+      { name: "région", path: "/path_region" },
+      { name: "dept", path: "/path_dept" },
     ])
 
     async function fetchMapdata() {
       console.log("enter fetchMapdata()")
-      const res = await fetch( "/france/data")
-      const data = await res.json() 
+      const res = await fetch("/france/data")
+      const data = await res.json()
 
       mapData.name = data.name
       mapData.idtech = data.idtech
@@ -44,7 +44,7 @@ export const RootComponent = {
     }
 
     // get Prevs when static page is loaded
-    onMounted( fetchMapdata )
+    onMounted(fetchMapdata)
 
     // only returned items are available in template
     return {
@@ -120,19 +120,17 @@ export const MapGridComponent = {
 
     //const moments = ref(['matin', 'après-midi', 'soirée', 'nuit' ])
     const displayedJours = (() => {
-      console.log( 'in displayedJours() ')
       const ret = []
-      for( let jour in props.data.prevs) {
+      for (let jour in props.data.prevs) {
         let n = parseInt(jour)
-        if ( n<3 && n>=0) {
-          ret.push( props.data.prevs[jour] )
+        if (n < 3 && n >= 0) {
+          ret.push(props.data.prevs[jour])
         }
       }
-      console.log( ret )
       return ret
     })
 
-    return {displayedJours}
+    return { displayedJours }
   },
 
   template: /*html*/`
@@ -152,10 +150,10 @@ export const MapGridComponent = {
 
 export const MapRowComponent = {
 
-  props:{
+  props: {
     prevsDuJour: Array,
     data: Object,
-    selections:Object,
+    selections: Object,
   },
 
   setup(props) {
@@ -175,34 +173,33 @@ export const MapRowComponent = {
 export const MapComponent = {
   props: {
     prev: Object,
-    data : Object,
-    selections : Object,
+    data: Object,
+    selections: Object,
   },
 
   setup(props) {
 
-    const weatherNames = new Map( [
+    const weatherNames = new Map([
       ["default", "Default"],
     ])
+    /*    ["matin", "Matin"],
+          ["après-midi", "Aprèm"],
+          ["soirée", "Soir"],
+          ["nuit", "Nuit"],*/
 
-/*
-      ["matin", "Matin"],
-      ["après-midi", "Aprèm"],
-      ["soirée", "Soir"],
-      ["nuit", "Nuit"],
-*/
-
-    const mapId = function() {
-      let t = Date.parse( props.prev.echeance )
+    const mapId = function () {
+      let t = Date.parse(props.prev.echeance)
       return String(t)
     }
 
     const mapTitle = function () {
-      console.log( props.prev )
-      console.log( props.data )
-      console.log( props.selections)
       return weatherNames.get(props.selections.activeWeather) + ' - ' + props.prev.echeance
     }
+
+    // leaflet.Map object cannot be created in setup() 
+    // because DOM element does not exist before onMounted()
+    // we need a reference in component instance to control tooltips and displayed data
+    let lMap = null
 
     function initMap() {
       //  when timespan changes, components are cached/re-used by v-for algorithm
@@ -210,10 +207,12 @@ export const MapComponent = {
       // if (this.map) 
       //  return true;
 
-      // setup Leaflet
+      // format bounds in a leaflet-specific object
       let bbox = props.data.bbox
-      let bounds = L.latLngBounds([[bbox.s,bbox.w], [bbox.n,bbox.e]])
-      let lMap = L.map( mapId(), {
+      let bounds = L.latLngBounds([[bbox.s, bbox.w], [bbox.n, bbox.e]])
+
+      // setup main leaflet object
+      lMap = L.map(mapId(), {
         center: bounds.center,
         fullscreenControl: true,
         cursor: true,
@@ -229,21 +228,56 @@ export const MapComponent = {
         attributionControl: false,
       })
 
-      let overlay = L.imageOverlay(svgPath(), bounds);
-      lMap.addLayer(overlay);
-      lMap.setMaxBounds(bounds);
-      lMap.fitBounds(bounds);
+      // add SVG map background
+      let overlay = L.imageOverlay(svgPath(), bounds)
+      lMap.addLayer(overlay)
+      lMap.setMaxBounds(bounds)
+      lMap.fitBounds(bounds)
       lMap.setMinZoom(lMap.getBoundsZoom(bounds, true))
+
+      drawSubzones()
     }
 
-    function svgPath() { 
-      var img = new Image;
-      img.src = '/france/svg';
+    function svgPath() {
+      var img = new Image
+      img.src = '/france/svg'
       return img
     }
 
-    onMounted( initMap )
-    return {mapTitle, mapId}
+
+    function drawSubzones() {
+
+      const szPane = lMap.createPane('subzones')
+
+      props.data.subzones.forEach((sz) => {
+        let path = 'todo_subzone_path' //sz.properties.prop_custom.path
+        //let nom = sz.properties.prop_custom.name 
+        L.geoJSON(sz, {
+          color: "transparent",
+          fillColor: "transparent",
+          weight: 3,
+          pane: 'subzones',
+          onEachFeature: function (feature, layer) {
+            // layer.bindTooltip(nom, { direction: "auto" });
+            layer.on("mouseover", function () {
+              this.setStyle({ color: "#FFF", fillColor: "transparent" })
+              layer.openPopup()
+            }),
+            layer.on("mouseout", function () {
+              this.setStyle({ color: "transparent", fillColor: "transparent" })
+              layer.closePopup()
+            }),
+            layer.on("click", function () {
+              window.location = path
+            })
+          }
+        }
+        ).addTo(lMap);
+      })
+    }
+
+    onMounted(initMap)
+    return { mapTitle, mapId }
   },
 
 

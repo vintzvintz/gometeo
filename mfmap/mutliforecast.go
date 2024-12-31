@@ -154,6 +154,7 @@ func (ctry *countryFr) UnmarshalJSON(b []byte) error {
 }
 
 func (c *Coordinates) UnmarshalJSON(b []byte) error {
+	// https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.1
 	var a [2]float64
 	if err := json.Unmarshal(b, &a); err != nil {
 		return fmt.Errorf("coordinates unmarshal error: %w. Want a [2]float64 array", err)
@@ -166,6 +167,13 @@ func (c *Coordinates) UnmarshalJSON(b []byte) error {
 	}
 	c.Lng, c.Lat = a[0], a[1]
 	return nil
+}
+
+// MarshalJSON outputs lng/lat as [float, float]
+// instead of default object {Lng:float, Lat:float}
+// cf https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.1
+func (c *Coordinates) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]float64{c.Lng, c.Lat})
 }
 
 func (code *CodeInsee) UnmarshalJSON(b []byte) error {
