@@ -28,6 +28,7 @@ func NewMeteoMux(maps MapCollection) (http.Handler, error) {
 		log.Printf("Registering map '%s'", name)
 		mux.HandleFunc("/"+name, makeMainHandler(m))
 		mux.HandleFunc("/"+name+"/data", makeDataHandler(m))
+		//mux.HandleFunc("/"+name+"/svg", makeSvgHandler(m))
 
 		// redirect root path '/' to '/france'
 		if name == "france" {
@@ -53,13 +54,12 @@ func makeMainHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 		if err != nil {
 			log.Printf("send error: %s", err)
 		}
-		//		log.Printf("GET %s sent %d bytes", req.URL, n)
 	}
 }
 
 func makeDataHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		const latence = 100
+		const latence = 50
 		log.Printf("DEBUG : attente %d sec avant envoi données JSON", latence)
 		time.Sleep(latence * time.Millisecond)
 		buf := bytes.Buffer{}
@@ -74,7 +74,22 @@ func makeDataHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 		if err != nil {
 			log.Printf("send error: %s", err)
 		}
-		//		log.Printf("GET %s sent %d bytes", req.URL, n)
+	}
+}
+
+func makeSvgHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+
+		if len(m.SvgMap) == 0 {
+			resp.WriteHeader( http.StatusNotFound )
+			log.Printf("SVG map unavailable (req.URL='%s'", req.URL)
+			return
+		}
+		resp.Header().Add("Content-Type", "image/svg+xml")
+		_, err := io.Copy(resp, bytes.NewReader(m.SvgMap))
+		if err != nil {
+			log.Printf("send error: %s", err)
+		}
 	}
 }
 

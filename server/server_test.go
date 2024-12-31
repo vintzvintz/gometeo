@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 
 	"gometeo/crawl"
@@ -32,17 +33,43 @@ func TestMainHandler(t *testing.T) {
 	resp.Result()
 }
 
+func TestSvgHandler(t *testing.T) {
+	m := getMapTest(t, "/")
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	record := httptest.NewRecorder()
+
+	hdl := makeSvgHandler(m)
+	hdl(record, req)
+
+	// todo check response
+	body, err := io.ReadAll(record.Result().Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	re := regexp.MustCompile(`<svg`)
+	if !re.Match(body) {
+		t.Fatalf("missing <svg> tag")
+	}
+}
+
 var testUrls = map[string][]string{
 	"homepage": {
 		"/",
 		"/france",
 	},
 	"js": {
-		"/js/meteo.js",
+		"/js/main.js",
+		"/js/vue.esm-browser.js",
 		"/js/highcharts.js",
 	},
 	"css": {
 		"/css/meteo.css",
+	},
+	"leaflet": {
+		"/js/leaflet.js",
+		"/css/leaflet.css",
+		"/css/images/layers.png",
+		"/css/images/marker-icon.png", // etc...
 	},
 	"fonts": {
 		"/fonts/fa.woff2",
