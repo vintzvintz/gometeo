@@ -238,7 +238,7 @@
             "rank": 95
         }
     ],
-    "mf_ads_v2_id": "block-mf-ads-v2kvc0xdpwpc",
+    "mf_ads_v2_id": "block-mf-ads-v2krxv9fghpp",
     "mf_ads_v2_default": "mf-ads-v2",
     "mf_ads_v2_provider": {
         "setting_name": "enabled_provider",
@@ -257,8 +257,8 @@
     "mf_video_sponso_admin_videos": [
         {
             "pid": "1",
-            "title": "Tout savoir : Anticyclone et dépression",
-            "id_youtube": "yOMAdQtwwtk",
+            "title": "Comment prévoit-on le temps ?",
+            "id_youtube": "G04CAaMA-qM",
             "categories": {
                 "Recommandées": "Recommandées"
             }
@@ -273,8 +273,8 @@
         },
         {
             "pid": "3",
-            "title": "Les tornades | MÉTÉO-FRANCE",
-            "id_youtube": "Bn45bcNXpRc",
+            "title": "Comment Météo-France réalise le Bulletin d'estimation du Risque d' Avalanche (BERA) ?",
+            "id_youtube": "-vdUb97ioN8",
             "categories": {
                 "Recommandées": "Recommandées"
             }
@@ -345,8 +345,8 @@
         },
         {
             "pid": "31",
-            "title": "Pluie et inondations, ayons les bons réflexes",
-            "id_youtube": "RUGbTpLT1qc",
+            "title": "TEASER Colloque : s'adapter face aux extrêmes climatiques, un défi majeur qui s'anticipe",
+            "id_youtube": "OA3liADJUNY",
             "categories": {
                 "Recommandées": "Recommandées"
             }
