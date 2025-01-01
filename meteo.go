@@ -15,8 +15,8 @@ var (
 )
 
 type MeteoBlob struct {
-	maps crawl.MapCollection
-	pictos crawl.PictoStore
+	Maps crawl.MapCollection
+	Pictos crawl.PictoStore
 }
 
 
@@ -38,7 +38,7 @@ func loadMaps() (crawl.MapCollection, crawl.PictoStore) {
 		return nil,nil
 	}
 	log.Printf("cacheMap enabled : map loaded from %s", cacheFile)
-	return blob.maps, blob.pictos
+	return blob.Maps, blob.Pictos
 }
 
 // TODO: refactor in testutils
