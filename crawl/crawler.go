@@ -170,7 +170,7 @@ func (c *Crawler) GetAllMaps(startPath string, pictos PictoStore) (MapCollection
 }
 
 func (ps PictoStore) AddHandler(mux *http.ServeMux) {
-	mux.HandleFunc("/picto/{pic}", ps.makePictosHandler())
+	mux.HandleFunc("/pictos/{pic}", ps.makePictosHandler())
 }
 
 // makePictosHandler() returns a handler serving pictos in PictoStore
@@ -179,15 +179,13 @@ func (ps PictoStore) AddHandler(mux *http.ServeMux) {
 func (ps PictoStore) makePictosHandler() func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		pic := req.PathValue("pic")
-		log.Printf("GET picto %s\n", pic)
-
 		_, ok := ps[pic]
 		if !ok {
 			resp.WriteHeader(http.StatusNotFound)
 			log.Printf("GET picto %s => statuscode%d\n", pic, http.StatusNotFound)
 			return
 		}
-
+		resp.Header().Add("Content-Type", "image/svg+xml")
 		n, err := io.Copy(resp, bytes.NewReader(ps[pic]))
 		if err != nil {
 			log.Printf("GET picto %s error: %s", pic, err)
