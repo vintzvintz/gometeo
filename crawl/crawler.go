@@ -16,6 +16,10 @@ type Crawler struct {
 	apiClient  *MfClient
 }
 
+
+type PictoStore map[string][]byte
+
+
 // NewCrawler allocates as *MfCrawler
 func NewCrawler() *Crawler {
 	return &Crawler{
@@ -101,6 +105,15 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 	}
 	return &m, nil
 }
+
+
+func (c *Crawler) Pictos() PictoStore {
+
+	store := make( PictoStore)
+
+	return  store
+}
+
 
 func SampleRun(path string) error {
 	crawler := NewCrawler()

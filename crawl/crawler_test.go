@@ -27,14 +27,43 @@ func TestGet(t *testing.T) {
 }
 */
 
-
 func TestGetMap(t *testing.T) {
-
-	zone := "/"
+	path := "/"
 	c := NewCrawler()
-	m, err := c.GetMap(zone, nil)
+	m, err := c.GetMap(path, nil)
 	if err != nil {
-		t.Fatalf( "Getmap('%s') error: %s", zone,err)
+		t.Fatalf("Getmap('%s') error: %s", path, err)
 	}
-	t.Log(m.Name())
+	name, err := m.Name()
+	if err != nil {
+		t.Fatalf("%s MfMmap.Name() error: %s", path, err)
+	}
+
+	// check pictos
+	checkPictos(t, c)
+
+	t.Log(name)
+}
+
+const minPictoCount = 5
+const minPictoSize = 1024 // bytes
+
+func checkPictos(t *testing.T, c *Crawler) {
+
+	// there should be at least 5 different pictos, each > 1kb,
+	// starting with a '<' character ( XML tag )
+
+	pictos := c.Pictos()
+	if len(pictos) < minPictoCount {
+		t.Fatalf("found less than %d pictos ???", minPictoCount)
+	}
+	for p := range pictos {
+		svg := pictos[p]
+		if svg[0] != '<' {
+			t.Errorf("picto %s content does not start with a '<' char", p)
+		}
+		if len(svg) < minPictoSize {
+			t.Errorf("picto %s size too small ( %d < %d )", p, len(svg), minPictoSize)
+		}
+	}
 }
