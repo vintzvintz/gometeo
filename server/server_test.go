@@ -33,60 +33,57 @@ func TestMainHandler(t *testing.T) {
 	resp.Result()
 }
 
-func TestSvgHandler(t *testing.T) {
+func TestSvgMapHandler(t *testing.T) {
 	m := getMapTest(t, "/")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	record := httptest.NewRecorder()
-
-	hdl := makeSvgHandler(m)
-	hdl(record, req)
-
-	// todo check response
-	body, err := io.ReadAll(record.Result().Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	checkSvgTag(t, body)
+	hdl := makeSvgMapHandler(m)
+	runHandler(t, hdl, req, http.StatusOK)
 }
 
 func TestPictosHandler(t *testing.T) {
 	m := getMapTest(t, "/")
-	maps := MapCollection{m, m, m}
-
-	path := "/picto/wesh"
-	req := httptest.NewRequest(http.MethodGet, path, nil)
-	record := httptest.NewRecorder()
-
+	maps := MapCollection{m}
 	hdl := maps.makePictosHandler()
-	hdl(record, req)
+	tests := map[string]struct {
+		path       string
+		wantStatus int
+	}{
+		"notFound": {"/picto/wesh", http.StatusNotFound},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, test.path, nil)
+			runHandler(t, hdl, req, test.wantStatus)
+		})
+	}
+}
 
-	body, err := io.ReadAll(record.Result().Body)
+func runHandler(t *testing.T,
+	hdl func(http.ResponseWriter, *http.Request),
+	req *http.Request,
+	wantStatus int) {
+
+	resp := httptest.NewRecorder()
+
+	hdl(resp, req)
+	body, err := io.ReadAll(resp.Result().Body)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	want := http.StatusNotFound
-	got := record.Result().StatusCode
+	gotStatus := resp.Result().StatusCode
 
-	if got != want {
-		t.Fatalf("GET %s wrong response status code. got %d want %d", req.URL, got, want)
+	if gotStatus != wantStatus {
+		t.Fatalf("GET %s wrong response status code. got %d want %d", req.URL, gotStatus, wantStatus)
 	}
-
 	if len(body) == 0 {
 		return
 	}
-	checkSvgTag(t, body)
-}
-
-
-func checkSvgTag(t *testing.T, b []byte)  {
 	re := regexp.MustCompile(`<svg`)
-	if !re.Match(b) {
+	if !re.Match(body) {
 		t.Fatalf("missing <svg> tag")
 	}
 }
-
-
 
 var testUrls = map[string][]string{
 	"homepage": {

@@ -28,7 +28,7 @@ func NewMeteoMux(maps MapCollection) (http.Handler, error) {
 
 	static.AddHandlers(&mux)
 
-	mux.HandleFunc("/picto/{name}{$}", maps.makePictosHandler())
+	mux.HandleFunc("/picto/{name}", maps.makePictosHandler())
 
 	for _, m := range maps {
 		name, err := m.Name()
@@ -38,7 +38,7 @@ func NewMeteoMux(maps MapCollection) (http.Handler, error) {
 		log.Printf("Registering map '%s'", name)
 		mux.HandleFunc("/"+name, makeMainHandler(m))
 		mux.HandleFunc("/"+name+"/data", makeDataHandler(m))
-		mux.HandleFunc("/"+name+"/svg", makeSvgHandler(m))
+		mux.HandleFunc("/"+name+"/svg", makeSvgMapHandler(m))
 
 		// redirect root path '/' to '/france'
 		if name == "france" {
@@ -84,7 +84,7 @@ func makeDataHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func makeSvgHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
+func makeSvgMapHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 
 		if len(m.SvgMap) == 0 {
