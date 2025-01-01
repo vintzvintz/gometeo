@@ -6,50 +6,52 @@ import (
 	"os"
 
 	"gometeo/crawl"
-	"gometeo/mfmap"
 	"gometeo/server"
 )
 
 var (
-	cacheMap  bool   = true
-	cacheFile string = "./cachedMap.gob"
+	cacheMaps  bool   = true
+	cacheFile string = "./cachedMaps.gob"
 )
 
-func loadMap() *mfmap.MfMap {
+type MeteoBlob struct {
+	maps crawl.MapCollection
+	pictos crawl.PictoStore
+}
 
-	if !cacheMap {
-		return nil
+
+// TODO: refactor in testutils
+func loadMaps() (crawl.MapCollection, crawl.PictoStore) {
+	if !cacheMaps {
+		return nil, nil
 	}
-
 	f, err := os.Open(cacheFile)
 	if err != nil {
 		log.Println(err)
-		return nil
+		return nil, nil
 	}
-
 	dec := gob.NewDecoder(f)
-	m := mfmap.MfMap{}
-	err = dec.Decode(&m)
+	blob := MeteoBlob{}
+	err = dec.Decode(&blob)
 	if err != nil {
 		log.Println(err)
-		return nil
+		return nil,nil
 	}
 	log.Printf("cacheMap enabled : map loaded from %s", cacheFile)
-	return &m
+	return blob.maps, blob.pictos
 }
 
-func storeMap(m *mfmap.MfMap) {
-
-	if !cacheMap {
+// TODO: refactor in testutils
+func storeMaps(maps crawl.MapCollection, pictos crawl.PictoStore) {
+	if !cacheMaps {
 		return
 	}
-
 	f, err := os.Create(cacheFile)
 	if err != nil {
 		panic(err)
 	}
 	enc := gob.NewEncoder(f)
-	err = enc.Encode(m)
+	err = enc.Encode(MeteoBlob{maps, pictos})
 	if err != nil {
 		panic(err)
 	}
@@ -61,19 +63,20 @@ func main() {
 	var err error
 
 	// for tests/debug
-	m := loadMap()
+	maps, pictos := loadMaps()
 
-	if m == nil {
-		m, err = crawler.GetMap("/", nil)
+	if maps == nil {
+		pictos = crawl.PictoStore{}
+		maps, err = crawler.GetAllMaps("/", pictos)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)
 		}
 		// for tests/debug
-		storeMap(m)
+		storeMaps(maps, pictos)
 	}
 
-	err = server.StartSimple(server.MapCollection{m})
+	err = server.StartSimple(maps, pictos)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)

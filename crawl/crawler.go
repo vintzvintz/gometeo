@@ -1,10 +1,11 @@
 package crawl
 
 import (
-	//"fmt"
+	"bytes"
 	"gometeo/mfmap"
 	"io"
-	//"log"
+	"log"
+	"net/http"
 )
 
 const (
@@ -15,8 +16,9 @@ const (
 type Crawler struct {
 	mainClient *MfClient
 	apiClient  *MfClient
-	pictos     PictoStore
 }
+
+type MapCollection []*mfmap.MfMap
 
 type PictoStore map[string][]byte
 
@@ -24,19 +26,16 @@ type PictoStore map[string][]byte
 func NewCrawler() *Crawler {
 	return &Crawler{
 		mainClient: NewClient(httpsMeteofranceCom),
-		//apiClient: nil,  // apiClient needs API base url from main client
-		pictos: make(PictoStore),
+		// apiClient: nil,  // apiClient needs API base url from main client
 	}
 }
 
 // GetMap gets https://mf.com/zone html page and related data like
 // svg map, pictos, forecasts and list of subzones
 // related data is stored into MfMap fields
-func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error) {
+func (c *Crawler) GetMap(path string, parent *mfmap.MfMap, pictos PictoStore) (*mfmap.MfMap, error) {
 	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
-	//m, err := c.getMap(path)
-
-	body, err := c.mainClient.Get(zone, CacheDisabled)
+	body, err := c.mainClient.Get(path, CacheDisabled)
 	if err != nil {
 		return nil, err
 	}
@@ -107,45 +106,93 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 	}
 
 	// get pictos
-	for _, pic := range m.PictoNames() {
-		if _, ok := c.pictos[pic]; ok {
-			continue // do not update known pictos
-		}
-		url, err := mfmap.PictoURL(pic)
+	if pictos != nil {
+		err = pictos.Update(m.PictoNames(), c.mainClient)
 		if err != nil {
 			return nil, err
 		}
-		body, err = c.mainClient.Get(url.String(), CacheDefault)
-		if err != nil {
-			return nil, err
-		}
-		defer body.Close()
-		b, err := io.ReadAll(body)
-		if err != nil {
-			return nil, err
-		}
-		c.pictos[pic] = b
 	}
 	return &m, nil
 }
 
-func (c *Crawler) Pictos() PictoStore {
-
-	return c.pictos
+func (ps PictoStore) Update(names []string, cl *MfClient) error {
+	for _, pic := range names {
+		if _, ok := ps[pic]; ok {
+			continue // do not update known pictos
+		}
+		url, err := mfmap.PictoURL(pic)
+		if err != nil {
+			return err
+		}
+		body, err := cl.Get(url.String(), CacheDefault)
+		if err != nil {
+			return err
+		}
+		defer body.Close()
+		b, err := io.ReadAll(body)
+		if err != nil {
+			return err
+		}
+		ps[pic] = b
+	}
+	return nil
 }
 
-func SampleRun(path string) error {
-	crawler := NewCrawler()
-	m, err := crawler.GetMap(path, nil)
-	if err != nil {
-		return err
-	}
-	_ = m
+// GetAllMaps() fetches recursively all maps from path '/'
+// pictos are stored in PictoStore
+func (c *Crawler) GetAllMaps(startPath string, pictos PictoStore) (MapCollection, error) {
+	maps := make(MapCollection, 0, 200)
 
-	/*
-		html := m.html
-		var trunc int = min(int(200), len(html))
-		fmt.Printf(html[0:trunc])
-	*/
-	return nil
+	queue := []struct {
+		path   string
+		parent *mfmap.MfMap
+	}{
+		{"/", nil},
+	}
+
+	for {
+		// stop when queue is empty
+		if len(queue) == 0 {
+			break
+		}
+		// pop next path from paths
+		next := queue[0]
+		queue = queue[1:]
+
+		m, err := c.GetMap(next.path, next.parent, pictos)
+		if err != nil {
+			return nil, err
+		}
+		maps = append(maps, m)
+		// TODO : enqueue children maps
+	}
+	return maps, nil
+}
+
+func (ps PictoStore) AddHandler(mux *http.ServeMux) {
+	mux.HandleFunc("/picto/{pic}", ps.makePictosHandler())
+}
+
+// makePictosHandler() returns a handler serving pictos in PictoStore
+// last segment of the request URL /picto/{pic} selects the picto to return
+// the picto (svg picture) is written on resp as a []byte
+func (ps PictoStore) makePictosHandler() func(http.ResponseWriter, *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		pic := req.PathValue("pic")
+		log.Printf("GET picto %s\n", pic)
+
+		_, ok := ps[pic]
+		if !ok {
+			resp.WriteHeader(http.StatusNotFound)
+			log.Printf("GET picto %s => statuscode%d\n", pic, http.StatusNotFound)
+			return
+		}
+
+		n, err := io.Copy(resp, bytes.NewReader(ps[pic]))
+		if err != nil {
+			log.Printf("GET picto %s error: %s", pic, err)
+			return
+		}
+		log.Printf("GET picto %s OK, size %d", pic, n)
+	}
 }

@@ -340,8 +340,8 @@ func (sf *stringFloat) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (m *MfMap) Name() (string, error) {
-	return strings.ToLower(m.Data.Info.Name), nil
+func (m *MfMap) Name() string {
+	return strings.ToLower(m.Data.Info.Name)
 }
 
 func (sz Subzones) Has(zone string) bool {

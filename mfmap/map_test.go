@@ -232,10 +232,7 @@ func TestAssetsURL(t *testing.T) {
 	t.Run("map_svg", func(t *testing.T) {
 		m := parseHtml(t, fileHtmlRacine)
 
-		name, err := m.Name()
-		if err != nil {
-			t.Fatal(err)
-		}
+		name := m.Name()
 		u, err := m.SvgURL()
 		if err != nil {
 			t.Fatal(err)
@@ -284,10 +281,7 @@ func TestName(t *testing.T) {
 		Data: testMapParser(t, fileJsonRacine),
 	}
 	want := "france"
-	got, err := m.Name()
-	if err != nil {
-		t.Fatal(err)
-	}
+	got := m.Name()
 	if got != want {
 		t.Fatalf("MfMap.Name() got '%s' want '%s'", got, want)
 	}
