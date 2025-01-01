@@ -182,15 +182,14 @@ func (ps PictoStore) makePictosHandler() func(http.ResponseWriter, *http.Request
 		_, ok := ps[pic]
 		if !ok {
 			resp.WriteHeader(http.StatusNotFound)
-			log.Printf("GET picto %s => statuscode%d\n", pic, http.StatusNotFound)
+			log.Printf("error GET picto %s => statuscode%d\n", pic, http.StatusNotFound)
 			return
 		}
+		resp.WriteHeader(http.StatusOK)
 		resp.Header().Add("Content-Type", "image/svg+xml")
-		n, err := io.Copy(resp, bytes.NewReader(ps[pic]))
+		_, err := io.Copy(resp, bytes.NewReader(ps[pic]))
 		if err != nil {
-			log.Printf("GET picto %s error: %s", pic, err)
 			return
 		}
-		log.Printf("GET picto %s OK, size %d", pic, n)
 	}
 }
