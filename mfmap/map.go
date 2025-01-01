@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"slices"
 
 	"golang.org/x/net/html"
 )
@@ -199,12 +200,12 @@ func mapParser(r io.Reader) (*MapData, error) {
 	return &j, err
 }
 
-/*
-// pictoList() return a list of all pictos used on the map
-func (m *MfMap) pictoList() []string {
 
-	pictos := make([]string, 0)
-	for _, feat := range *m.Forecasts {
+// PictoNames() return a list of all pictos used on the map
+func (m *MfMap) PictoNames() []string {
+
+	pictos := make([]string,0)
+	for _, feat := range (*m).Forecasts {
 		for _, prop := range feat.Properties.Forecasts {
 			pictos = append(pictos, prop.WeatherIcon, prop.WindIcon)
 		}
@@ -213,12 +214,18 @@ func (m *MfMap) pictoList() []string {
 			pictos = append(pictos, prop.WeatherIcon)
 		}
 	}
+	
 	// remove duplicates
 	slices.Sort(pictos)
 	pictos = slices.Compact(pictos)
+
+	// remove empty string (in 1st position in sorted slice)
+	if len(pictos)>0 && pictos[0]=="" {
+		pictos = pictos[1:]
+	}
 	return pictos
 }
-*/
+
 // ApiURL builds API URL from "config" node
 // typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0/path
 func (j *MapData) ApiURL(path string, query *url.Values) (*url.URL, error) {

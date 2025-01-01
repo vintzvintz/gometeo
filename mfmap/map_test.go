@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -292,7 +293,6 @@ func TestName(t *testing.T) {
 	}
 }
 
-
 func TestParseGeography(t *testing.T) {
 
 	j := openFile(t, fileJsonGeography)
@@ -301,8 +301,22 @@ func TestParseGeography(t *testing.T) {
 	m := MfMap{
 		Data: testMapParser(t, fileJsonRacine),
 	}
-	err :=  m.ParseGeography( j )
+	err := m.ParseGeography(j)
 	if err != nil {
 		t.Fatalf("ParseGeography() error: %s", err)
+	}
+}
+
+func TestPictoNames(t *testing.T) {
+	const minLength = 20
+	m := MfMap{
+		Forecasts: testParseMultiforecast(t, fileJsonMultiforecast),
+	}
+	pics := m.PictoNames()
+	if len(pics) < minLength {
+		t.Errorf("picto list is too short (<%d items), %v", minLength, pics)
+	}
+	if slices.Contains[[]string, string](pics, "") {
+		t.Errorf("picto list contains an empty string : %v", pics)
 	}
 }
