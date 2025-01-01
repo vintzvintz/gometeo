@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
-	"slices"
 
 	"golang.org/x/net/html"
 )
@@ -200,11 +200,9 @@ func mapParser(r io.Reader) (*MapData, error) {
 	return &j, err
 }
 
-
 // PictoNames() return a list of all pictos used on the map
 func (m *MfMap) PictoNames() []string {
-
-	pictos := make([]string,0)
+	pictos := make([]string, 0)
 	for _, feat := range (*m).Forecasts {
 		for _, prop := range feat.Properties.Forecasts {
 			pictos = append(pictos, prop.WeatherIcon, prop.WindIcon)
@@ -214,13 +212,12 @@ func (m *MfMap) PictoNames() []string {
 			pictos = append(pictos, prop.WeatherIcon)
 		}
 	}
-	
 	// remove duplicates
 	slices.Sort(pictos)
 	pictos = slices.Compact(pictos)
 
 	// remove empty string (in 1st position in sorted slice)
-	if len(pictos)>0 && pictos[0]=="" {
+	if len(pictos) > 0 && pictos[0] == "" {
 		pictos = pictos[1:]
 	}
 	return pictos
@@ -305,11 +302,11 @@ func PictoURL(picto string) (*url.URL, error) {
 		"mf_tools_common_theme_public",
 		"svg",
 		"weather",
-		fmt.Sprintf("%s.svg", strings.ToLower(picto)),
+		fmt.Sprintf("%s.svg", picto),
 	}
 	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
 	if err != nil {
-		return nil, fmt.Errorf("m.svgURL() error: %w", err)
+		return nil, fmt.Errorf("m.pictoURL() error: %w", err)
 	}
 	return u, nil
 }

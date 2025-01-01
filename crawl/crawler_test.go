@@ -1,31 +1,13 @@
 package crawl
 
 import (
+	"regexp"
 	"testing"
 )
 
-/*
-func TestGet(t *testing.T) {
 
-	name := "test_data/racine.html"
-	f, err := os.Open(name)
-	if err != nil {
-		t.Errorf("%s : %v", name, err)
-	}
-
-	// setup mock server
-	srv := httptest.NewServer( http.HandlerFunc( func ( w http.ResponseWriter, req *http.Request ) {
-		_, err := io.Copy(w, f)
-		if err != nil {
-			t.Error(err)
-		}
-	} ))
-	defer srv.Close()
-
-//	client := NewClient(nil)
-//	client.Get( )
-}
-*/
+const minPictoCount = 20
+const minPictoSize = 200 // bytes
 
 func TestGetMap(t *testing.T) {
 	path := "/"
@@ -45,22 +27,18 @@ func TestGetMap(t *testing.T) {
 	t.Log(name)
 }
 
-const minPictoCount = 5
-const minPictoSize = 1024 // bytes
-
+// there should be at least xxx different pictos, with minimum size,
+// and with a '<svg' tag
 func checkPictos(t *testing.T, c *Crawler) {
-
-	// there should be at least 5 different pictos, each > 1kb,
-	// starting with a '<' character ( XML tag )
-
+	re := regexp.MustCompile("<svg")
 	pictos := c.Pictos()
 	if len(pictos) < minPictoCount {
 		t.Fatalf("found less than %d pictos ???", minPictoCount)
 	}
 	for p := range pictos {
 		svg := pictos[p]
-		if svg[0] != '<' {
-			t.Errorf("picto %s content does not start with a '<' char", p)
+		if !re.Match(svg) {
+			t.Errorf("no <svg> tag in picto '%s'", p)
 		}
 		if len(svg) < minPictoSize {
 			t.Errorf("picto %s size too small ( %d < %d )", p, len(svg), minPictoSize)

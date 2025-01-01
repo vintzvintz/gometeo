@@ -3,6 +3,7 @@ package crawl
 import (
 	//"fmt"
 	"gometeo/mfmap"
+	"io"
 	//"log"
 )
 
@@ -14,16 +15,17 @@ const (
 type Crawler struct {
 	mainClient *MfClient
 	apiClient  *MfClient
+	pictos     PictoStore
 }
 
-
 type PictoStore map[string][]byte
-
 
 // NewCrawler allocates as *MfCrawler
 func NewCrawler() *Crawler {
 	return &Crawler{
 		mainClient: NewClient(httpsMeteofranceCom),
+		//apiClient: nil,  // apiClient needs API base url from main client
+		pictos: make(PictoStore),
 	}
 }
 
@@ -103,17 +105,34 @@ func (c *Crawler) GetMap(zone string, parent *mfmap.MfMap) (*mfmap.MfMap, error)
 	if err != nil {
 		return nil, err
 	}
+
+	// get pictos
+	for _, pic := range m.PictoNames() {
+		if _, ok := c.pictos[pic]; ok {
+			continue // do not update known pictos
+		}
+		url, err := mfmap.PictoURL(pic)
+		if err != nil {
+			return nil, err
+		}
+		body, err = c.mainClient.Get(url.String(), CacheDefault)
+		if err != nil {
+			return nil, err
+		}
+		defer body.Close()
+		b, err := io.ReadAll(body)
+		if err != nil {
+			return nil, err
+		}
+		c.pictos[pic] = b
+	}
 	return &m, nil
 }
 
-
 func (c *Crawler) Pictos() PictoStore {
 
-	store := make( PictoStore)
-
-	return  store
+	return c.pictos
 }
-
 
 func SampleRun(path string) error {
 	crawler := NewCrawler()
