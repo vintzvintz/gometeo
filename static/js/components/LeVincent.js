@@ -1,6 +1,14 @@
 
 import { ref, reactive, onMounted } from 'vue'
 
+
+// id generator for mapComponents
+let mapCount = 0
+function nextMapId() {
+  return ++mapCount
+}
+
+
 export const RootComponent = {
 
   setup() {
@@ -187,13 +195,22 @@ export const MapComponent = {
           ["soirée", "Soir"],
           ["nuit", "Nuit"],*/
 
+
+    
+    let _map_id = 0
     const mapId = function () {
-      let t = Date.parse(props.prev.echeance)
-      return String(t)
+      if( _map_id == 0 ) {
+        _map_id = nextMapId()
+      }
+      return String(_map_id)
     }
 
     const mapTitle = function () {
-      return weatherNames.get(props.selections.activeWeather) + ' - ' + props.prev.echeance
+      let weather = (typeof props.selections === 'Object') ? 
+                    props.selections.activeWeather : ""
+      let moment = (typeof props.prev === 'Object')  ? 
+                    props.prev.echeance : ""
+      return moment + ' ' + weather
     }
 
     // leaflet.Map object cannot be created in setup() 
@@ -209,6 +226,8 @@ export const MapComponent = {
       // so just skip initMap because map and subzones do not change.
       // if (this.map) 
       //  return true;
+
+      console.log("initMap()  mapId()=" + mapId() )
 
       // format bounds in a leaflet-specific object
       let bbox = props.data.bbox
