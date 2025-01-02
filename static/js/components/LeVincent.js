@@ -143,7 +143,7 @@ export const MapGridComponent = {
   },
 
   template: /*html*/`
-<div class="maps_grid">
+<div class="maps-grid">
     <MapRowComponent
     v-for="(jour, idx) in displayedJours()"
     :key="idx"
@@ -412,7 +412,7 @@ export const MapComponent = {
   },
 
   template: /*html*/`
-<div class="map_grid_item">
+<div class="map-item">
   <div class="titre_carte"> {{ mapTitle() }} </div>
   <div :id="mapId()" class="map_component"></div>
 </div>`

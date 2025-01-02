@@ -164,7 +164,7 @@ ul {
 
 /* toutes les prévisions disponibles */
 .maps-grid {
-  width: 320px;
+  width: 400px;
 }
 
 /* de 1 à 4 cartes pour une journée donnée */
@@ -176,9 +176,9 @@ ul {
 }
 
 /* affichage sur deux colonnes */
-@media screen and (min-width : 720px) {
+@media screen and (min-width : 820px) {
   .maps-grid {
-      width: 750px;
+      width: 850px;
   }
 
   .maps-row {
@@ -189,7 +189,7 @@ ul {
 /* affichage sur 4 colonnes */
 @media screen and (min-width : 1000px) {
   .maps-grid {
-      width: 1500px;
+      width: 1600px;
   }
 /* déja appliqué sur la largeur intermédiaire 
  .maps-row {
@@ -203,7 +203,7 @@ ul {
   width:370px;
 }
 
-.map_grid_item {
+.map-item {
   margin: 5px;
   width: 370px;
 }
