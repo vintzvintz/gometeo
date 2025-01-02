@@ -320,7 +320,7 @@ export const MapComponent = {
     // update markers when activeWeather changes
     // use a getter ()=> to keep reactivity 
     // https://vuejs.org/guide/essentials/watchers.html#watch-source-types
-    watch( ()=>props.selections.activeWeather, updateMarkers)
+    watch(() => props.selections.activeWeather, updateMarkers)
 
 
     function svgPath() {
@@ -384,13 +384,16 @@ export const MapComponent = {
       const daily = poi.daily
 
       // accumulate marker data for current poi
-      const mark = {}
-
-      // default marker
-      mark.disabled = false;
-      mark.icon = prev.weather_icon;
-      // TODO: fallback on daily_weather_icon if weather_icon == null
-      mark.txt = null
+      const mark = {
+        icon_text_style: "",   // avoid null checks in template
+        icon_width: 40,      // marker default font size
+        txt: "",
+        disabled: false,
+        // TODO: fallback on daily_weather_icon if weather_icon == null
+        icon: prev.weather_icon,
+        coords: poi.coords,
+        titre: poi.titre,
+    }
 
       if (prev.T !== null) {
         // donnée court-terme en priorité si disponibles
@@ -402,11 +405,36 @@ export const MapComponent = {
           '/<span class="tmax">' + Math.round(daily.T_max) + '°</span>'
       } else {
         // pas de marker si temperature indisponible
-        mark.disabled = true
+        return
       }
 
-      mark.coords = poi.coords
-      mark.titre = poi.titre
+
+      let w = props.selections.activeWeather
+      if (w == "prev") {
+
+
+         // add an icon_text_style "font-size: 12px;" on min/max values
+      } else if (w == "vent") {
+
+        mark.icon_width = 25
+        // add an icon_text_style "font-size: 12px;" on min/max values
+      } else if (w == "xxx") {
+
+        // add an icon_text_style "font-size: 12px;" on min/max values
+      } else if (w == "xxx") {
+
+        // add an icon_text_style "font-size: 12px;" on min/max values
+      } else if (w == "xxx") {
+
+        // add an icon_text_style "font-size: 12px;" on min/max values
+      } else if (w == "xxx") {
+
+        // add an icon_text_style "font-size: 12px;" on min/max values
+      } else {
+
+      }
+
+
 
       // TODO: fallback on daily_weather_desc if weather_desc == null
       mark.desc = prev.weather_description
@@ -430,33 +458,18 @@ export const MapComponent = {
     }
 
 
-    function buildMarker(mark) {
-      if (mark.disabled) {
-        return
-      }
-      //      console.log(["addMarker()", mark])
-      let icon_width = 40
-      if (props.selections.activeWeather == 'vent') {
-        icon_width = 25    // icones du vent plus petites
-      }
-
-      // style pour le texte température min/max (qui contient un slash)
-      let icon_text_style = ""
-      /*
-      if( ("string" == typeof e.icon_text || e.icon_text instanceof String) && 
-              e.icon_text.indexOf("/") > -1 ) {
-          (icon_text_style = "font-size: 12px;");  */
+    function buildMarker(m) {
 
       let elt_a = '<a>' +
-        '<img src="/pictos/' + mark.icon + '" ' +
-        'alt="' + mark.desc + '" ' +
-        'title="' + mark.titre + '" ' +
+        '<img src="/pictos/' + m.icon + '" ' +
+        'alt="' + m.desc + '" ' +
+        'title="' + m.titre + '" ' +
         'class="icon shape-weather" ' +
-        'style="width: ' + icon_width + 'px"/>'
+        'style="width: ' + m.icon_width + 'px"/>'
 
-      if (mark.txt && "" != mark.txt && "NaN°" != mark.txt) {
-        elt_a += '<span class="icon_text" style="' + icon_text_style + '">' +
-          mark.txt + '</span>'
+      if ("" != m.txt && "NaN°" != m.txt) {
+        elt_a += '<span class="icon_text" style="' + m.icon_text_style + '">' +
+          m.txt + '</span>'
       }
       elt_a += "</a>"
 
@@ -464,13 +477,13 @@ export const MapComponent = {
         icon: L.divIcon({
           html: elt_a,
           className: "iconMap-1",
-          iconSize: [icon_width, icon_width],
-          iconAnchor: [icon_width / 2, icon_width / 2]
+          iconSize: [m.icon_width, m.icon_width],
+          iconAnchor: [m.icon_width / 2, m.icon_width / 2]
         })
       }
 
       // Inconsistent API order : GeoJSON=(lng,lat), Leaflet=(lat,lng)
-      return L.marker([mark.coords[1], mark.coords[0]], mark_opts)
+      return L.marker([m.coords[1], m.coords[0]], mark_opts)
     }
 
 
