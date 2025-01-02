@@ -204,57 +204,43 @@ ul {
 
 
 /********************** markers sur les cartes ******************/
-.map_component .icon_text {
-  position: absolute;
+.map_component .icon-text {
+/*  position: absolute;*/
   z-index: -1;
-  top: -5px;
-  right: -15px;
+  /*top: -5px;*/
+  /*right: -15px;*/
   font-size: 13px;
   color: #333333;
   font-weight: 700;
   margin: 0px;
-  line-height: 18px;
+  width:40px;
+  text-align: center;
+  /*line-height: 18px;*/
 }
 
-.map_component .icon_text .tmin {
+.map_component .icon-text .tmin {
   color: #1c9bd4;
   font-weight: bold;
 }
 
-.map_component .icon_text .tmax {
+.map_component .icon-text .tmax {
   color: #f26522;
   font-weight: bold;
 }
 
-/*
-@media screen and (max-width:39.99875em) {
-  .map_component .icon_text {
-      font-size: 10px !important;
-      right: -5px;
-      top: 2px;
-      white-space: nowrap;
-  }
-}
-*/
-.map_component .iconMap-1 {
+.map_component .div-icon {
   text-align: center;
-  line-height: 50px;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+/*  line-height: 50px; */
 }
 
-.map_component .iconMap-1 img {
-  max-width: 50px !important;
-  height: auto;
-  vertical-align: middle;
+.map_component .divIcon img {
+  max-width: 50px;
+  display: block;
 }
-
-/*@media screen and (min-width:40em) {*/
-.map_component .iconMap-1 .icon_text {
-  top: -2px;
-  right: 0px;
-  line-height: 20px;
-}
-
-/*}*/
 
 
 /******************* Tooltips ********************************/

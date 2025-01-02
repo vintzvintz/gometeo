@@ -27,10 +27,13 @@ const weatherList = {
   "psea": {
     text: "Pression",
   },
+  "uv": {
+    text: "UV",
+  }
 }
 
 const weatherDisplayOrder = [
-  "prev", "vent", "ress", "humi", "psea",
+  "prev", "vent", "ress", "humi", "psea", "uv",
 ]
 
 
@@ -384,100 +387,158 @@ export const MapComponent = {
       const daily = poi.daily
 
       // accumulate marker data for current poi
-      const mark = {
+      const m = {
+        titre: poi.titre,
+        coords: poi.coords,
+        marker_width: 40,
+        icon_width: 40,      
         icon_text_style: "",   // avoid null checks in template
-        icon_width: 40,      // marker default font size
         txt: "",
         disabled: false,
-        // TODO: fallback on daily_weather_icon if weather_icon == null
         icon: prev.weather_icon,
-        coords: poi.coords,
-        titre: poi.titre,
-    }
+        desc: prev.weather_description,
+        Tmin: Math.round(prev.T_min),
+        Tmax: Math.round(prev.T_max),
+      }
 
+      // TODO: fallback on daily_weather_desc if weather_desc == null
+      // TODO: fallback on daily_weather_icon if prev.weather_icon == null
+
+      // 3 représentations possibles pour la temperature :
+      // - prev.T si disponible
+      // - sinon daily.tmin/tmax
+      // - sinon pas de marker
       if (prev.T !== null) {
         // donnée court-terme en priorité si disponibles
-        mark.T = Math.round(prev.T)
-        mark.txt = mark.T + "°"
+        m.T = Math.round(prev.T)
+        m.txt = m.T + "°"
       } else if (daily.T_min !== null && daily.T_max !== null) {
         // donnée long-terme (dailies) 
-        mark.txt = ' <span class="tmin">' + Math.round(daily.T_min) + '°</span>' +
+        m.txt = ' <span class="tmin">' + Math.round(daily.T_min) + '°</span>' +
           '/<span class="tmax">' + Math.round(daily.T_max) + '°</span>'
+        m.icon_text_style = "font-size: 12px;"
       } else {
         // pas de marker si temperature indisponible
         return
       }
 
-
+      // other customizations depending on activeWeather
       let w = props.selections.activeWeather
-      if (w == "prev") {
 
+      // customisations pour le vent
+      if (w == "vent") {
+        // marker disabled if wind data is not available
+        if (prev.wind_speed == null) {
+          return
+        }
+        m.icon = prev.wind_icon;
+        if (-1 == m.icon) {
+          m.icon = "Variable";
+        }
+        m.icon_width = 25
 
-         // add an icon_text_style "font-size: 12px;" on min/max values
-      } else if (w == "vent") {
+//        let kmh = msToKmh(prev.wind_speed)
+//        let rafale = msToKmh(prev.wind_speed_gust)
+        m.txt = '<span>' + msToKmh(prev.wind_speed) + '</span>'
+        if (prev.wind_speed_gust >= 10) {
+          m.txt += '<span style="color:red;">|' + msToKmh(prev.wind_speed_gust) + '</span>'
+        }
 
-        mark.icon_width = 25
+        // customisations pour les UV  
+      } else if (w == "uv") {
+        if (daily.uv_index == null) {
+          return
+        }
+        m.icon = "UV_" + prev.uv_index
+        m.txt = ""
+
+        // customisations pour la temp ressentie
+      } else if (w == "ress") {
+        if (prev.T_windchill == null) {
+          return
+        }
+        m.txt = '<span style="color: brown;">' +
+          Math.round(parseFloat(prev.T_windchill)) + '</span>'
+
+        // customisations pour la pression au niveau de la mer
+      } else if (w == "psea") {
+        if (prev.P_sea == null) {
+          return
+        }
+        m.txt = String(Math.round(parseFloat(prev.P_sea)))
+
+        // customisations pour la couverture nuageuse
+      } else if (w == "cloud") {
+        if (prev.total_cloud_cover == null) {
+          return
+        }
+        m.txt = prev.total_cloud_cover + "%"
+
         // add an icon_text_style "font-size: 12px;" on min/max values
+      } else if (w == "humi") {
+
+        let hr_unit = "%";
+        if (prev.relative_humidity !== null) {
+          // court terme
+          m.txt = Math.round(prev.relative_humidity) + hr_unit
+        } else if (prev.relative_humidity_min !== null) {
+          // a long terme
+          m.txt = '<span class="hr_min">' +
+            Math.round(prev.relative_humidity_min) + hr_unit + '</span>' +
+            '/<span class="hr_max">' +
+            Math.round(prev.relative_humidity_max) + hr_unit + '</span> '
+          m.icon_text_style = "font-size: 12px;"
+        } else {
+          return
+        }
+
       } else if (w == "xxx") {
 
-        // add an icon_text_style "font-size: 12px;" on min/max values
-      } else if (w == "xxx") {
-
-        // add an icon_text_style "font-size: 12px;" on min/max values
-      } else if (w == "xxx") {
-
-        // add an icon_text_style "font-size: 12px;" on min/max values
-      } else if (w == "xxx") {
-
-        // add an icon_text_style "font-size: 12px;" on min/max values
+      } else if (w == "prev") {
+        // placeholder for future prev-specific stuff
       } else {
-
+        console.log( 'activeWeather value: ' + w  )
+        return
       }
 
+      let marker = buildMarker(m)
 
-
-      // TODO: fallback on daily_weather_desc if weather_desc == null
-      mark.desc = prev.weather_description
-      mark.Tmin = Math.round(prev.T_min)
-      mark.Tmax = Math.round(prev.T_max)
-
-      let m = buildMarker(mark)
-
-      // add a callback to make the marker clickable
+      // attach a callback to make the marker clickable
       let target = 'http://www.' + poi.titre + '.zzzzzzz'
-      m.on('click', ((e) => onMarkerClick(e, target)))
+      marker.on('click', ((e) => onMarkerClick(e, target)))
+            .addTo(lMap)
 
-      // keep a reference for later cleanup and add to map
-      markers.push(m)
-      m.addTo(lMap)
+      // keep a reference for later cleanup
+      markers.push(marker)
     }
-
 
     function onMarkerClick(e, target) {
       console.log([target, e])
     }
 
+    function msToKmh(mPerSecond) {
+      return 5 * Math.ceil(3.6 * mPerSecond / 5)
+    }
 
     function buildMarker(m) {
 
-      let elt_a = '<a>' +
+      let elt_a = '<div class="div-icon">' +
         '<img src="/pictos/' + m.icon + '" ' +
         'alt="' + m.desc + '" ' +
         'title="' + m.titre + '" ' +
-        'class="icon shape-weather" ' +
         'style="width: ' + m.icon_width + 'px"/>'
 
       if ("" != m.txt && "NaN°" != m.txt) {
-        elt_a += '<span class="icon_text" style="' + m.icon_text_style + '">' +
-          m.txt + '</span>'
+        elt_a += '<div class="icon-text" style="' + m.icon_text_style + '">' +
+          m.txt + '</div>'
       }
-      elt_a += "</a>"
+      elt_a += "</div>"
 
       let mark_opts = {
         icon: L.divIcon({
           html: elt_a,
-          className: "iconMap-1",
-          iconSize: [m.icon_width, m.icon_width],
+          className: "divIcon",
+        //  iconSize: [m.icon_width, m.icon_width],
           iconAnchor: [m.icon_width / 2, m.icon_width / 2]
         })
       }
