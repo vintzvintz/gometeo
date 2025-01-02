@@ -8,24 +8,36 @@ import (
 	"testing"
 )
 
-func RunHandler(
+func RunSvgHandler(
 	t *testing.T,
 	hdl func(http.ResponseWriter, *http.Request),
 	req *http.Request,
 	wantStatus int) {
-
 	resp := httptest.NewRecorder()
+
+	//run handler
 	hdl(resp, req)
-	body, err := io.ReadAll(resp.Result().Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	// check status code
 	gotStatus := resp.Result().StatusCode
 	if gotStatus != wantStatus {
 		t.Fatalf("GET %s wrong response status code. got %d want %d", req.URL, gotStatus, wantStatus)
 	}
-	if len(body) == 0 {
+	if gotStatus != http.StatusOK {
 		return
+	}
+
+	// check content-type
+	wantContentType := "image/svg+xml"
+	gotContentType := resp.Result().Header.Get("Content-Type")
+	if gotContentType != wantContentType {
+		t.Fatalf("GET %s wrong content type. got '%s' want '%s'", req.URL, gotContentType, wantContentType)
+	}
+	
+	// check svg content
+	body, err := io.ReadAll(resp.Result().Body)
+	if err != nil {
+		t.Fatal(err)
 	}
 	re := regexp.MustCompile(`<svg`)
 	if !re.Match(body) {

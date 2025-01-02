@@ -79,17 +79,18 @@ func TestPictosHandler(t *testing.T) {
 	_, pictos := getMapTest(t, "/")
 	hdl := pictos.makePictosHandler()
 	tests := map[string]struct {
-		path       string
+		//path       string
 		pic        string
 		wantStatus int
 	}{
-		"notFound": {"/picto/wesh", "wesh", http.StatusNotFound},
+		"notFound": { "wesh", http.StatusNotFound},
+		"p4n": {"p4n", http.StatusOK},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, test.path, nil)
+			req := httptest.NewRequest(http.MethodGet, "/pictos/"+test.pic, nil)
 			req.SetPathValue("pic", test.pic)
-			testutils.RunHandler(t, hdl, req, test.wantStatus)
+			testutils.RunSvgHandler(t, hdl, req, test.wantStatus)
 		})
 	}
 }

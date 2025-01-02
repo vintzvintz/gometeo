@@ -126,15 +126,25 @@ export const MapGridComponent = {
 
   setup(props) {
 
-    //const moments = ref(['matin', 'après-midi', 'soirée', 'nuit' ])
     const displayedJours = (() => {
+      //console.log( "displayedJours() typeof props.data.prevs is " + typeof props.data.prevs )
+
       const ret = []
-      for (let jour in props.data.prevs) {
-        let n = parseInt(jour)
-        if (n < 3 && n >= 0) {
-          ret.push(props.data.prevs[jour])
+      if ( typeof props.data.prevs === 'undefined') {
+        return ret
+      }
+      for (var i = -1; i < 3; i++) {
+        if ( Object.hasOwn(props.data.prevs, i)) {
+          ret.push(props.data.prevs[i])
         }
       }
+/*    for (let jour in props.data.prevs) {
+        let n = parseInt(jour)
+        //if (n < 3 && n >= 0) {
+          if (n < 3) {
+          ret.push(props.data.prevs[jour])
+        }
+      }*/
       return ret
     })
 
@@ -195,8 +205,6 @@ export const MapComponent = {
           ["soirée", "Soir"],
           ["nuit", "Nuit"],*/
 
-
-    
     let _map_id = 0
     const mapId = function () {
       if( _map_id == 0 ) {
@@ -206,11 +214,9 @@ export const MapComponent = {
     }
 
     const mapTitle = function () {
-      let weather = (typeof props.selections === 'Object') ? 
-                    props.selections.activeWeather : ""
-      let moment = (typeof props.prev === 'Object')  ? 
-                    props.prev.echeance : ""
-      return moment + ' ' + weather
+      let weather = (typeof props.selections != null) ? props.selections.activeWeather : ""
+      let moment = (props.prev != null)  ? props.prev.echeance : ""
+      return moment + ' - ' + weather
     }
 
     // leaflet.Map object cannot be created in setup() 
@@ -226,8 +232,6 @@ export const MapComponent = {
       // so just skip initMap because map and subzones do not change.
       // if (this.map) 
       //  return true;
-
-      console.log("initMap()  mapId()=" + mapId() )
 
       // format bounds in a leaflet-specific object
       let bbox = props.data.bbox
@@ -305,7 +309,6 @@ export const MapComponent = {
 
     function updateMarkers() {
       let pois = props.prev && props.prev.prevs
-      console.log(['before updateMarkers()', markers])
       if (pois) {
           removeMarkers();   // todo : inline
           pois.forEach( createMarker );
@@ -313,7 +316,6 @@ export const MapComponent = {
         // TODO
         // this.updateControl.setPrefix ("Màj : "+this.get_prevs.updated );
       }
-      console.log(['after updateMarkers()', markers])
     }
 
     function removeMarkers() {

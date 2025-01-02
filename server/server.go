@@ -9,11 +9,11 @@ import (
 	"gometeo/static"
 )
 
-func NewMeteoHandler(maps crawl.MapCollection, pics crawl.PictoStore) http.Handler {
+func NewMeteoHandler(maps crawl.MapCollection, pictos crawl.PictoStore) http.Handler {
 
 	mux := http.ServeMux{}
 	static.AddHandlers(&mux)
-	pics.AddHandler(&mux)
+	pictos.AddHandler(&mux)
 	for _, m := range maps {
 		m.AddHandlers(&mux)
 	}
