@@ -159,54 +159,6 @@ ul {
   padding: 10px;
 }
 
-/****** placement des cartes selon la largeur du viewport **************/
-
-
-/* toutes les prévisions disponibles */
-.maps-grid {
-  width: 320px;
-}
-
-/* de 1 à 4 cartes pour une journée donnée */
-.maps-row {
-  display: flex;   
-  flex-direction: column;  /* dispots1 colonne par défaut */ 
-  flex-wrap: wrap;
-  justify-content: left;
-}
-
-/* affichage sur deux colonnes */
-@media screen and (min-width : 720px) {
-  .maps-grid {
-      width: 750px;
-  }
-
-  .maps-row {
-      flex-direction: row;
-  }
-}
-
-/* affichage sur 4 colonnes */
-@media screen and (min-width : 1000px) {
-  .maps-grid {
-      width: 1500px;
-  }
-/* déja appliqué sur la largeur intermédiaire 
- .maps-row {
-      flex-direction: row;
-  } */   
-}
-
-
-.map_component {
-  height: 350px;
-  width:370px;
-}
-
-.map_grid_item {
-  margin: 5px;
-  width: 370px;
-}
 
 
 /********************** markers sur les cartes ******************/
@@ -218,7 +170,7 @@ ul {
   font-size: 13px;
   color: #333333;
   font-weight: 700;
-  margin: 0px;
+  margin: 0;
   line-height: 18px;
 }
 
@@ -438,6 +390,23 @@ ul {
 #tooltip_toggler a.active {
   background-color:  #4CAF50;;
   color: white;
+}
+
+.map_component {
+  height: 350px;
+  width:370px;
+}
+
+.map_grid_item {
+  margin: 5px;
+}
+
+.map_grid_container {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  grid-gap: 5px;
+  padding: 5px;
+  justify-content: start;
 }
 
 .titre_carte {
