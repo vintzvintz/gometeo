@@ -8,6 +8,31 @@ function nextMapId() {
   return ++mapCount
 }
 
+const weatherList = {
+  "default": {
+    text: "default",
+  },
+  "prev": {
+    text: "Prévisions",
+  },
+  "vent": {
+    text: "Vent",
+  },
+  "ress": {
+    text: "Ressenti",
+  },
+  "humi": {
+    text: "Humidité",
+  },
+  "psea": {
+    text: "Pression",
+  },
+}
+
+const weatherDisplayOrder = [
+  "prev", "vent", "ress", "humi", "psea",
+]
+
 
 export const RootComponent = {
 
@@ -51,23 +76,30 @@ export const RootComponent = {
       console.log("exit fetchMapdata()")
     }
 
+    // callback when WeatherPicker emits a 'weatherSelected' event
+    function onWeatherSelected(id) {
+      console.log("onWeatherSelected id=" + id)
+      selections.activeWeather = id   // reactive
+    }
+
     // get Prevs when static page is loaded
     onMounted(fetchMapdata)
 
     // only returned items are available in template
     return {
-      mapData, selections, breadcrumb
+      mapData, selections, onWeatherSelected, breadcrumb
     }
   },
-
 
   template: /*html*/ `
   <header>
   <Breadcrumb :breadcrumb="breadcrumb"/>
   <section class="selecteurs">
   <p>mapname={{mapData.name}}</p>
-  <!--  <DataPicker/>
-    <div>
+   <WeatherPicker 
+   :activeWeather="selections.activeWeather"
+   @weatherSelected="onWeatherSelected" />
+<!--    <div>
     <TimespanPicker/>
     <TooltipsToggler/>
   </div> -->
@@ -98,10 +130,32 @@ export const Breadcrumb = {
 </nav>`
 }
 
-export const DataPicker = {
+export const WeatherPicker = {
+
+  emits: ['weatherSelected'],
+
+  props: {
+    activeWeather: String,
+  },
+
+  setup() {
+    return { weatherList, weatherDisplayOrder }
+  },
 
   template: /*html*/`
-  <p>DataPicker component</p>`
+<div class="data-picker">
+  <div>
+    activeWeather={{activeWeather}}
+  </div>
+  <ul>
+    <li v-for="w in weatherDisplayOrder":key="w" 
+      @click="$emit('weatherSelected', w)">
+      <a href="#" :class="{ active: (activeWeather==w) }">
+        {{ weatherList[w].text }} 
+      </a> 
+    </li>
+  </ul>
+</div>`
 }
 
 export const TooltipsToggler = {
@@ -185,25 +239,19 @@ export const MapComponent = {
 
   setup(props) {
 
-    const weatherNames = new Map([
-      ["default", "Default"],
-    ])
-    /*    ["matin", "Matin"],
-          ["après-midi", "Aprèm"],
-          ["soirée", "Soir"],
-          ["nuit", "Nuit"],*/
-
     let _map_id = 0
-    const mapId = function () {
+    function mapId() {
       if (_map_id == 0) {
         _map_id = nextMapId()
       }
       return String(_map_id)
     }
 
-    const mapTitle = function () {
-      let weather = (typeof props.selections != null) ? props.selections.activeWeather : ""
-      let moment = (props.prev != null) ? props.prev.echeance : ""
+    function mapTitle() {
+      let weather = (typeof props.selections != null) ?
+        weatherList[props.selections.activeWeather].text : ""
+      let moment = (props.prev != null) ?
+        props.prev.echeance : ""
       return moment + ' - ' + weather
     }
 
@@ -257,7 +305,7 @@ export const MapComponent = {
         lMap.setMaxBounds(lBounds)
         lMap.fitBounds(lBounds)
         lMap.setZoom(lMap.getBoundsZoom(lBounds, true))
-        lMap.invalidateSize({ animate: false, pan: false})
+        lMap.invalidateSize({ animate: false, pan: false })
       })
       obs.observe(elt)
 

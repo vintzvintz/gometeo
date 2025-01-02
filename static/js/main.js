@@ -4,7 +4,7 @@ import { createApp, ref } from 'vue'
 import {
   RootComponent, 
   Breadcrumb, 
-  DataPicker,
+  WeatherPicker,
   TimespanPicker,
   TooltipsToggler,
   MapGridComponent,
@@ -23,7 +23,7 @@ const app = createApp({
 
 app.component("RootComponent", RootComponent)
 app.component("Breadcrumb", Breadcrumb)
-app.component("DataPicker", DataPicker)
+app.component("WeatherPicker", WeatherPicker)
 app.component("TimespanPicker", TimespanPicker)
 app.component("TooltipsToggler", TooltipsToggler)
 app.component("MapGridComponent", MapGridComponent)
