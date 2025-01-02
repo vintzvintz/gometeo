@@ -78,7 +78,6 @@ export const RootComponent = {
 
     // callback when WeatherPicker emits a 'weatherSelected' event
     function onWeatherSelected(id) {
-      console.log("onWeatherSelected id=" + id)
       selections.activeWeather = id   // reactive
     }
 
@@ -401,16 +400,30 @@ export const MapComponent = {
 
       mark.coords = poi.coords
       mark.titre = poi.titre
+
       // TODO: fallback on daily_weather_desc if weather_desc == null
       mark.desc = prev.weather_description
       mark.Tmin = Math.round(prev.T_min)
       mark.Tmax = Math.round(prev.T_max)
 
-      addMarker(mark)
+      let m = buildMarker(mark)
+
+      // add a callback to make the marker clickable
+      let target = 'http://www.' + poi.titre + '.zzzzzzz'
+      m.on('click', ((e) => onMarkerClick(e, target)))
+
+      // keep a reference for later cleanup and add to map
+      markers.push(m)
+      m.addTo(lMap)
     }
 
 
-    function addMarker(mark) {
+    function onMarkerClick(e, target) {
+      console.log([target, e])
+    }
+
+
+    function buildMarker(mark) {
       if (mark.disabled) {
         return
       }
@@ -449,14 +462,11 @@ export const MapComponent = {
         })
       }
 
-      // GeoJSON order : lng,lat
-      // Leaflet API order : lat,lng
-      //let coords = L.LatLng( mark.coords[1], mark.coords[0])
-      let lMark = L.marker([mark.coords[1], mark.coords[0]], mark_opts).addTo(lMap);
-
-      // keep a reference for marker deletion
-      markers.push(lMark)
+      // Inconsistent API order : GeoJSON=(lng,lat), Leaflet=(lat,lng)
+      return L.marker([mark.coords[1], mark.coords[0]], mark_opts)
     }
+
+
     /*
         function markerPosition(coords) {
           let bbox = props.data.bbox
