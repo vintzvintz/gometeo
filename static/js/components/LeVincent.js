@@ -1,5 +1,5 @@
 
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 
 
 // id generator for mapComponents
@@ -52,7 +52,7 @@ export const RootComponent = {
     // selection of displayed data
     const selections = reactive({
       tooltipsEnabled: false,
-      activeWeather: String("default")
+      activeWeather: "prev"
       //activeTimespan: String("")
     })
 
@@ -312,9 +312,16 @@ export const MapComponent = {
 
       // todo: add updated date in "attributions"
 
-      // todo : reactive markers on props.selections
+      // trigger markers on map creation
+      // later activeWeather changes are handled with a watcher
       updateMarkers()
     }
+
+    // update markers when activeWeather changes
+    // use a getter ()=> to keep reactivity 
+    // https://vuejs.org/guide/essentials/watchers.html#watch-source-types
+    watch( ()=>props.selections.activeWeather, updateMarkers)
+
 
     function svgPath() {
       var img = new Image
