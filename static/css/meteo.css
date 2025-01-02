@@ -164,49 +164,43 @@ ul {
 
 /* toutes les prévisions disponibles */
 .maps-grid {
-  width: 400px;
+  width: 100%;
 }
 
 /* de 1 à 4 cartes pour une journée donnée */
 .maps-row {
-  display: flex;   
-  flex-direction: column;  /* dispots1 colonne par défaut */ 
+  display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
-  justify-content: left;
+  justify-content: space-around;
+}
+
+.map_component {
+  aspect-ratio: 521/474;
+}
+
+/* affichage sur 1 colonne par défaut (mobile & faible largeur) */
+.map-item {
+  /* margin: 0.2em 0 0 0;  petite marge en haut */
+  margin: 0;
+  width: 100%;  /* 1 map per row */
+
 }
 
 /* affichage sur deux colonnes */
-@media screen and (min-width : 820px) {
-  .maps-grid {
-      width: 850px;
-  }
-
-  .maps-row {
-      flex-direction: row;
+@media screen and (min-width : 600px) {
+  .map-item {
+    width: 49.5%;
   }
 }
 
 /* affichage sur 4 colonnes */
-@media screen and (min-width : 1000px) {
-  .maps-grid {
-      width: 1600px;
+@media screen and (min-width : 1200px) {
+  .map-item {
+    width: 24.5%;  /* 4 maps per row */
   }
-/* déja appliqué sur la largeur intermédiaire 
- .maps-row {
-      flex-direction: row;
-  } */   
 }
 
-
-.map_component {
-  height: 350px;
-  width:370px;
-}
-
-.map-item {
-  margin: 5px;
-  width: 370px;
-}
 
 
 /********************** markers sur les cartes ******************/
@@ -231,6 +225,7 @@ ul {
   color: #f26522;
   font-weight: bold;
 }
+
 /*
 @media screen and (max-width:39.99875em) {
   .map_component .icon_text {
@@ -253,11 +248,12 @@ ul {
 }
 
 /*@media screen and (min-width:40em) {*/
-  .map_component .iconMap-1 .icon_text {
-      top: -2px;
-      right: 0px;
-      line-height: 20px;
-  }
+.map_component .iconMap-1 .icon_text {
+  top: -2px;
+  right: 0px;
+  line-height: 20px;
+}
+
 /*}*/
 
 
@@ -335,7 +331,7 @@ ul {
 
 @media screen and (max-width:39.99875em) {
   .leaflet-tooltip-pane {
-      display: none;
+    display: none;
   }
 }
 
@@ -363,6 +359,7 @@ ul {
   background-color: #d1d1d1;
   border: 1px solid #555;
 }
+
 /*
 .data_picker li {
   border-bottom: 1px solid #555;
@@ -382,7 +379,7 @@ ul {
 
 /*.data_picker li a:hover:not(.active) {*/
 .data_picker li a:hover {
-    background-color: #555;
+  background-color: #555;
   color: white;
 }
 
@@ -395,6 +392,7 @@ ul {
   background-color: #d1d1d1;
   border: 1px solid #555;
 }
+
 /*
 .timespan_picker li {
   border-bottom: 1px solid #555;
@@ -428,7 +426,7 @@ ul {
   border: 1px solid #555;
 }
 
-#tooltip_toggler  a {
+#tooltip_toggler a {
   display: block;
   color: #000;
   padding: 8px 16px;
@@ -436,7 +434,8 @@ ul {
 }
 
 #tooltip_toggler a.active {
-  background-color:  #4CAF50;;
+  background-color: #4CAF50;
+  ;
   color: white;
 }
 

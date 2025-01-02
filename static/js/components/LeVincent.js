@@ -211,6 +211,7 @@ export const MapComponent = {
     // because DOM element does not exist before onMounted()
     // we need a reference in component instance to control tooltips and displayed data
     let lMap = null
+    let lBounds = null
 
     // keep references to markers for update/deletion
     let markers = []
@@ -223,11 +224,11 @@ export const MapComponent = {
 
       // format bounds in a leaflet-specific object
       let bbox = props.data.bbox
-      let bounds = L.latLngBounds([[bbox.s, bbox.w], [bbox.n, bbox.e]])
+      lBounds = L.latLngBounds([[bbox.s, bbox.w], [bbox.n, bbox.e]])
 
       // setup main leaflet object
       lMap = L.map(mapId(), {
-        center: bounds.center,
+        center: lBounds.center,
         fullscreenControl: true,
         cursor: true,
         scrollWheelZoom: false,
@@ -240,14 +241,25 @@ export const MapComponent = {
         keyboard: false,
         doubleClickZoom: false,
         attributionControl: false,
+        closePopupOnClick: true,
       })
 
       // add SVG map background
-      let overlay = L.imageOverlay(svgPath(), bounds)
+      let overlay = L.imageOverlay(svgPath(), lBounds)
       lMap.addLayer(overlay)
-      lMap.setMaxBounds(bounds)
-      lMap.fitBounds(bounds)
-      lMap.setMinZoom(lMap.getBoundsZoom(bounds, true))
+      lMap.setMaxBounds(lBounds)
+      lMap.fitBounds(lBounds)
+      lMap.setZoom(lMap.getBoundsZoom(lBounds, true))
+
+      // trigger leaflet container resize on HTML element size change
+      let elt = lMap.getContainer()
+      let obs = new ResizeObserver((entries) => {
+        lMap.setMaxBounds(lBounds)
+        lMap.fitBounds(lBounds)
+        lMap.setZoom(lMap.getBoundsZoom(lBounds, true))
+        lMap.invalidateSize({ animate: false, pan: false})
+      })
+      obs.observe(elt)
 
       drawSubzones()
 
@@ -262,7 +274,6 @@ export const MapComponent = {
       img.src = '/france/svg'
       return img
     }
-
 
     function drawSubzones() {
 
