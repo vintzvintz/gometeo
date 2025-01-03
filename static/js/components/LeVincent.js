@@ -254,7 +254,7 @@ export const MapComponent = {
         weatherList[props.selections.activeWeather].text : ""
       let moment = (props.prev != null) ?
         props.prev.echeance : ""
-      return moment + ' - ' + weather
+      return `${moment} - ${weather}`
     }
 
     // leaflet.Map object cannot be created in setup() 
@@ -388,17 +388,17 @@ export const MapComponent = {
 
       // accumulate marker data for current poi
       const m = {
-        titre: poi.titre,
+        title: poi.titre,
         coords: poi.coords,
         marker_width: 40,
-        icon_width: 40,      
+        icon_width: 40,
         icon_text_style: "",   // avoid null checks in template
         txt: "",
         disabled: false,
         icon: prev.weather_icon,
         desc: prev.weather_description,
-        Tmin: Math.round(prev.T_min),
-        Tmax: Math.round(prev.T_max),
+        Tmin: Math.round(daily.T_min),
+        Tmax: Math.round(daily.T_max),
       }
 
       // TODO: fallback on daily_weather_desc if weather_desc == null
@@ -410,17 +410,21 @@ export const MapComponent = {
       // - sinon pas de marker
       if (prev.T !== null) {
         // donnée court-terme en priorité si disponibles
-        m.T = Math.round(prev.T)
-        m.txt = m.T + "°"
+        m.txt = Math.round(prev.T) + '°'
       } else if (daily.T_min !== null && daily.T_max !== null) {
         // donnée long-terme (dailies) 
-        m.txt = ' <span class="tmin">' + Math.round(daily.T_min) + '°</span>' +
-          '/<span class="tmax">' + Math.round(daily.T_max) + '°</span>'
-        m.icon_text_style = "font-size: 12px;"
+        m.txt = ` <span class="tmin">${m.Tmin}°</span>/<span class="tmax">${m.Tmax}°</span>`
+        m.icon_text_style = 'font-size: 12px;'
       } else {
         // pas de marker si temperature indisponible
         return
       }
+
+      // tooltip position
+      m.tt_direction = (poi.coords[1] < (props.data.bbox.n + props.data.bbox.s) / 2) ?
+        'top' : 'bottom'
+      m.tt_offset = (poi.coords[0] < (props.data.bbox.w + props.data.bbox.e) / 2) ?
+        L.point(100, 10) : L.point(-100, 10)
 
       // other customizations depending on activeWeather
       let w = props.selections.activeWeather
@@ -437,8 +441,6 @@ export const MapComponent = {
         }
         m.icon_width = 25
 
-//        let kmh = msToKmh(prev.wind_speed)
-//        let rafale = msToKmh(prev.wind_speed_gust)
         m.txt = '<span>' + msToKmh(prev.wind_speed) + '</span>'
         if (prev.wind_speed_gust >= 10) {
           m.txt += '<span style="color:red;">|' + msToKmh(prev.wind_speed_gust) + '</span>'
@@ -483,30 +485,38 @@ export const MapComponent = {
           m.txt = Math.round(prev.relative_humidity) + hr_unit
         } else if (prev.relative_humidity_min !== null) {
           // a long terme
-          m.txt = '<span class="hr_min">' +
-            Math.round(prev.relative_humidity_min) + hr_unit + '</span>' +
-            '/<span class="hr_max">' +
-            Math.round(prev.relative_humidity_max) + hr_unit + '</span> '
+          m.txt = `
+          <span class="hr_min">
+            ${Math.round(prev.relative_humidity_min)}${hr_unit}
+          </span>/<span class="hr_max">
+            ${Math.round(prev.relative_humidity_max)}${hr_unit}
+          </span>`
           m.icon_text_style = "font-size: 12px;"
         } else {
           return
         }
 
-      } else if (w == "xxx") {
-
       } else if (w == "prev") {
         // placeholder for future prev-specific stuff
       } else {
-        console.log( 'activeWeather value: ' + w  )
+        console.log('activeWeather value: ' + w)
         return
       }
 
       let marker = buildMarker(m)
 
+      let tt_html = buildTooltip(m)
+      marker.bindTooltip(tt_html, {
+        sticky: false,
+        direction: m.tt_direction,
+        offset: m.tt_offset,
+      })
+
+
       // attach a callback to make the marker clickable
       let target = 'http://www.' + poi.titre + '.zzzzzzz'
       marker.on('click', ((e) => onMarkerClick(e, target)))
-            .addTo(lMap)
+        .addTo(lMap)
 
       // keep a reference for later cleanup
       markers.push(marker)
@@ -522,23 +532,23 @@ export const MapComponent = {
 
     function buildMarker(m) {
 
-      let elt_a = '<div class="div-icon">' +
-        '<img src="/pictos/' + m.icon + '" ' +
-        'alt="' + m.desc + '" ' +
-        'title="' + m.titre + '" ' +
-        'style="width: ' + m.icon_width + 'px"/>'
+      let elt_a = `<div class="div-icon">
+  <img src="/pictos/${m.icon}" 
+       alt="${m.desc}"
+       title="${m.title}"
+       style="width: ${m.icon_width}px"/>`
 
       if ("" != m.txt && "NaN°" != m.txt) {
-        elt_a += '<div class="icon-text" style="' + m.icon_text_style + '">' +
-          m.txt + '</div>'
+        elt_a += `<div class="icon-text" style="${m.icon_text_style}">
+          ${m.txt}</div>`
       }
-      elt_a += "</div>"
+      elt_a += `</div>`
 
       let mark_opts = {
         icon: L.divIcon({
           html: elt_a,
           className: "divIcon",
-        //  iconSize: [m.icon_width, m.icon_width],
+          //  iconSize: [m.icon_width, m.icon_width],
           iconAnchor: [m.icon_width / 2, m.icon_width / 2]
         })
       }
@@ -547,15 +557,21 @@ export const MapComponent = {
       return L.marker([m.coords[1], m.coords[0]], mark_opts)
     }
 
-
-    /*
-        function markerPosition(coords) {
-          let bbox = props.data.bbox
-          let pos_h = (coords[0] > (bbox.o + bbox.e)/2 ) ? 'Right' : 'Left'
-          let pos_v = (coords[1] > (bbox.n + bbox.s)/2 ) ? 'Top' : 'Bottom'
-          return pos_v+' '+pos_h
-        }
-    */
+    function buildTooltip(m) {
+      return `<div class="map_tooltip">
+  <h3 class="map_tooltip_location">${m.title}</h3>
+  <img src="/pictos/${m.icon}" 
+        alt="${m.desc}"
+        title="${m.desc}"
+        style="width: ${m.icon_width}px"/>
+  <div class='map_tooltip_temp'>${m.txt}</div>
+  <p class='map_tooltip_description'>${m.desc}</p>
+  <p>
+    Min : <span class='temp-min'>${m.Tmin}°</span>
+    Max : <span class='temp-max'>${m.Tmax}°</span>
+  </p>
+</div>`
+    }
 
     onMounted(initMap)
     return { mapTitle, mapId }
