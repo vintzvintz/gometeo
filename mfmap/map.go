@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -12,78 +14,82 @@ import (
 	"golang.org/x/net/html"
 )
 
-type MfMap struct {
-	// data embedded in main html
-	Data *MapData
-	// other data called from main page
-	Forecasts MultiforecastData
-	SvgMap    []byte
-	Geography *geoCollection
+type (
+	MfMap struct {
+		// data embedded in main html
+		Data *MapData
+		// other data called from main page
+		Forecasts MultiforecastData
+		SvgMap    []byte
+		Geography *geoCollection
 
-	// parent map are used to build breadcrumbs
-	Parent *MfMap
-}
+		// parent map are used to build breadcrumbs
+		Parent *MfMap
+	}
 
-type MapData struct {
-	Path     MapPath  `json:"path"`
-	Info     MapInfo  `json:"mf_map_layers_v2"`
-	Children []Poi    `json:"mf_map_layers_v2_children_poi"`
-	Subzones Subzones `json:"mf_map_layers_v2_sub_zone"`
-	Tools    MapTools `json:"mf_tools_common"`
-}
+	MapData struct {
+		//	Path     MapPath  `json:"path"`
+		Info     MapInfo  `json:"mf_map_layers_v2"`
+		Children []Poi    `json:"mf_map_layers_v2_children_poi"`
+		Subzones Subzones `json:"mf_map_layers_v2_sub_zone"`
+		Tools    MapTools `json:"mf_tools_common"`
+	}
 
-type MapPath struct {
-	BaseUrl    string `json:"baseUrl"`
-	ScriptPath string `json:"scriptPath"`
-}
+	MapPath struct {
+		BaseUrl    string `json:"baseUrl"`
+		ScriptPath string `json:"scriptPath"`
+	}
 
-type MapInfo struct {
-	Nid         string `json:"nid"`
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	Taxonomy    string `json:"taxonomy"`
-	PathAssets  string `json:"path_assets"`
-	IdTechnique string `json:"field_id_technique"`
-}
+	MapInfo struct {
+		Nid         string `json:"nid"`
+		Name        string `json:"name"`
+		Path        string `json:"path"`
+		Taxonomy    string `json:"taxonomy"`
+		PathAssets  string `json:"path_assets"`
+		IdTechnique string `json:"field_id_technique"`
+	}
 
-// lat et lgn are mixed type float / string
-type stringFloat float64
+	// lat et lgn are mixed type float / string
+	stringFloat float64
 
-type Poi struct {
-	Title      string      `json:"title"`
-	Lat        stringFloat `json:"lat"`
-	Lng        stringFloat `json:"lng"`
-	Path       string      `json:"path"`
-	Insee      string      `json:"insee"`
-	Taxonomy   string      `json:"taxonomy"`
-	CodePostal string      `json:"code_postal"`
-	Timezone   string      `json:"timezone"`
-}
+	Poi struct {
+		Title      string      `json:"title"`
+		Lat        stringFloat `json:"lat"`
+		Lng        stringFloat `json:"lng"`
+		Path       string      `json:"path"`
+		Insee      string      `json:"insee"`
+		Taxonomy   string      `json:"taxonomy"`
+		CodePostal string      `json:"code_postal"`
+		Timezone   string      `json:"timezone"`
+	}
 
-type Subzone struct {
-	Path string `json:"path"`
-	Name string `json:"name"`
-}
+	Subzone struct {
+		Path string `json:"path"`
+		Name string `json:"name"`
+	}
 
-type Subzones map[string]Subzone // key = IdTechnique
+	Subzones map[string]Subzone // key = IdTechnique
 
-type MapTools struct {
-	Alias  string    `json:"alias"`
-	Config MapConfig `json:"config"`
-}
+	MapTools struct {
+		Alias  string    `json:"alias"`
+		Config MapConfig `json:"config"`
+	}
 
-type MapConfig struct {
-	BaseUrl string `json:"base_url"`
-	Site    string `json:"site"`
-	Domain  string `json:"domain"`
-}
+	MapConfig struct {
+		BaseUrl string `json:"base_url"`
+		Site    string `json:"site"`
+		Domain  string `json:"domain"`
+	}
+)
 
 const (
 	apiMultiforecast = "/multiforecast"
 )
 
-var blockedIds = []string{
-	"DEPT988", // nouvelle caledonie
+var szFilters = map[string]*regexp.Regexp{
+	//		"DEPARTEMENT":   no subzones
+	"REGION": regexp.MustCompile(`^DEPT[0-9][0-9AB]$`),
+	"PAYS":   regexp.MustCompile(`^REGIN[0-9][0-9]$`),
 }
 
 func (m *MfMap) ParseHtml(html io.Reader) error {
@@ -95,6 +101,8 @@ func (m *MfMap) ParseHtml(html io.Reader) error {
 	if err != nil {
 		return err
 	}
+	// keep only selected subzones, excluding marine & montagne & outermer
+	data.Subzones.filterSubzones(data.Info.Taxonomy)
 	m.Data = data
 	return nil
 }
@@ -129,22 +137,41 @@ func (m *MfMap) ParseGeography(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	// remove unavailable subzones like "marine" or "montagne"
-	subzones := make(geoFeatures, 0, len(geo.Features))
+	// discard geographical subzones without a reference in map metadata
+	geoFeats := make(geoFeatures, 0, len(geo.Features))
 	for _, feat := range geo.Features {
-		if m.Data.Subzones.Has(feat.Properties.Prop0.Nom) {
-			subzones = append(subzones, feat)
+		_, ok := m.Data.Subzones[feat.Properties.Prop0.Cible]
+		if ok {
+			geoFeats = append(geoFeats, feat)
 		}
 	}
 	// check consistency
-	got := len(subzones)
+	got := len(geoFeats)
 	want := len(m.Data.Subzones)
 	if got != want {
-		return fmt.Errorf("all subzones declared in map metadata should exist in geography data (got %d want %d)", got, want)
+		return fmt.Errorf("all subzones defined in map metadata should"+
+			"have a geographical representation (got %d want %d)", got, want)
 	}
-	geo.Features = subzones
+	geo.Features = geoFeats // cant simplify geo because m.Geography == nil
 	m.Geography = geo
 	return nil
+}
+
+func (sz Subzones) filterSubzones(taxonomy string) {
+
+	re, ok := szFilters[taxonomy]
+	if !ok {
+		re = regexp.MustCompile(`$^`) // match nothing
+	}
+	if re == nil {
+		return
+	}
+	for id := range sz {
+		if !re.MatchString(id) {
+			delete(sz, id)
+			log.Printf("ignore subzone %s", id)
+		}
+	}
 }
 
 // isJsonTag detecte l'élement contenant les donnnées drupal
@@ -341,30 +368,48 @@ func (sf *stringFloat) UnmarshalJSON(b []byte) error {
 }
 
 func (m *MfMap) Name() string {
-	return strings.ToLower(m.Data.Info.Name)
-}
-
-func (sz Subzones) Has(zone string) bool {
-	for k := range sz {
-		if sz[k].Name == zone {
-			return true
-		}
+	if m.Data == nil {
+		return "undefined"
 	}
-	return false
+	return m.Data.Info.Name
+}
+var pathPattern = regexp.MustCompile(`^/previsions-meteo-france/(.+)/`)
+
+func (m *MfMap) Path() string {
+	if m.Data == nil {
+		return "undefined"
+	}
+	// cas particulier pour la page d'acceuil
+	if m.Data.Info.IdTechnique == "PAYS007" {
+		return "france"
+	}
+	match := pathPattern.FindStringSubmatch(m.Data.Info.Path)
+	if (match != nil) && (len(match) == 2) {
+		return match[1]
+	}
+	return ""
 }
 
 func (sz *Subzones) UnmarshalJSON(b []byte) error {
-
-	// call default json unmarshalling to a map[string]Subzone
+	*sz = make(Subzones)
+	// try unmarshalling to a map[string]Subzone
+	// unmarshalling to same type (*Subzones) is infinite recursion
 	tmp := make(map[string]Subzone)
 	err := json.Unmarshal(b, &tmp)
 	if err != nil {
+		// retry to parse as an empty array instead of a map
+		typeError, ok := err.(*json.UnmarshalTypeError)
+		if ok && typeError.Value == "array" {
+			a := make([]string, 0)
+			err = json.Unmarshal(b, &a)
+			if (err != nil) || (len(a) > 0) {
+				err = fmt.Errorf("Subzones json is meither an object (map[string]) nor an empty array, %w", err)
+				return err
+			}
+			// empty array unmarshalled into empty map
+			return nil
+		}
 		return err
-	}
-
-	// filter out unavailable zones
-	for _, id := range blockedIds {
-		delete(tmp, id)
 	}
 	*sz = tmp
 	return nil

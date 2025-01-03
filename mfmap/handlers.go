@@ -8,14 +8,14 @@ import (
 )
 
 func (m *MfMap) AddHandlers(mux *http.ServeMux) {
-	name := m.Name()
-	log.Printf("Register handlers for map '%s'", name)
+	p := m.Path()
+	log.Printf("Register handlers for map '%s'", p)
 
-	mux.HandleFunc("/"+name, m.makeMainHandler())
-	mux.HandleFunc("/"+name+"/data", m.makeDataHandler())
-	mux.HandleFunc("/"+name+"/svg", m.makeSvgMapHandler())
+	mux.HandleFunc("/"+p, m.makeMainHandler())
+	mux.HandleFunc("/"+p+"/data", m.makeDataHandler())
+	mux.HandleFunc("/"+p+"/svg", m.makeSvgMapHandler())
 	// redirect root path '/' to '/france'
-	if name == "france" {
+	if p == "france" {
 		mux.HandleFunc("/{$}", makeRedirectHandler("/france"))
 	}
 }

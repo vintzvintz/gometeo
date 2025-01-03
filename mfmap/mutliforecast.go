@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 	"slices"
 	"time"
 )
@@ -72,13 +73,27 @@ type Daily struct {
 	WeatherDesc string    `json:"daily_weather_description"`
 }
 
+// custom types with runtime checks on unmarshalled values
+type (
+	FeatureCollectionType string
+	FeatureType           string
+	PointType             string
+	tzParis               string
+	countryFr             string
+	MomentName            string
+	CodeInsee             string
+)
+
+var (
+	featureCollectionStr = regexp.MustCompile(`FeatureCollection`)
+	featureStr           = regexp.MustCompile(`Feature`)
+	pointStr             = regexp.MustCompile(`Point`)
+	tzStr                = regexp.MustCompile(`Europe/(Paris)|(Rome)|(Zurich)|(Madrid)|(Brussels)`)
+	countryFrStr         = regexp.MustCompile(`FR - France`)
+)
+
 const (
-	featureCollectionStr = "FeatureCollection"
-	featureStr           = "Feature"
-	pointStr             = "Point"
-	tzStr                = "Europe/Paris"
-	countryFrStr         = "FR - France"
-	codeInseeMinLen      = 6
+	codeInseeMinLen = 6
 )
 
 const (
@@ -88,28 +103,19 @@ const (
 	nightStr     = "nuit"
 )
 
-// custom types with runtime checks on unmarshalled values
-type FeatureCollectionType string
-type FeatureType string
-type PointType string
-type tzParis string
-type countryFr string
-type MomentName string
-type CodeInsee string
-
-func unmarshalConstantString(b []byte, want string, name string) (string, error) {
+func unmarshalStringValidate(b []byte, want *regexp.Regexp, name string) (string, error) {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return "", fmt.Errorf("%s unmarshal error: %w", name, err)
 	}
-	if s != want {
-		return "", fmt.Errorf("%s is '%s' want '%s'", name, s, want)
+	if !want.MatchString(s) {
+		return "", fmt.Errorf("%s is '%s' want '%s'", name, s, want.String())
 	}
 	return s, nil
 }
 
 func (fct *FeatureCollectionType) UnmarshalJSON(b []byte) error {
-	s, err := unmarshalConstantString(b, featureCollectionStr, "FeatureCollection.Type")
+	s, err := unmarshalStringValidate(b, featureCollectionStr, "FeatureCollection.Type")
 	if err != nil {
 		return err
 	}
@@ -118,7 +124,7 @@ func (fct *FeatureCollectionType) UnmarshalJSON(b []byte) error {
 }
 
 func (fct *FeatureType) UnmarshalJSON(b []byte) error {
-	s, err := unmarshalConstantString(b, featureStr, "Feature.Type")
+	s, err := unmarshalStringValidate(b, featureStr, "Feature.Type")
 	if err != nil {
 		return err
 	}
@@ -127,7 +133,7 @@ func (fct *FeatureType) UnmarshalJSON(b []byte) error {
 }
 
 func (pt *PointType) UnmarshalJSON(b []byte) error {
-	s, err := unmarshalConstantString(b, pointStr, "Point.Type")
+	s, err := unmarshalStringValidate(b, pointStr, "Point.Type")
 	if err != nil {
 		return err
 	}
@@ -136,7 +142,7 @@ func (pt *PointType) UnmarshalJSON(b []byte) error {
 }
 
 func (tz *tzParis) UnmarshalJSON(b []byte) error {
-	s, err := unmarshalConstantString(b, tzStr, "MfProperty.Timezone")
+	s, err := unmarshalStringValidate(b, tzStr, "MfProperty.Timezone")
 	if err != nil {
 		return err
 	}
@@ -145,7 +151,7 @@ func (tz *tzParis) UnmarshalJSON(b []byte) error {
 }
 
 func (ctry *countryFr) UnmarshalJSON(b []byte) error {
-	s, err := unmarshalConstantString(b, countryFrStr, "MfProperty.Country")
+	s, err := unmarshalStringValidate(b, countryFrStr, "MfProperty.Country")
 	if err != nil {
 		return err
 	}

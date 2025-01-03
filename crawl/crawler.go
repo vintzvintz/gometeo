@@ -34,7 +34,13 @@ func NewCrawler() *Crawler {
 // svg map, pictos, forecasts and list of subzones
 // related data is stored into MfMap fields
 func (c *Crawler) GetMap(path string, parent *mfmap.MfMap, pictos PictoStore) (*mfmap.MfMap, error) {
-	//log.Printf("Crawling %s from parent '%s'\n", path, parent.Nom())
+	/*if parent==nil {
+		log.Printf("GetMap() '%s' no parent", path)
+	} else {
+		log.Printf("GetMap() '%s' with parent '%s'", path, parent.Name())
+	}*/
+	log.Printf("GetMap() '%s'", path)
+
 	body, err := c.mainClient.Get(path, CacheDisabled)
 	if err != nil {
 		return nil, err
@@ -138,33 +144,43 @@ func (ps PictoStore) Update(names []string, cl *MfClient) error {
 	return nil
 }
 
-// GetAllMaps() fetches recursively all maps from path '/'
-// pictos are stored in PictoStore
-func (c *Crawler) GetAllMaps(startPath string, pictos PictoStore) (MapCollection, error) {
-	maps := make(MapCollection, 0, 200)
-
-	queue := []struct {
+// GetAllMaps() fetches a map tree recursively
+// * startPath : where to start the tree walk ("/" is the 'root' page)
+// * pictos are stored in PictoStore
+// * limit limits the number of maps downloaded
+func (c *Crawler) GetAllMaps(startPath string, pictos PictoStore, limit int) (MapCollection, error) {
+	var (
+		cnt  int
+		maps = make(MapCollection, 0, 200)
+	)
+	type QueueItem struct {
 		path   string
 		parent *mfmap.MfMap
-	}{
-		{"/", nil},
 	}
 
+	// root map has a nil parent
+	queue := []QueueItem{{startPath, nil}}
 	for {
-		// stop when queue is empty
-		if len(queue) == 0 {
+		// stop when queue is empty or max count is reached
+		i := len(queue) - 1
+		if ((limit > 0) && (cnt > limit)) || i < 0 {
 			break
 		}
-		// pop next path from paths
-		next := queue[0]
-		queue = queue[1:]
+		cnt++
 
+		// pop queue and process next path
+		next := queue[i]
+		queue = queue[0:i]
 		m, err := c.GetMap(next.path, next.parent, pictos)
 		if err != nil {
 			return nil, err
 		}
+		// enqueue children maps
+		for _, sz := range m.Data.Subzones {
+			queue = append(queue, QueueItem{sz.Path, m})
+		}
+		// store current map in the collection
 		maps = append(maps, m)
-		// TODO : enqueue children maps
 	}
 	return maps, nil
 }

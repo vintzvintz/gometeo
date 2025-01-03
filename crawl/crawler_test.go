@@ -10,11 +10,16 @@ import (
 	"gometeo/testutils"
 )
 
-const minPictoCount = 20
+const minPictoCount = 10
 const minPictoSize = 200 // bytes
 
 func TestGetAllMaps(t *testing.T) {
-	maps, pictos := getAllMapsTest(t)
+	var cnt int = 10
+	maps, pictos := getAllMapsTest(t, cnt)
+
+	if len(maps) != cnt {
+		t.Errorf( "donwload %d maps, want %d ", len(maps), cnt)
+	}
 	checkMapCollection(t, maps)
 	checkPictos(t, pictos)
 }
@@ -25,10 +30,11 @@ func TestGetMap(t *testing.T) {
 	checkPictos(t, pictos)
 }
 
-func getAllMapsTest(t *testing.T) (MapCollection, PictoStore) {
+func getAllMapsTest(t *testing.T, limit int) (MapCollection, PictoStore) {
 	c := NewCrawler()
 	pictos := PictoStore{}
-	maps, err := c.GetAllMaps("/", pictos)
+	 maps, err := c.GetAllMaps("/", pictos, limit)
+	//maps, err := c.GetAllMaps("/previsions-meteo-france/jura/39", nil)
 	if err != nil {
 		t.Fatalf("GetAllMaps() error: %s", err)
 	}
@@ -52,9 +58,18 @@ func checkMapCollection(t *testing.T, maps MapCollection) {
 }
 
 func checkMap(t *testing.T, m *mfmap.MfMap) {
-	// TODO add more relevant checks
-	name := m.Name()
-	t.Log(name)
+	if( m.Data == nil ) {
+		t.Errorf( "MfMap field m.Data is nil")
+	}
+	if( m.Forecasts == nil ) {
+		t.Errorf( "MfMap field m.Forecasts is nil")
+	}
+	if( m.Geography == nil ) {
+		t.Errorf( "MfMap field m.Geography is nil")
+	}
+	if( m.SvgMap == nil ) {
+		t.Errorf( "MfMap field m.SvgMap is nil")
+	}
 }
 
 // there should be at least xxx different pictos, with minimum size,
@@ -62,7 +77,7 @@ func checkMap(t *testing.T, m *mfmap.MfMap) {
 func checkPictos(t *testing.T, pictos PictoStore) {
 	re := regexp.MustCompile("<svg")
 	if len(pictos) < minPictoCount {
-		t.Fatalf("found less than %d pictos ???", minPictoCount)
+		t.Fatalf("found %d pictos, expected at least %d", len(pictos), minPictoCount)
 	}
 	for p := range pictos {
 		svg := pictos[p]

@@ -4,20 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 )
 
 type geoCollection struct {
 	Type     FeatureCollectionType `json:"type"`
 	Bbox     Bbox                  `json:"bbox"`
-	Features []*geoFeature         `json:"features"`
+	Features geoFeatures           `json:"features"`
 }
 
 type Bbox struct {
-	LngW float64       `json:"w"`
-	LngE float64       `json:"e"`
-	LatN float64       `json:"n"`
-	LatS float64       `json:"s"`
+	LngW float64 `json:"w"`
+	LngE float64 `json:"e"`
+	LatN float64 `json:"n"`
+	LatS float64 `json:"s"`
 }
+
+type geoFeatures []*geoFeature
 
 type geoFeature struct {
 	Bbox       Bbox        `json:"bbox"`
@@ -59,7 +62,7 @@ const (
 	maxLng = 15.0
 )
 
-const polygonStr = "Polygon"
+var polygonStr = regexp.MustCompile("Polygon")
 
 func (bbox *Bbox) UnmarshalJSON(b []byte) error {
 	var a [4]float64
@@ -95,7 +98,7 @@ func (b Bbox) Crop() Bbox {
 }
 
 func (pt *PolygonType) UnmarshalJSON(b []byte) error {
-	s, err := unmarshalConstantString(b, polygonStr, "GeoGeometry.Type")
+	s, err := unmarshalStringValidate(b, polygonStr, "GeoGeometry.Type")
 	if err != nil {
 		return err
 	}

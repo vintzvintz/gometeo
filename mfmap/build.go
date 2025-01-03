@@ -21,8 +21,6 @@ type JsonMap struct {
 	Prevs    PrevList    `json:"prevs"`
 }
 
-type geoFeatures []*geoFeature
-
 type PrevList map[Jour]PrevsAtDay
 
 // relative day from "today" (-1:yesterday, +1 tomorrow, ...)

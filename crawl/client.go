@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
 type MfClient struct {
 	baseUrl         string
-	noSessionCookie bool     // do not expect mfsession cookie
+	noSessionCookie bool // do not expect mfsession cookie
 	authToken       string
 	client          *http.Client
 	cache           *MfCache
@@ -95,7 +94,7 @@ func (cu *cacheUpdater) Close() error {
 // a Set-Cookie "mfsession" header present in every response.
 // Warns if token changes during a session
 func (cl *MfClient) updateAuthToken(resp *http.Response) error {
-	if cl.noSessionCookie {  // do not expect a session cookie from api server (rpcache-aa)
+	if cl.noSessionCookie { // do not expect a session cookie from api server (rpcache-aa)
 		return nil
 	}
 	var tok string
@@ -110,9 +109,9 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 		return MissingCookieError(msg)
 	}
 	tok, _ = Rot13(tok)
-	if cl.authToken != "" && cl.authToken != tok {
+	/*if cl.authToken != "" && cl.authToken != tok {
 		log.Println("Cookie de session modifié.")
-	}
+	}*/
 	cl.authToken = tok
 	return nil
 }
