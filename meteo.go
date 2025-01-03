@@ -10,15 +10,14 @@ import (
 )
 
 var (
-	cacheMaps  bool   = true
+	cacheMaps bool   = true
 	cacheFile string = "./cachedMaps.gob"
 )
 
 type MeteoBlob struct {
-	Maps crawl.MapCollection
+	Maps   crawl.MapCollection
 	Pictos crawl.PictoStore
 }
-
 
 // TODO: refactor in testutils
 func loadMaps() (crawl.MapCollection, crawl.PictoStore) {
@@ -35,7 +34,7 @@ func loadMaps() (crawl.MapCollection, crawl.PictoStore) {
 	err = dec.Decode(&blob)
 	if err != nil {
 		log.Println(err)
-		return nil,nil
+		return nil, nil
 	}
 	log.Printf("cacheMap enabled : map loaded from %s", cacheFile)
 	return blob.Maps, blob.Pictos
@@ -67,7 +66,7 @@ func main() {
 
 	if maps == nil {
 		pictos = crawl.PictoStore{}
-		maps, err = crawler.GetAllMaps("/", pictos, 0 )
+		maps, err = crawler.GetAllMaps("/", pictos, 0)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)

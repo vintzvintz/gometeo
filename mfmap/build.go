@@ -14,6 +14,7 @@ import (
 
 type JsonMap struct {
 	Name     string      `json:"name"`
+	Path     string      `json:"path"`
 	Idtech   string      `json:"idtech"`
 	Taxonomy string      `json:"taxonomy"`
 	Bbox     Bbox        `json:"bbox"`
@@ -134,7 +135,8 @@ func init() {
 
 func (m *MfMap) buildJson() (*JsonMap, error) {
 	j := JsonMap{
-		Name:     m.Data.Info.Name,
+		Name:     m.Name(),
+		Path:     m.Path(),
 		Idtech:   m.Data.Info.IdTechnique,
 		Taxonomy: m.Data.Info.Taxonomy,
 		SubZones: m.Geography.Features,
@@ -320,26 +322,19 @@ func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 type TemplateData struct {
 	HeadDescription string
 	HeadTitle       string
+	Path            string
 	// Breadcrumb      string
 	// Idtech          string
-	// Path            string
 }
 
 func (m *MfMap) BuildHtml(wr io.Writer) error {
-	data := TemplateData{
+	return htmlTemplate.Execute(wr, &TemplateData{
 		HeadDescription: fmt.Sprintf("Description de %s", m.Data.Info.Name),
 		HeadTitle:       fmt.Sprintf("Titre de %s", m.Data.Info.Name),
+		Path:            m.Path(),
 		//Breadcrumb:      "TODO : generer le breadcrumb",
 		//Idtech:          m.Data.Info.IdTechnique,
-	}
-	/*
-		p, err := m.Name()
-		if err != nil {
-			return err
-		}
-		data.Path = p
-	*/
-	return htmlTemplate.Execute(wr, &data)
+	})
 }
 
 func (mf *MultiforecastData) findDaily(id CodeInsee, day time.Time) *Daily {
@@ -423,25 +418,6 @@ func (d Daily) withTimestamp(data string) (ChroValue, error) {
 	}
 }
 
-/*
-// Marshal all previsions into an array (ordered)
-// instead of object (unordered) to avoid client-side sorting
-func (pl PrevList) MarshalJSON() ([]byte, error) {
-
-	// find bounds
-	days := make([]Jour, 0, len(pl))
-	for d := range pl {
-		days = append(days, d)
-	}
-	slices.Sort[[]Jour, Jour](days)
-
-	prevs := make([]PrevsAtDay, 0, len(pl))
-	for _, i := range days {
-		prevs = append(prevs, pl[i])
-	}
-	return json.Marshal(prevs)
-}
-*/
 // 4 prevs of a day are marshalled into an array (ordered)
 // instead of object (unordered) to avoid client-side sorting
 func (pad PrevsAtDay) MarshalJSON() ([]byte, error) {

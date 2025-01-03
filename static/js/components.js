@@ -39,14 +39,19 @@ const weatherDisplayOrder = [
 
 export const RootComponent = {
 
-  setup() {
+  props: {
+    path: String
+  },
+
+  setup(props) {
 
     // map data properties must be declared at component creation 
     // filled asynchronously by fetchMapdata() later
     const mapData = reactive({
-      'name': '',
-      'idtech': '',
-      'taxonomy': '',
+      'path': null,
+      'name': null,
+      'idtech': null,
+      'taxonomy': null,
       'bbox': {},
       'subzones': new Array(),
       'prevs': {},
@@ -66,17 +71,18 @@ export const RootComponent = {
     ])
 
     async function fetchMapdata() {
-      console.log("enter fetchMapdata()")
-      const res = await fetch("/france/data")
+      console.log(`fetchMapdata() path=${props.path}`)
+      const res = await fetch(`/${props.path}/data`)
       const data = await res.json()
 
       mapData.name = data.name
+      mapData.path = data.path
       mapData.idtech = data.idtech
       mapData.taxonomy = data.taxonomy
       mapData.bbox = data.bbox
       mapData.subzones = data.subzones
       mapData.prevs = data.prevs
-      console.log("exit fetchMapdata()")
+      console.log("fetchMapdata() exit")
     }
 
     // callback when WeatherPicker emits a 'weatherSelected' event
@@ -85,7 +91,11 @@ export const RootComponent = {
     }
 
     // get Prevs when static page is loaded
-    onMounted(fetchMapdata)
+    onMounted(() => {
+      console.log(`onMounted() path=${props.path}`)
+      fetchMapdata()
+
+    })
 
     // only returned items are available in template
     return {
@@ -97,7 +107,8 @@ export const RootComponent = {
   <header>
   <Breadcrumb :breadcrumb="breadcrumb"/>
   <section class="selecteurs">
-  <p>mapname={{mapData.name}}</p>
+  <p>name={{mapData.name}}</p>
+  <p>path={{mapData.path}}</p>
    <WeatherPicker 
    :activeWeather="selections.activeWeather"
    @weatherSelected="onWeatherSelected" />
@@ -297,16 +308,21 @@ export const MapComponent = {
       // add SVG map background
       let overlay = L.imageOverlay(svgPath(), lBounds)
       lMap.addLayer(overlay)
-      lMap.setMaxBounds(lBounds)
-      lMap.fitBounds(lBounds)
-      lMap.setZoom(lMap.getBoundsZoom(lBounds, true))
+
+      function resizeMap() {
+        lMap.setMaxBounds(lBounds)
+        lMap.fitBounds(lBounds)
+        lMap.setZoom(lMap.getBoundsZoom(lBounds, true))
+
+      }
+
+      resizeMap()
 
       // trigger leaflet container resize on HTML element size change
       let elt = lMap.getContainer()
       let obs = new ResizeObserver((entries) => {
-        lMap.setMaxBounds(lBounds)
-        lMap.fitBounds(lBounds)
-        lMap.setZoom(lMap.getBoundsZoom(lBounds, true))
+        resizeMap()
+
         lMap.invalidateSize({ animate: false, pan: false })
       })
       obs.observe(elt)
@@ -328,11 +344,15 @@ export const MapComponent = {
 
     function svgPath() {
       var img = new Image
-      img.src = '/france/svg'
+      img.src = `/${props.data.path}/svg`
       return img
     }
 
     function drawSubzones() {
+
+      if (props.data.subzones === null) {
+        return
+      }
 
       const szPane = lMap.createPane('subzones')
 

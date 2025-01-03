@@ -5,11 +5,12 @@
   <script type="importmap">
     {
       "imports": {
-        "vue": "/js/vue.esm-browser.js"
+        "vue": "/js/vue.esm-browser.js",
+        "main": "/js/main.js",
+        "components": "/js/components.js"
       }
     }
   </script>
-  <script type="module" src="/js/main.js"></script>
 
   <!--   TODO : add gzip compression on static files -->
 
@@ -55,6 +56,10 @@
   <script src="/js/highcharts.js"></script>
   <script src="/js/highcharts-debugger.js"></script>
   <script src="/Gotemplate.Path/data"></script>  -->
+  <script type="module">
+    import {createMeteoApp} from 'main'
+    createMeteoApp("#vuejs_root", "{{.Path}}" )
+  </script>
 </body>
 
 </html>

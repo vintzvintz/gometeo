@@ -163,7 +163,7 @@ func (c *Crawler) GetAllMaps(startPath string, pictos PictoStore, limit int) (Ma
 	for {
 		// stop when queue is empty or max count is reached
 		i := len(queue) - 1
-		if ((limit > 0) && (cnt > limit)) || i < 0 {
+		if ((limit > 0) && (cnt >= limit)) || i < 0 {
 			break
 		}
 		cnt++

@@ -373,6 +373,7 @@ func (m *MfMap) Name() string {
 	}
 	return m.Data.Info.Name
 }
+
 var pathPattern = regexp.MustCompile(`^/previsions-meteo-france/(.+)/`)
 
 func (m *MfMap) Path() string {

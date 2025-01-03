@@ -276,11 +276,20 @@ func TestName(t *testing.T) {
 	m := MfMap{
 		Data: testMapParser(t, fileJsonRacine),
 	}
-	want := "france"
-	got := m.Name()
-	if got != want {
-		t.Fatalf("MfMap.Name() got '%s' want '%s'", got, want)
-	}
+	t.Run("name", func(t *testing.T) {
+		want := "France"
+		got := m.Name()
+		if got != want {
+			t.Fatalf("MfMap.Name() got '%s' want '%s'", got, want)
+		}
+	})
+	t.Run("path", func(t *testing.T) {
+		want := "france"
+		got := m.Path()
+		if got != want {
+			t.Fatalf("MfMap.Path() got '%s' want '%s'", got, want)
+		}
+	})
 }
 
 func TestParseGeography(t *testing.T) {
