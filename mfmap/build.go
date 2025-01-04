@@ -8,46 +8,58 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"slices"
 	"text/template"
 	"time"
 )
 
-type JsonMap struct {
-	Name     string      `json:"name"`
-	Path     string      `json:"path"`
-	Idtech   string      `json:"idtech"`
-	Taxonomy string      `json:"taxonomy"`
-	Bbox     Bbox        `json:"bbox"`
-	SubZones geoFeatures `json:"subzones"`
-	Prevs    PrevList    `json:"prevs"`
-}
+type (
+	JsonMap struct {
+		Name       string      `json:"name"`
+		Path       string      `json:"path"`
+		Breadcrumb Breadcrumb  `json:"breadcrumb"`
+		Idtech     string      `json:"idtech"`
+		Taxonomy   string      `json:"taxonomy"`
+		Bbox       Bbox        `json:"bbox"`
+		SubZones   geoFeatures `json:"subzones"`
+		Prevs      PrevList    `json:"prevs"`
+	}
 
-type PrevList map[Jour]PrevsAtDay
+	PrevList map[Jour]PrevsAtDay
 
-// relative day from "today" (-1:yesterday, +1 tomorrow, ...)
-type Jour int
+	// relative day from "today" (-1:yesterday, +1 tomorrow, ...)
+	Jour int
 
-// data for a day, to be displayed as a row of 4 moments
-// use pointers so unavailable entries can be nil
-type PrevsAtDay struct {
-	Matin     *PrevsAtMoment `json:"matin"`
-	AprèsMidi *PrevsAtMoment `json:"après-midi"`
-	Soiree    *PrevsAtMoment `json:"soirée"`
-	Nuit      *PrevsAtMoment `json:"nuit"`
-}
+	// data for a day, to be displayed as a row of 4 moments
+	// use pointers so unavailable entries can be nil
+	PrevsAtDay struct {
+		Matin     *PrevsAtMoment `json:"matin"`
+		AprèsMidi *PrevsAtMoment `json:"après-midi"`
+		Soiree    *PrevsAtMoment `json:"soirée"`
+		Nuit      *PrevsAtMoment `json:"nuit"`
+	}
 
-// all available forecasts for a given point in time (moment + day)
-type PrevsAtMoment struct {
-	Time    time.Time   `json:"echeance"`
-	Updated time.Time   `json:"updated"`
-	Prevs   []PrevAtPoi `json:"prevs"`
-}
+	// all available forecasts for a given point in time (moment + day)
+	PrevsAtMoment struct {
+		Time    time.Time   `json:"echeance"`
+		Updated time.Time   `json:"updated"`
+		Prevs   []PrevAtPoi `json:"prevs"`
+	}
 
-// Prevlist key is a composite type
-type Echeance struct {
-	Moment MomentName
-	Day    time.Time // yyyy-mm-dd @ 00-00-00 UTC
-}
+	// Prevlist key is a composite type
+	Echeance struct {
+		Moment MomentName
+		Day    time.Time // yyyy-mm-dd @ 00-00-00 UTC
+	}
+)
+
+type (
+	BreadcrumbItem struct {
+		Nom  string `json:"nom"`
+		Path string `json:"path"`
+	}
+	Breadcrumb []BreadcrumbItem
+)
 
 // forecast data for a single (poi, date) point
 type PrevAtPoi struct {
@@ -89,6 +101,9 @@ var htmlTemplate *template.Template
 var templateFile string
 
 // series in Forecasts objects
+
+const daysChronique = 10
+
 const (
 	Temperature   = "T"
 	Windspeed     = "Windspeed"
@@ -98,8 +113,6 @@ const (
 	Hrel          = "Hrel"
 	Psea          = "Psea"
 )
-
-const daysChronique = 10
 
 var forecastsChroniques = []string{
 	Temperature,
@@ -135,13 +148,14 @@ func init() {
 
 func (m *MfMap) buildJson() (*JsonMap, error) {
 	j := JsonMap{
-		Name:     m.Name(),
-		Path:     m.Path(),
-		Idtech:   m.Data.Info.IdTechnique,
-		Taxonomy: m.Data.Info.Taxonomy,
-		SubZones: m.Geography.Features,
-		Bbox:     m.Geography.Bbox.Crop(),
-		Prevs:    m.Forecasts.byEcheance(),
+		Name:       m.Name(),
+		Path:       m.Path(),
+		Breadcrumb: m.Breadcrumb(),
+		Idtech:     m.Data.Info.IdTechnique,
+		Taxonomy:   m.Data.Info.Taxonomy,
+		SubZones:   m.Geography.Features,
+		Bbox:       m.Geography.Bbox.Crop(),
+		Prevs:      m.Forecasts.byEcheance(),
 	}
 	return &j, nil
 }
@@ -164,6 +178,20 @@ func (m *MfMap) BuildJson(wr io.Writer) error {
 
 func (m *MfMap) BuildGraphdata() (Graphdata, error) {
 	return m.Forecasts.toChroniques()
+}
+
+func (m *MfMap) Breadcrumb() []BreadcrumbItem {
+	bc := make([]BreadcrumbItem, 0, 5)
+	cur := m
+	for {
+		if cur == nil {
+			break
+		}
+		bc = append(bc, BreadcrumbItem{cur.Name(), cur.Path()})
+		cur = cur.Parent
+	}
+	slices.Reverse(bc)
+	return bc
 }
 
 // momPtr simplifies and reduce duplication of the switch

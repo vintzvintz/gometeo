@@ -70,12 +70,6 @@ export const RootComponent = {
       //activeTimespan: String("")
     })
 
-    const breadcrumb = reactive([
-      { name: "pays", path: "/path_france" },
-      { name: "région", path: "/path_region" },
-      { name: "dept", path: "/path_dept" },
-    ])
-
     async function fetchMapdata() {
       console.log(`fetchMapdata() path=${props.path}`)
       const res = await fetch(`/${props.path}/data`)
@@ -83,6 +77,7 @@ export const RootComponent = {
 
       mapData.name = data.name
       mapData.path = data.path
+      mapData.breadcrumb = data.breadcrumb
       mapData.idtech = data.idtech
       mapData.taxonomy = data.taxonomy
       mapData.bbox = data.bbox
@@ -114,7 +109,6 @@ export const RootComponent = {
     return {
       mapData,
       selections,
-      breadcrumb,
       onWeatherSelected,
       onToggleTooltips,
     }
@@ -122,7 +116,9 @@ export const RootComponent = {
 
   template: /*html*/ `
   <header>
-  <Breadcrumb :breadcrumb="breadcrumb"/>
+  
+  <Breadcrumb :breadcrumb="mapData.breadcrumb"/>
+
   <section class="selecteurs">
    <WeatherPicker 
    :activeWeather="selections.activeWeather"
@@ -150,10 +146,9 @@ export const Breadcrumb = {
 
   template: /*html*/`
 <nav class="topnav">
-  Navigation : 
   <ul>
   <li v-for="item in breadcrumb">
-    <a :href="item.path">{{item.name}}</a>
+    <a :href="item.path">{{item.nom}}</a>
   </li>
   </ul>
 </nav>`
