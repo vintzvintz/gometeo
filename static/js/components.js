@@ -65,7 +65,7 @@ export const RootComponent = {
 
     // selection of displayed data
     const selections = reactive({
-      tooltipsEnabled: false,
+      tooltipsEnabled: true,
       activeWeather: "prev"
       //activeTimespan: String("")
     })
@@ -98,6 +98,11 @@ export const RootComponent = {
       }
     }
 
+    // callback to toggle tooltips
+    function onToggleTooltips() {
+      selections.tooltipsEnabled = !selections.tooltipsEnabled   // reactive
+    }
+
     // get Prevs when static page is loaded
     onMounted(() => {
       console.log(`onMounted() path=${props.path}`)
@@ -107,7 +112,11 @@ export const RootComponent = {
 
     // only returned items are available in template
     return {
-      mapData, selections, onWeatherSelected, breadcrumb
+      mapData,
+      selections,
+      breadcrumb,
+      onWeatherSelected,
+      onToggleTooltips,
     }
   },
 
@@ -118,10 +127,11 @@ export const RootComponent = {
    <WeatherPicker 
    :activeWeather="selections.activeWeather"
    @weatherSelected="onWeatherSelected" />
-<!--    <div>
-    <TimespanPicker/>
-    <TooltipsToggler/>
-  </div> -->
+   <TooltipsToggler
+   :tooltipsEnabled="selections.tooltipsEnabled"
+   @toggleTooltips="onToggleTooltips"/>
+
+<!-- <div> <TimespanPicker/> </div> -->
 <!--  <highchart-graph v-if="display_graph"></highchart-graph> -->
   </section>
 </header>
@@ -157,7 +167,7 @@ export const WeatherPicker = {
     activeWeather: String,
   },
 
-  setup() {
+  setup(props) {
     return { weatherList, weatherDisplayOrder }
   },
 
@@ -176,16 +186,30 @@ export const WeatherPicker = {
 
 export const TooltipsToggler = {
 
+  emits: ['toggleTooltips'],
+
+  props: {
+    tooltipsEnabled: Boolean,
+  },
+
+  setup() {
+  },
+
   template: /*html*/`
-  <p>TooltipsToggler component</p>`
+<div id="tooltip_toggler"@click="$emit('toggleTooltips')">
+  <a :class="{active:tooltipsEnabled}" href="#">
+  Tooltips : {{tooltipsEnabled ? "Oui" : "Non"}}
+  </a>
+</div>`
 }
 
+/*
 export const TimespanPicker = {
 
-  template: /*html*/`
+  template: `
   <p>TimespanPicker component</p>`
 }
-
+*/
 
 export const MapGridComponent = {
 
@@ -347,14 +371,15 @@ export const MapComponent = {
     // use a getter ()=> to keep reactivity 
     // https://vuejs.org/guide/essentials/watchers.html#watch-source-types
     watch(() => props.selections.activeWeather, updateMarkers)
+    watch(() => props.selections.tooltipsEnabled, updateTooltipsVisibility)
 
 
     // display update time in "attribution" leaflet pre-defined control
     function showUpdateDate() {
       //let updated = new Date(props.prev.updated)
-      let txt = "Màj : " + 
+      let txt = "Màj : " +
         Intl.DateTimeFormat("fr-FR", dateFormatOpts)
-        .format(new Date(props.prev.updated))
+          .format(new Date(props.prev.updated))
       lAttributionControl.setPrefix(txt)
     }
 
@@ -605,6 +630,16 @@ export const MapComponent = {
     Max : <span class='temp-max'>${m.Tmax}°</span>
   </p>
 </div>`
+    }
+
+    function updateTooltipsVisibility() {
+      lMap && lMap.getPane('markerPane') &&
+        lMap.getPane('markerPane').childNodes.forEach(function (m) {
+          let classes = m.classList
+          props.selections.tooltipsEnabled ?
+            classes.add('leaflet-interactive') :
+            classes.remove('leaflet-interactive')
+        })
     }
 
     onMounted(initMap)

@@ -4,7 +4,7 @@ import {
   RootComponent,
   Breadcrumb,
   WeatherPicker,
-  TimespanPicker,
+//  TimespanPicker,
   TooltipsToggler,
   MapGridComponent,
   MapRowComponent,
@@ -28,7 +28,7 @@ export function createMeteoApp(mountElt, path) {
   app.component("RootComponent", RootComponent)
   app.component("Breadcrumb", Breadcrumb)
   app.component("WeatherPicker", WeatherPicker)
-  app.component("TimespanPicker", TimespanPicker)
+//  app.component("TimespanPicker", TimespanPicker)
   app.component("TooltipsToggler", TooltipsToggler)
   app.component("MapGridComponent", MapGridComponent)
   app.component("MapRowComponent", MapRowComponent)
