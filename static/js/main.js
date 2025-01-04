@@ -19,8 +19,6 @@ export function createMeteoApp(mountElt, path) {
       path: String,
     },
     setup() {
-      const message = ref("Le createApps message")
-      return { message }
     },
     template: /*html*/`<RootComponent :path="path" />`
   }, {

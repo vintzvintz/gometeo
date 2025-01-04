@@ -184,20 +184,21 @@ ul {
   /* margin: 0.2em 0 0 0;  petite marge en haut */
   margin: 0;
   width: 100%;  /* 1 map per row */
+  padding: 2px;
 
 }
 
 /* affichage sur deux colonnes */
 @media screen and (min-width : 600px) {
   .map-item {
-    width: 49.5%;
+    width: 50%;
   }
 }
 
 /* affichage sur 4 colonnes */
 @media screen and (min-width : 1200px) {
   .map-item {
-    width: 24.5%;  /* 4 maps per row */
+    width: 25%;  /* 4 maps per row */
   }
 }
 

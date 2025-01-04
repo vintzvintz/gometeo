@@ -1,12 +1,18 @@
-
 import { ref, reactive, watch, onMounted } from 'vue'
-
 
 // id generator for mapComponents
 let mapCount = 0
 function nextMapId() {
   return ++mapCount
 }
+
+let dateFormatOpts = Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "long",
+  hour: 'numeric',
+  timeZone: "Europe/Paris"
+}).resolvedOptions()
+
 
 const weatherList = {
   "default": {
@@ -107,8 +113,6 @@ export const RootComponent = {
   <header>
   <Breadcrumb :breadcrumb="breadcrumb"/>
   <section class="selecteurs">
-  <p>name={{mapData.name}}</p>
-  <p>path={{mapData.path}}</p>
    <WeatherPicker 
    :activeWeather="selections.activeWeather"
    @weatherSelected="onWeatherSelected" />
@@ -157,9 +161,6 @@ export const WeatherPicker = {
 
   template: /*html*/`
 <div class="data-picker">
-  <div>
-    activeWeather={{activeWeather}}
-  </div>
   <ul>
     <li v-for="w in weatherDisplayOrder":key="w" 
       @click="$emit('weatherSelected', w)">
@@ -197,7 +198,7 @@ export const MapGridComponent = {
       //console.log( "displayedJours() typeof props.data.prevs is " + typeof props.data.prevs )
       const ret = []
       if (typeof props.data.prevs !== 'undefined') {
-        for (var i = -1; i < 2; i++) {
+        for (var i = -1; i < 12; i++) {
           if (Object.hasOwn(props.data.prevs, i)) {
             ret.push(props.data.prevs[i])
           }
@@ -261,11 +262,14 @@ export const MapComponent = {
     }
 
     function mapTitle() {
+      if (!props.prev) {
+        return "indisponible"
+      }
+      let moment = Intl.DateTimeFormat("fr-FR", dateFormatOpts)
+        .format(new Date(props.prev.echeance))
       let weather = (typeof props.selections != null) ?
         weatherList[props.selections.activeWeather].text : ""
-      let moment = (props.prev != null) ?
-        props.prev.echeance : ""
-      return `${moment} - ${weather}`
+      return `${weather} ${moment}`
     }
 
     // leaflet.Map object cannot be created in setup() 
@@ -275,7 +279,8 @@ export const MapComponent = {
     let lBounds = null
 
     // keep references to markers for update/deletion
-    let markers = []
+    let lMarkers = []
+    let lAttributionControl = null
 
     function initMap() {
       //  when timespan changes, components are cached/re-used by v-for algorithm
@@ -309,30 +314,30 @@ export const MapComponent = {
       let overlay = L.imageOverlay(svgPath(), lBounds)
       lMap.addLayer(overlay)
 
+      // add update info
+      lAttributionControl = L.control
+        .attribution({ prefix: "" })
+        .addTo(lMap)
+
       function resizeMap() {
         lMap.setMaxBounds(lBounds)
         lMap.fitBounds(lBounds)
         lMap.setZoom(lMap.getBoundsZoom(lBounds, true))
-
       }
-
-      resizeMap()
 
       // trigger leaflet container resize on HTML element size change
       let elt = lMap.getContainer()
       let obs = new ResizeObserver((entries) => {
         resizeMap()
-
         lMap.invalidateSize({ animate: false, pan: false })
       })
       obs.observe(elt)
 
       drawSubzones()
+      resizeMap()
 
-      // todo: add updated date in "attributions"
-
-      // trigger markers on map creation
-      // later activeWeather changes are handled with a watcher
+      // trigger markers once on map creation
+      // next activeWeather changes are handled with a watcher
       updateMarkers()
     }
 
@@ -342,6 +347,15 @@ export const MapComponent = {
     watch(() => props.selections.activeWeather, updateMarkers)
 
 
+    // display update time in "attribution" leaflet pre-defined control
+    function showUpdateDate() {
+      //let updated = new Date(props.prev.updated)
+      let txt = "Màj : " + 
+        Intl.DateTimeFormat("fr-FR", dateFormatOpts)
+        .format(new Date(props.prev.updated))
+      lAttributionControl.setPrefix(txt)
+    }
+
     function svgPath() {
       var img = new Image
       img.src = `/${props.data.path}/svg`
@@ -349,7 +363,6 @@ export const MapComponent = {
     }
 
     function drawSubzones() {
-
       if (props.data.subzones === null) {
         return
       }
@@ -388,15 +401,13 @@ export const MapComponent = {
       if (pois) {
         removeMarkers();   // todo : inline
         pois.forEach(createMarker);
-
-        // TODO
-        // this.updateControl.setPrefix ("Màj : "+this.get_prevs.updated );
+        showUpdateDate()
       }
     }
 
     function removeMarkers() {
-      while (markers.length > 0) {
-        lMap.removeLayer(markers.pop());
+      while (lMarkers.length > 0) {
+        lMap.removeLayer(lMarkers.pop());
       }
     }
 
@@ -539,7 +550,7 @@ export const MapComponent = {
         .addTo(lMap)
 
       // keep a reference for later cleanup
-      markers.push(marker)
+      lMarkers.push(marker)
     }
 
     function onMarkerClick(e, target) {
@@ -551,7 +562,6 @@ export const MapComponent = {
     }
 
     function buildMarker(m) {
-
       let elt_a = `<div class="div-icon">
   <img src="/pictos/${m.icon}" 
        alt="${m.desc}"
@@ -594,6 +604,7 @@ export const MapComponent = {
     }
 
     onMounted(initMap)
+
     return { mapTitle, mapId }
   },
 
