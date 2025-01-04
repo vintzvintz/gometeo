@@ -198,7 +198,7 @@ export const MapGridComponent = {
       //console.log( "displayedJours() typeof props.data.prevs is " + typeof props.data.prevs )
       const ret = []
       if (typeof props.data.prevs !== 'undefined') {
-        for (var i = -1; i < 12; i++) {
+        for (var i = -1; i < 2; i++) {
           if (Object.hasOwn(props.data.prevs, i)) {
             ret.push(props.data.prevs[i])
           }
@@ -370,8 +370,8 @@ export const MapComponent = {
       const szPane = lMap.createPane('subzones')
 
       props.data.subzones.forEach((sz) => {
-        let path = 'todo_subzone_path' //sz.properties.prop_custom.path
-        //let nom = sz.properties.prop_custom.name 
+        let path = sz.properties.customPath
+        let nom = sz.properties.prop0.nom
         L.geoJSON(sz, {
           color: "transparent",
           fillColor: "transparent",
@@ -425,7 +425,7 @@ export const MapComponent = {
         icon_width: 40,
         icon_text_style: "",   // avoid null checks in template
         txt: "",
-        disabled: false,
+        //disabled: false,
         icon: prev.weather_icon,
         desc: prev.weather_description,
         Tmin: Math.round(daily.T_min),
@@ -543,11 +543,11 @@ export const MapComponent = {
         offset: m.tt_offset,
       })
 
-
       // attach a callback to make the marker clickable
-      let target = 'http://www.' + poi.titre + '.zzzzzzz'
-      marker.on('click', ((e) => onMarkerClick(e, target)))
-        .addTo(lMap)
+      // TODO : trouver la subzone contenant le marker ( a faire plutot server-side ?) 
+      //let target = 'http://www.' + poi.titre + '.zzzzzzz'
+      //marker.on('click', ((e) => onMarkerClick(e, target)))
+      marker.addTo(lMap)
 
       // keep a reference for later cleanup
       lMarkers.push(marker)
@@ -562,7 +562,8 @@ export const MapComponent = {
     }
 
     function buildMarker(m) {
-      let elt_a = `<div class="div-icon">
+      let elt_a = /*html*/`
+<div class="div-icon">
   <img src="/pictos/${m.icon}" 
        alt="${m.desc}"
        title="${m.title}"
@@ -572,7 +573,7 @@ export const MapComponent = {
         elt_a += `<div class="icon-text" style="${m.icon_text_style}">
           ${m.txt}</div>`
       }
-      elt_a += `</div>`
+      elt_a += /*html*/`</div>`
 
       let mark_opts = {
         icon: L.divIcon({
@@ -588,7 +589,8 @@ export const MapComponent = {
     }
 
     function buildTooltip(m) {
-      return `<div class="map_tooltip">
+      return /*html*/`
+<div class="map_tooltip">
   <h3 class="map_tooltip_location">${m.title}</h3>
   <img src="/pictos/${m.icon}" 
         alt="${m.desc}"

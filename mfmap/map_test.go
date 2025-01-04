@@ -293,7 +293,7 @@ func TestName(t *testing.T) {
 }
 
 func TestParseGeography(t *testing.T) {
-	t.Skip("skipped : test files are not up to date")
+	//t.Skip("skipped : test files are not up to date")
 	j := openFile(t, fileJsonGeography)
 	defer j.Close()
 

@@ -66,7 +66,7 @@ func main() {
 
 	if maps == nil {
 		pictos = crawl.PictoStore{}
-		maps, err = crawler.GetAllMaps("/", pictos, 0)
+		maps, err = crawler.GetAllMaps("/", pictos, 15)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)

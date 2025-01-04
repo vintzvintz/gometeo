@@ -33,6 +33,10 @@ type GeoProperty struct {
 	Prop0 Prop0 `json:"prop0"`
 	// Prop1 Prop1 `json:"prop1"`
 	// Prop2 Prop2 `json:"prop2"`
+
+	// subzones path is not provided in geography object
+	// needs to be derived from prop0.cible (IdTechnique)
+	CustomPath string `json:"customPath"`
 }
 
 type GeoGeometry struct {

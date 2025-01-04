@@ -137,13 +137,16 @@ func (m *MfMap) ParseGeography(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	// discard geographical subzones without a reference in map metadata
+	// keep only geographical subzones having a reference in map metadata
 	geoFeats := make(geoFeatures, 0, len(geo.Features))
 	for _, feat := range geo.Features {
-		_, ok := m.Data.Subzones[feat.Properties.Prop0.Cible]
-		if ok {
-			geoFeats = append(geoFeats, feat)
+		sz, ok := m.Data.Subzones[feat.Properties.Prop0.Cible]
+		if !ok {
+			continue
 		}
+		// add subzone path (could also be done client-side)
+		feat.Properties.CustomPath = extractPath(sz.Path)
+		geoFeats = append(geoFeats, feat)
 	}
 	// check consistency
 	got := len(geoFeats)
@@ -152,6 +155,11 @@ func (m *MfMap) ParseGeography(r io.Reader) error {
 		return fmt.Errorf("all subzones defined in map metadata should"+
 			"have a geographical representation (got %d want %d)", got, want)
 	}
+
+	// add subzone paths
+
+
+
 	geo.Features = geoFeats // cant simplify geo because m.Geography == nil
 	m.Geography = geo
 	return nil
@@ -374,7 +382,6 @@ func (m *MfMap) Name() string {
 	return m.Data.Info.Name
 }
 
-var pathPattern = regexp.MustCompile(`^/previsions-meteo-france/(.+)/`)
 
 func (m *MfMap) Path() string {
 	if m.Data == nil {
@@ -384,7 +391,20 @@ func (m *MfMap) Path() string {
 	if m.Data.Info.IdTechnique == "PAYS007" {
 		return "france"
 	}
+	return extractPath( m.Data.Info.Path )
+	/*
 	match := pathPattern.FindStringSubmatch(m.Data.Info.Path)
+	if (match != nil) && (len(match) == 2) {
+		return match[1]
+	}
+	return ""
+	*/
+}
+
+var pathPattern = regexp.MustCompile(`^/previsions-meteo-france/(.+)/`)
+
+func extractPath(mfPath string) string{
+	match := pathPattern.FindStringSubmatch(mfPath)
 	if (match != nil) && (len(match) == 2) {
 		return match[1]
 	}

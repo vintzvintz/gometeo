@@ -181,9 +181,8 @@ ul {
 
 /* affichage sur 1 colonne par défaut (mobile & faible largeur) */
 .map-item {
-  /* margin: 0.2em 0 0 0;  petite marge en haut */
   margin: 0;
-  width: 100%;  /* 1 map per row */
+  width: 100%;
   padding: 2px;
 
 }
@@ -191,6 +190,7 @@ ul {
 /* affichage sur deux colonnes */
 @media screen and (min-width : 600px) {
   .map-item {
+    /* deux colonnes */ 
     width: 50%;
   }
 }
@@ -198,7 +198,8 @@ ul {
 /* affichage sur 4 colonnes */
 @media screen and (min-width : 1200px) {
   .map-item {
-    width: 25%;  /* 4 maps per row */
+    /* 4 colonnes */
+    width: 25%;
   }
 }
 
@@ -206,7 +207,7 @@ ul {
 
 /********************** markers sur les cartes ******************/
 .map_component .icon-text {
-/*  position: absolute;*/
+  /*  position: absolute;*/
   position: relative;
 
   z-index: 10;
@@ -216,7 +217,7 @@ ul {
   color: #333333;
   font-weight: 700;
   margin: 0px;
-  width:40px;
+  width: 40px;
   text-align: center;
   /*line-height: 18px;*/
 }
@@ -237,7 +238,6 @@ ul {
   display: flex;
   flex-direction: column;
   align-items: center;
-/*  line-height: 50px; */
 }
 
 .map_component .divIcon img {
@@ -319,7 +319,7 @@ ul {
   border-radius: 5px;
 }
 
-@media screen and (max-width:39.99875em) {
+@media screen and (max-width:600px) {
   .leaflet-tooltip-pane {
     display: none;
   }
