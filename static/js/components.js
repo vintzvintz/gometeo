@@ -93,7 +93,9 @@ export const RootComponent = {
 
     // callback when WeatherPicker emits a 'weatherSelected' event
     function onWeatherSelected(id) {
-      selections.activeWeather = id   // reactive
+      if (id != "uv") {
+        selections.activeWeather = id   // reactive
+      }
     }
 
     // get Prevs when static page is loaded
