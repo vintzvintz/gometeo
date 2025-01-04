@@ -28,16 +28,10 @@ type (
 	}
 
 	MapData struct {
-		//	Path     MapPath  `json:"path"`
 		Info     MapInfo  `json:"mf_map_layers_v2"`
 		Children []Poi    `json:"mf_map_layers_v2_children_poi"`
 		Subzones Subzones `json:"mf_map_layers_v2_sub_zone"`
 		Tools    MapTools `json:"mf_tools_common"`
-	}
-
-	MapPath struct {
-		BaseUrl    string `json:"baseUrl"`
-		ScriptPath string `json:"scriptPath"`
 	}
 
 	MapInfo struct {
