@@ -192,10 +192,6 @@ func (m *MfMap) buildJson() (*JsonMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	graphdata, err := m.Forecasts.toChroniques()
-	if err != nil {
-		return nil, err
-	}
 
 	j := JsonMap{
 		Name:       m.Name(),
@@ -206,7 +202,15 @@ func (m *MfMap) buildJson() (*JsonMap, error) {
 		SubZones:   m.Geography.Features, // transfered without modification
 		Bbox:       m.Geography.Bbox.Crop(),
 		Prevs:      prevs,
-		Chroniques: graphdata,
+		//	Chroniques: graphdata,
+	}
+	// no highchart for PAYS, only for DEPTs & REGIONs
+	if m.Data.Info.Taxonomy != "PAYS" {
+		graphdata, err := m.Forecasts.toChroniques()
+		if err != nil {
+			return nil, err
+		}
+		j.Chroniques = graphdata
 	}
 	return &j, nil
 }
