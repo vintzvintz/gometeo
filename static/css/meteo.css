@@ -406,7 +406,7 @@ ul {
   color: white;
 }
 
-
+/******************** Tooltips ********************/
 /* Tooltip toggler */
 #tooltip_toggler {
   margin: 10px;
@@ -436,7 +436,7 @@ ul {
 }
 
 /************************* Graphique interactif ********************/
-#graph_container {
+#highchartContainer {
   margin: 10px;
   height: 320px;
   flex-basis: 600px;

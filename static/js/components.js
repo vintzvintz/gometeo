@@ -666,7 +666,7 @@ export const HighchartComponent = {
       console.log("Highchart.onMounted()", props.chroniques)
       initGraph()
       updateGraph()
-      watch(() => props.activeWeather, () => updateGraph())
+      watch(() => props.activeWeather, updateGraph)
     })
 
     const hcId = "highchartContainer"

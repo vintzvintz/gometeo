@@ -78,7 +78,10 @@ type (
 
 	// ValueTs is a float/integer + time stamp pair.
 	// FloatTS and IntTs implement custom JSON marshalling suitable for Highchart
-	ValueTs json.Marshaler
+	ValueTs interface {
+		json.Marshaler
+		Sub(time.Time) time.Duration
+	}
 
 	// timeStamper yields TsValues from a specified 'series' name'
 	timeStamper interface {
@@ -86,12 +89,12 @@ type (
 	}
 
 	FloatTs struct {
-		ts  int64 // milliseconds since 1/1/1970
+		ts  time.Time
 		val float64
 	}
 
 	IntTs struct {
-		ts  int64 // milliseconds since 1/1/1970
+		ts  time.Time
 		val int
 	}
 )
@@ -121,13 +124,13 @@ func init() {
 
 // series in Forecasts objects
 
-const daysChronique = 10
+const chroniqueLimitHours = 8 * 24 * time.Hour
 
 const (
 	Temperature   = "T"
 	Ressenti      = "Ress"
-	Windspeed     = "Windspeed"
-	WindspeedGust = "Windgust"
+	WindSpeed     = "WindSpeed"
+	WindSpeedGust = "WindSpeedGust"
 	Iso0          = "Iso0"
 	CloudCover    = "Cloud"
 	Hrel          = "Hrel"
@@ -137,8 +140,8 @@ const (
 var forecastsChroniques = []string{
 	Temperature,
 	Ressenti,
-	Windspeed,
-	WindspeedGust,
+	WindSpeed,
+	WindSpeedGust,
 	Iso0,
 	CloudCover,
 	Hrel,
@@ -360,6 +363,9 @@ func (e Echeance) DaysFrom(now time.Time) Jour {
 // for client-side charts
 func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 	g := Graphdata{}
+
+	limit := time.Now().Add(chroniqueLimitHours)
+
 	for i := range mf {
 		//lieu := mf[i].Properties.Insee
 
@@ -368,8 +374,9 @@ func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 		if err != nil {
 			return nil, err
 		}
-		for k, v := range g1 {
-			g[k] = append(g[k], v)
+		for name, chro := range g1 {
+			chro = chro.truncateAfter(limit)
+			g[name] = append(g[name], chro)
 		}
 
 		dailies := mf[i].Properties.Dailies
@@ -377,11 +384,22 @@ func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 		if err != nil {
 			return nil, err
 		}
-		for k, v := range g2 {
-			g[k] = append(g[k], v)
+		for name, chro := range g2 {
+			chro = chro.truncateAfter(limit)
+			g[name] = append(g[name], chro)
 		}
 	}
 	return g, nil
+}
+
+func (c Chronique) truncateAfter(t time.Time) Chronique {
+	ret := make(Chronique, 0, len(c))
+	for i := range c {
+		if c[i].Sub(t) < 0 {
+			ret = append(ret, c[i])
+		}
+	}
+	return ret
 }
 
 func (mf *MultiforecastData) findDaily(id CodeInsee, day time.Time) *Daily {
@@ -414,6 +432,8 @@ seriesLoop:
 			f := forecasts[i]
 			v, err := f.withTimestamp(nom)
 			if errors.Is(err, ErrNoSuchData) {
+				ret[nom] = nil
+				log.Printf("series not found: '%s'", nom)
 				continue seriesLoop // shortcut to next serie
 			}
 			if err != nil {
@@ -427,15 +447,15 @@ seriesLoop:
 }
 
 func (f Forecast) withTimestamp(data string) (ValueTs, error) {
-	ts := int64(f.Time.Sub(jsEpoch) / time.Millisecond)
+	ts := f.Time
 	switch data {
 	case Temperature:
 		return FloatTs{ts, f.T}, nil
 	case Ressenti:
 		return FloatTs{ts, f.TWindchill}, nil
-	case Windspeed:
+	case WindSpeed:
 		return IntTs{ts, f.WindSpeed}, nil
-	case WindspeedGust:
+	case WindSpeedGust:
 		return IntTs{ts, f.WindSpeedGust}, nil
 	case CloudCover:
 		return IntTs{ts, f.CloudCover}, nil
@@ -451,7 +471,7 @@ func (f Forecast) withTimestamp(data string) (ValueTs, error) {
 }
 
 func (d Daily) withTimestamp(data string) (ValueTs, error) {
-	ts := int64(d.Time.Sub(jsEpoch) / time.Millisecond)
+	ts := d.Time
 	switch data {
 	case Tmin:
 		return FloatTs{ts, d.Tmin}, nil
@@ -468,6 +488,10 @@ func (d Daily) withTimestamp(data string) (ValueTs, error) {
 	}
 }
 
+func timeToJs(t time.Time) int64 {
+	return int64(t.Sub(jsEpoch) / time.Millisecond)
+}
+
 // 4 prevs of a day are marshalled into an array (ordered)
 // instead of object (unordered) to avoid client-side sorting/grouping
 func (pad PrevsAtDay) MarshalJSON() ([]byte, error) {
@@ -476,13 +500,21 @@ func (pad PrevsAtDay) MarshalJSON() ([]byte, error) {
 }
 
 // MarshalJSON outputs a timestamped float as an array [ts, val]
-func (cv FloatTs) MarshalJSON() ([]byte, error) {
-	s := fmt.Sprintf("[%d, %f]", cv.ts, cv.val)
+func (v FloatTs) MarshalJSON() ([]byte, error) {
+	s := fmt.Sprintf("[%d, %f]", timeToJs(v.ts), v.val)
 	return []byte(s), nil
 }
 
 // MarshalJSON outputs a timestamped int as an array [ts, val]
-func (cv IntTs) MarshalJSON() ([]byte, error) {
-	s := fmt.Sprintf("[%d, %d]", cv.ts, cv.val)
+func (v IntTs) MarshalJSON() ([]byte, error) {
+	s := fmt.Sprintf("[%d, %d]", timeToJs(v.ts), v.val)
 	return []byte(s), nil
+}
+
+func (v IntTs) Sub(t time.Time) time.Duration {
+	return v.ts.Sub(t)
+}
+
+func (v FloatTs) Sub(t time.Time) time.Duration {
+	return v.ts.Sub(t)
 }
