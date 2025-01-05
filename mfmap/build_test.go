@@ -8,6 +8,20 @@ import (
 	"time"
 )
 
+func TestBuildHtml(t *testing.T) {
+	m := buildTestMap(t)
+
+	buf := &bytes.Buffer{}
+	err := m.BuildHtml(buf)
+	if err != nil {
+		t.Fatalf("BuildHtml() error: %s", err)
+	}
+	b, _ := io.ReadAll(buf)
+	// display html content
+	t.Log(string(b[:500]))
+	// TODO: improve html content checks
+}
+
 func TestBuildJson(t *testing.T) {
 	m := buildTestMap(t)
 	j, err := m.buildJson()
@@ -18,33 +32,16 @@ func TestBuildJson(t *testing.T) {
 	if j.Name != "France" {
 		t.Errorf("jsonMap.Name=%s expected %s", j.Name, "France")
 	}
-
-	// TODO check other fields
-	/*
-		type JsonMap struct {
-			Name string
-			Idtech string
-			Taxonomy string
-			SubZones geoFeatures
-			Bbox Bbox
-			Prevs
-		}
-	*/
-}
-
-func TestBuildGraphdata(t *testing.T) {
-	m := buildTestMap(t)
-	g, err := m.BuildGraphdata()
-	if err != nil {
-		t.Fatalf("BuildGraphdata() error: %s", err)
-	}
-	inspectGraphdata(t, g)
+	// TODO improve json content checks
 }
 
 func TestByEcheances(t *testing.T) {
 
 	mf := testParseMultiforecast(t, fileJsonMultiforecast)
-	prevs := mf.byEcheance()
+	prevs, err := mf.byEcheance()
+	if err != nil {
+		t.Fatalf("byEcheance error: %s", err)
+	}
 	if len(prevs) == 0 {
 		t.Errorf("No forecast found in %s", fileJsonMultiforecast)
 	}
@@ -109,10 +106,9 @@ func TestDaysFrom(t *testing.T) {
 func TestFindDaily(t *testing.T) {
 	mf := testParseMultiforecast(t, fileJsonMultiforecast)
 
-	// thses values must be updated after a change in test_data
+	// these values must be updated after a change in test_data...
 	id := CodeInsee("751010") // "name": "Paris—1er Arrondissement"
 	ech, err := time.Parse(time.RFC3339, "2025-01-02T00:00:00.000Z")
-	
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,17 +116,4 @@ func TestFindDaily(t *testing.T) {
 	if d == nil {
 		t.Fatalf("FindDaily() did not found daily forecast for location '%s' at '%s'", id, ech)
 	}
-}
-
-func TestBuildHtml(t *testing.T) {
-	m := buildTestMap(t)
-	buf := &bytes.Buffer{}
-	err := m.BuildHtml(buf)
-	if err != nil {
-		t.Fatalf("BuildHtml() error: %s", err)
-	}
-	// check html content
-	// TODO
-	b, _ := io.ReadAll(buf)
-	t.Log(string(b[:500]))
 }

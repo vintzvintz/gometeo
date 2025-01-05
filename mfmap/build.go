@@ -23,6 +23,7 @@ type (
 		Bbox       Bbox        `json:"bbox"`
 		SubZones   geoFeatures `json:"subzones"`
 		Prevs      PrevList    `json:"prevs"`
+		Chroniques Graphdata   `json:"chroniques"`
 	}
 
 	PrevList map[Jour]PrevsAtDay
@@ -46,6 +47,14 @@ type (
 		Prevs   []PrevAtPoi `json:"prevs"`
 	}
 
+	// forecast data for a single (poi, date) point
+	PrevAtPoi struct {
+		Title  string      `json:"titre"`
+		Coords Coordinates `json:"coords"`
+		Prev   *Forecast   `json:"prev"`
+		Daily  *Daily      `json:"daily"`
+	}
+
 	// Prevlist key is a composite type
 	Echeance struct {
 		Moment MomentName
@@ -61,44 +70,54 @@ type (
 	Breadcrumb []BreadcrumbItem
 )
 
-// forecast data for a single (poi, date) point
-type PrevAtPoi struct {
-	Title  string      `json:"titre"`
-	Coords Coordinates `json:"coords"`
-	Prev   *Forecast   `json:"prev"`
-	Daily  *Daily      `json:"daily"`
-}
+type (
+	// time-series for charts
+	Graphdata map[string][]Chronique
 
-type ChroValueFloat struct {
-	ts  int64 // milliseconds since 1/1/1970
-	val float64
-}
+	Chronique []ValueTs
 
-type ChroValueInt struct {
-	ts  int64 // milliseconds since 1/1/1970
-	val int
-}
+	// ValueTs is a float/integer + time stamp pair.
+	// FloatTS and IntTs implement custom JSON marshalling suitable for Highchart
+	ValueTs json.Marshaler
 
-// default marshalling is ok
-// but need an interface type to implement only once
-type ChroValue interface{}
+	// timeStamper yields TsValues from a specified 'series' name'
+	timeStamper interface {
+		withTimestamp(series string) (ValueTs, error)
+	}
 
-type Chronique []ChroValue
+	FloatTs struct {
+		ts  int64 // milliseconds since 1/1/1970
+		val float64
+	}
 
-// time-series for charts
-type Graphdata map[string][]Chronique
+	IntTs struct {
+		ts  int64 // milliseconds since 1/1/1970
+		val int
+	}
+)
 
 // time reference javascript
 var jsEpoch = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
 var ErrNoSuchData = fmt.Errorf("no such data")
 
+//go:embed template.html
+var templateFile string
+
+// TemplateData contains data for htmlTemplate.Execute()
+type TemplateData struct {
+	HeadDescription string
+	HeadTitle       string
+	Path            string
+}
+
 // htmlTemplate is a global html/template for html rendering
 // this global variable is set up once at startup by the init() function
 var htmlTemplate *template.Template
 
-//go:embed template.html
-var templateFile string
+func init() {
+	htmlTemplate = template.Must(template.New("").Parse(templateFile))
+}
 
 // series in Forecasts objects
 
@@ -106,16 +125,18 @@ const daysChronique = 10
 
 const (
 	Temperature   = "T"
+	Ressenti      = "Ress"
 	Windspeed     = "Windspeed"
 	WindspeedGust = "Windgust"
 	Iso0          = "Iso0"
-	CloudCover    = "CloudCover"
+	CloudCover    = "Cloud"
 	Hrel          = "Hrel"
 	Psea          = "Psea"
 )
 
 var forecastsChroniques = []string{
 	Temperature,
+	Ressenti,
 	Windspeed,
 	WindspeedGust,
 	Iso0,
@@ -141,23 +162,12 @@ var dailiesChroniques = []string{
 	Uv,
 }
 
-// init() initialises global package-level variables
-func init() {
-	htmlTemplate = template.Must(template.New("").Parse(templateFile))
-}
-
-func (m *MfMap) buildJson() (*JsonMap, error) {
-	j := JsonMap{
-		Name:       m.Name(),
-		Path:       m.Path(),
-		Breadcrumb: m.Breadcrumb(),
-		Idtech:     m.Data.Info.IdTechnique,
-		Taxonomy:   m.Data.Info.Taxonomy,
-		SubZones:   m.Geography.Features,
-		Bbox:       m.Geography.Bbox.Crop(),
-		Prevs:      m.Forecasts.byEcheance(),
-	}
-	return &j, nil
+func (m *MfMap) BuildHtml(wr io.Writer) error {
+	return htmlTemplate.Execute(wr, &TemplateData{
+		HeadDescription: fmt.Sprintf("Description de %s", m.Data.Info.Name),
+		HeadTitle:       fmt.Sprintf("Titre de %s", m.Data.Info.Name),
+		Path:            m.Path(),
+	})
 }
 
 func (m *MfMap) BuildJson(wr io.Writer) error {
@@ -176,8 +186,29 @@ func (m *MfMap) BuildJson(wr io.Writer) error {
 	return nil
 }
 
-func (m *MfMap) BuildGraphdata() (Graphdata, error) {
-	return m.Forecasts.toChroniques()
+func (m *MfMap) buildJson() (*JsonMap, error) {
+
+	prevs, err := m.Forecasts.byEcheance()
+	if err != nil {
+		return nil, err
+	}
+	graphdata, err := m.Forecasts.toChroniques()
+	if err != nil {
+		return nil, err
+	}
+
+	j := JsonMap{
+		Name:       m.Name(),
+		Path:       m.Path(),
+		Breadcrumb: m.Breadcrumb(),
+		Idtech:     m.Data.Info.IdTechnique,
+		Taxonomy:   m.Data.Info.Taxonomy,
+		SubZones:   m.Geography.Features, // transfered without modification
+		Bbox:       m.Geography.Bbox.Crop(),
+		Prevs:      prevs,
+		Chroniques: graphdata,
+	}
+	return &j, nil
 }
 
 func (m *MfMap) Breadcrumb() []BreadcrumbItem {
@@ -243,7 +274,10 @@ func (prev *Forecast) getEcheance() Echeance {
 	return e
 }
 
-func (mf MultiforecastData) byEcheance() PrevList {
+// byEcheance reshapes original data (poi->echeance) into a
+// jour->moment->poi structure
+// TODO: improve handling of incomplete/invalid mutliforecast ?
+func (mf MultiforecastData) byEcheance() (PrevList, error) {
 	pl := make(PrevList)
 
 	// iterate over POIs, known as "Features" in json data
@@ -291,7 +325,7 @@ func (mf MultiforecastData) byEcheance() PrevList {
 			pl[jour] = pad
 		}
 	}
-	return pl
+	return pl, nil
 }
 
 func (e Echeance) String() string {
@@ -326,43 +360,24 @@ func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 		//lieu := mf[i].Properties.Insee
 
 		forecasts := mf[i].Properties.Forecasts
-		g1, err := getChroniques(forecasts, forecastsChroniques)
+		g1, err := getChroniquesPoi(forecasts, forecastsChroniques)
 		if err != nil {
 			return nil, err
 		}
 		for k, v := range g1 {
-			g[k] = v
+			g[k] = append(g[k], v)
 		}
 
 		dailies := mf[i].Properties.Dailies
-		g2, err := getChroniques(dailies, dailiesChroniques)
+		g2, err := getChroniquesPoi(dailies, dailiesChroniques)
 		if err != nil {
 			return nil, err
 		}
 		for k, v := range g2 {
-			g[k] = v
+			g[k] = append(g[k], v)
 		}
 	}
 	return g, nil
-}
-
-// TemplateData contains data for htmlTemplate.Execute()
-type TemplateData struct {
-	HeadDescription string
-	HeadTitle       string
-	Path            string
-	// Breadcrumb      string
-	// Idtech          string
-}
-
-func (m *MfMap) BuildHtml(wr io.Writer) error {
-	return htmlTemplate.Execute(wr, &TemplateData{
-		HeadDescription: fmt.Sprintf("Description de %s", m.Data.Info.Name),
-		HeadTitle:       fmt.Sprintf("Titre de %s", m.Data.Info.Name),
-		Path:            m.Path(),
-		//Breadcrumb:      "TODO : generer le breadcrumb",
-		//Idtech:          m.Data.Info.IdTechnique,
-	})
 }
 
 func (mf *MultiforecastData) findDaily(id CodeInsee, day time.Time) *Daily {
@@ -380,75 +395,90 @@ func (mf *MultiforecastData) findDaily(id CodeInsee, day time.Time) *Daily {
 	return nil
 }
 
-type timeStamper interface {
-	withTimestamp(data string) (ChroValue, error)
-}
+// getChroniques POI reshapes data for client-side highchart
+// * forecasts: list of forecasts (either regular or daily) of a given POI
+// * series: names of fields to extract from input forecast data
+func getChroniquesPoi[T timeStamper](forecasts []T, series []string) (map[string]Chronique, error) {
+	ret := map[string]Chronique{}
 
-func getChroniques[T timeStamper](forecasts []T, series []string) (Graphdata, error) {
-	g := Graphdata{}
 seriesLoop:
-	for _, serie := range series {
-		//c, err := getChronique(forecasts, serie)
+	// iterate over series names ( T, Tmax, etc... )
+	for _, nom := range series {
 		var chro = make(Chronique, len(forecasts))
+		//iterate over forecasts of the POI at all available echeances
 		for i := range forecasts {
 			f := forecasts[i]
-			v, err := f.withTimestamp(serie)
+			v, err := f.withTimestamp(nom)
 			if errors.Is(err, ErrNoSuchData) {
 				continue seriesLoop // shortcut to next serie
 			}
 			if err != nil {
-				return nil, fmt.Errorf("getChroniques(%s) error: %w", serie, err)
+				return nil, fmt.Errorf("getChroniques(%s) error: %w", nom, err)
 			}
 			chro[i] = v
 		}
-		g[serie] = append(g[serie], chro)
+		ret[nom] = chro
 	}
-	return g, nil
+	return ret, nil
 }
 
-func (f Forecast) withTimestamp(data string) (ChroValue, error) {
+func (f Forecast) withTimestamp(data string) (ValueTs, error) {
 	ts := int64(f.Time.Sub(jsEpoch) / time.Millisecond)
 	switch data {
 	case Temperature:
-		return ChroValueFloat{ts, f.T}, nil
+		return FloatTs{ts, f.T}, nil
+	case Ressenti:
+		return FloatTs{ts, f.TWindchill}, nil
 	case Windspeed:
-		return ChroValueInt{ts, f.WindSpeed}, nil
+		return IntTs{ts, f.WindSpeed}, nil
 	case WindspeedGust:
-		return ChroValueInt{ts, f.WindSpeedGust}, nil
+		return IntTs{ts, f.WindSpeedGust}, nil
 	case CloudCover:
-		return ChroValueInt{ts, f.CloudCover}, nil
+		return IntTs{ts, f.CloudCover}, nil
 	case Iso0:
-		return ChroValueInt{ts, f.Iso0}, nil
+		return IntTs{ts, f.Iso0}, nil
 	case Hrel:
-		return ChroValueInt{ts, f.Hrel}, nil
+		return IntTs{ts, f.Hrel}, nil
 	case Psea:
-		return ChroValueFloat{ts, f.Pression}, nil
+		return FloatTs{ts, f.Pression}, nil
 	default:
 		return nil, ErrNoSuchData
 	}
 }
 
-func (d Daily) withTimestamp(data string) (ChroValue, error) {
+func (d Daily) withTimestamp(data string) (ValueTs, error) {
 	ts := int64(d.Time.Sub(jsEpoch) / time.Millisecond)
 	switch data {
 	case Tmin:
-		return ChroValueFloat{ts, d.Tmin}, nil
+		return FloatTs{ts, d.Tmin}, nil
 	case Tmax:
-		return ChroValueFloat{ts, d.Tmax}, nil
+		return FloatTs{ts, d.Tmax}, nil
 	case Hmin:
-		return ChroValueInt{ts, d.Hmin}, nil
+		return IntTs{ts, d.Hmin}, nil
 	case Hmax:
-		return ChroValueInt{ts, d.Hmax}, nil
+		return IntTs{ts, d.Hmax}, nil
 	case Uv:
-		return ChroValueInt{ts, d.Uv}, nil
+		return IntTs{ts, d.Uv}, nil
 	default:
 		return nil, ErrNoSuchData
 	}
 }
 
 // 4 prevs of a day are marshalled into an array (ordered)
-// instead of object (unordered) to avoid client-side sorting
+// instead of object (unordered) to avoid client-side sorting/grouping
 func (pad PrevsAtDay) MarshalJSON() ([]byte, error) {
 	a := []*PrevsAtMoment{pad.Matin, pad.AprèsMidi, pad.Soiree, pad.Nuit}
 	return json.Marshal(a)
+}
+
+// MarshalJSON outputs a timestamped float as an array [ts, val]
+func (cv FloatTs) MarshalJSON() ([]byte, error) {
+	s := fmt.Sprintf("[%d, %f]", cv.ts, cv.val)
+	return []byte(s), nil
+}
+
+// MarshalJSON outputs a timestamped int as an array [ts, val]
+func (cv IntTs) MarshalJSON() ([]byte, error) {
+	s := fmt.Sprintf("[%d, %d]", cv.ts, cv.val)
+	return []byte(s), nil
 }
