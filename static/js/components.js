@@ -75,6 +75,8 @@ export const RootComponent = {
       const res = await fetch(`/${props.path}/data`)
       const data = await res.json()
 
+      // cant replace whole mapData (reactive) object because it is reactive,
+      // so we update each property explicitly
       mapData.name = data.name
       mapData.path = data.path
       mapData.breadcrumb = data.breadcrumb
@@ -100,18 +102,11 @@ export const RootComponent = {
 
     // get Prevs when static page is loaded
     onMounted(() => {
-      console.log(`onMounted() path=${props.path}`)
       fetchMapdata()
-
     })
 
-    // only returned items are available in template
-    return {
-      mapData,
-      selections,
-      onWeatherSelected,
-      onToggleTooltips,
-    }
+    // returned items are available in template
+    return { mapData, selections, onWeatherSelected, onToggleTooltips }
   },
 
   template: /*html*/ `
@@ -123,6 +118,7 @@ export const RootComponent = {
    <WeatherPicker 
    :activeWeather="selections.activeWeather"
    @weatherSelected="onWeatherSelected" />
+
    <TooltipsToggler
    :tooltipsEnabled="selections.tooltipsEnabled"
    @toggleTooltips="onToggleTooltips"/>
@@ -144,6 +140,9 @@ export const Breadcrumb = {
     breadcrumb: Array
   },
 
+  setup(props) {
+  },
+
   template: /*html*/`
 <nav class="topnav">
   <ul>
@@ -163,6 +162,7 @@ export const WeatherPicker = {
   },
 
   setup(props) {
+    // make module-level globals available in template
     return { weatherList, weatherDisplayOrder }
   },
 
@@ -187,7 +187,7 @@ export const TooltipsToggler = {
     tooltipsEnabled: Boolean,
   },
 
-  setup() {
+  setup(props) {
   },
 
   template: /*html*/`
@@ -216,7 +216,6 @@ export const MapGridComponent = {
   setup(props) {
 
     function displayedJours() {
-      //console.log( "displayedJours() typeof props.data.prevs is " + typeof props.data.prevs )
       const ret = []
       if (typeof props.data.prevs !== 'undefined') {
         for (var i = -1; i < 2; i++) {
@@ -274,6 +273,22 @@ export const MapComponent = {
 
   setup(props) {
 
+    // leaflet.Map object cannot be created before onMounted()
+    // because DOM element does not exist yet 
+    // keep references to leaflet objects for update/deletion upon user interaction
+    let lMap = null
+    let lBounds = null
+    let lMarkers = []
+    let lAttributionControl = null
+    onMounted(initMap)
+
+    // update maps on selectors change
+    // use a getter ()=> to keep reactivity  
+    // cf. https://vuejs.org/guide/essentials/watchers.html#watch-source-types
+    watch(() => props.selections.activeWeather, updateMarkers)
+    watch(() => props.selections.tooltipsEnabled, updateTooltipsVisibility)
+
+    // mapId is defined at component creation from a module-level global var.
     let _map_id = 0
     function mapId() {
       if (_map_id == 0) {
@@ -282,32 +297,8 @@ export const MapComponent = {
       return String(_map_id)
     }
 
-    function mapTitle() {
-      if (!props.prev) {
-        return "indisponible"
-      }
-      let moment = Intl.DateTimeFormat("fr-FR", dateFormatOpts)
-        .format(new Date(props.prev.echeance))
-      let weather = (typeof props.selections != null) ?
-        weatherList[props.selections.activeWeather].text : ""
-      return `${weather} ${moment}`
-    }
-
-    // leaflet.Map object cannot be created in setup() 
-    // because DOM element does not exist before onMounted()
-    // we need a reference in component instance to control tooltips and displayed data
-    let lMap = null
-    let lBounds = null
-
-    // keep references to markers for update/deletion
-    let lMarkers = []
-    let lAttributionControl = null
 
     function initMap() {
-      //  when timespan changes, components are cached/re-used by v-for algorithm
-      // so just skip initMap because map and subzones do not change.
-      // if (this.map) 
-      //  return true;
 
       // format bounds in a leaflet-specific object
       let bbox = props.data.bbox
@@ -332,8 +323,9 @@ export const MapComponent = {
       })
 
       // add SVG map background
-      let overlay = L.imageOverlay(svgPath(), lBounds)
-      lMap.addLayer(overlay)
+      let svgElt = new Image
+      svgElt.src = `/${props.data.path}/svg`
+      lMap.addLayer(L.imageOverlay(svgElt, lBounds))
 
       // add update info
       lAttributionControl = L.control
@@ -354,43 +346,20 @@ export const MapComponent = {
       })
       obs.observe(elt)
 
-      drawSubzones()
-      resizeMap()
+      addSubzones()
 
-      // trigger markers once on map creation
-      // next activeWeather changes are handled with a watcher
+      // trigger markers and resize once on map creation
+      // next activeWeather changes are handled with a watcher and reactivity
       updateMarkers()
+      resizeMap()
     }
 
-    // update markers when activeWeather changes
-    // use a getter ()=> to keep reactivity 
-    // https://vuejs.org/guide/essentials/watchers.html#watch-source-types
-    watch(() => props.selections.activeWeather, updateMarkers)
-    watch(() => props.selections.tooltipsEnabled, updateTooltipsVisibility)
 
-
-    // display update time in "attribution" leaflet pre-defined control
-    function showUpdateDate() {
-      //let updated = new Date(props.prev.updated)
-      let txt = "Màj : " +
-        Intl.DateTimeFormat("fr-FR", dateFormatOpts)
-          .format(new Date(props.prev.updated))
-      lAttributionControl.setPrefix(txt)
-    }
-
-    function svgPath() {
-      var img = new Image
-      img.src = `/${props.data.path}/svg`
-      return img
-    }
-
-    function drawSubzones() {
+    function addSubzones() {
       if (props.data.subzones === null) {
         return
       }
-
       const szPane = lMap.createPane('subzones')
-
       props.data.subzones.forEach((sz) => {
         let path = sz.properties.customPath
         let nom = sz.properties.prop0.nom
@@ -418,20 +387,19 @@ export const MapComponent = {
       })
     }
 
+
     function updateMarkers() {
       let pois = props.prev && props.prev.prevs
       if (pois) {
-        removeMarkers();   // todo : inline
-        pois.forEach(createMarker);
+        // remove previous markers before recreating new ones
+        while (lMarkers.length > 0) {
+          lMap.removeLayer(lMarkers.pop())
+        }
+        pois.forEach(createMarker)
         showUpdateDate()
       }
     }
 
-    function removeMarkers() {
-      while (lMarkers.length > 0) {
-        lMap.removeLayer(lMarkers.pop());
-      }
-    }
 
     function createMarker(poi, idx, all_prevs) {
 
@@ -478,6 +446,8 @@ export const MapComponent = {
         'top' : 'bottom'
       m.tt_offset = (poi.coords[0] < (props.data.bbox.w + props.data.bbox.e) / 2) ?
         L.point(100, 10) : L.point(-100, 10)
+
+        const msToKmh = (mPerSecond) => { 5 * Math.ceil(3.6 * mPerSecond / 5) }
 
       // other customizations depending on activeWeather
       let w = props.selections.activeWeather
@@ -556,9 +526,9 @@ export const MapComponent = {
         return
       }
 
-      let marker = buildMarker(m)
+      let marker = markerTemplate(m)
 
-      let tt_html = buildTooltip(m)
+      let tt_html = tooltipTemplate(m)
       marker.bindTooltip(tt_html, {
         sticky: false,
         direction: m.tt_direction,
@@ -568,22 +538,15 @@ export const MapComponent = {
       // attach a callback to make the marker clickable
       // TODO : trouver la subzone contenant le marker ( a faire plutot server-side ?) 
       //let target = 'http://www.' + poi.titre + '.zzzzzzz'
-      //marker.on('click', ((e) => onMarkerClick(e, target)))
+      //marker.on('click', ((e) => console.log([target, e]))
       marker.addTo(lMap)
 
       // keep a reference for later cleanup
       lMarkers.push(marker)
     }
 
-    function onMarkerClick(e, target) {
-      console.log([target, e])
-    }
 
-    function msToKmh(mPerSecond) {
-      return 5 * Math.ceil(3.6 * mPerSecond / 5)
-    }
-
-    function buildMarker(m) {
+    function markerTemplate(m) {
       let elt_a = /*html*/`
 <div class="div-icon">
   <img src="/pictos/${m.icon}" 
@@ -610,7 +573,7 @@ export const MapComponent = {
       return L.marker([m.coords[1], m.coords[0]], mark_opts)
     }
 
-    function buildTooltip(m) {
+    function tooltipTemplate(m) {
       return /*html*/`
 <div class="map_tooltip">
   <h3 class="map_tooltip_location">${m.title}</h3>
@@ -627,6 +590,27 @@ export const MapComponent = {
 </div>`
     }
 
+    // display update time in "attribution" leaflet pre-defined control
+    function showUpdateDate() {
+      //let updated = new Date(props.prev.updated)
+      let txt = "Màj : " +
+        Intl.DateTimeFormat("fr-FR", dateFormatOpts)
+          .format(new Date(props.prev.updated))
+      lAttributionControl.setPrefix(txt)
+    }
+
+    function mapTitle() {
+      if (!props.prev) {
+        return "indisponible"
+      }
+      let moment = Intl.DateTimeFormat("fr-FR", dateFormatOpts)
+        .format(new Date(props.prev.echeance))
+      let weather = (typeof props.selections != null) ?
+        weatherList[props.selections.activeWeather].text : ""
+      return `${weather} ${moment}`
+    }
+
+
     function updateTooltipsVisibility() {
       lMap && lMap.getPane('markerPane') &&
         lMap.getPane('markerPane').childNodes.forEach(function (m) {
@@ -636,8 +620,6 @@ export const MapComponent = {
             classes.remove('leaflet-interactive')
         })
     }
-
-    onMounted(initMap)
 
     return { mapTitle, mapId }
   },
