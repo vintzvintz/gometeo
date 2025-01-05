@@ -1,4 +1,4 @@
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, computed, onMounted } from 'vue'
 
 // id generator for mapComponents
 let mapCount = 0
@@ -61,6 +61,7 @@ export const RootComponent = {
       'bbox': {},
       'subzones': new Array(),
       'prevs': {},
+      'chroniques': null,
     })
 
     // selection of displayed data
@@ -85,6 +86,7 @@ export const RootComponent = {
       mapData.bbox = data.bbox
       mapData.subzones = data.subzones
       mapData.prevs = data.prevs
+      mapData.chroniques = data.chroniques
       console.log("fetchMapdata() exit")
     }
 
@@ -105,8 +107,13 @@ export const RootComponent = {
       fetchMapdata()
     })
 
-    // returned items are available in template
-    return { mapData, selections, onWeatherSelected, onToggleTooltips }
+    // returned objects are available in template
+    return {
+      mapData,
+      selections,
+      onWeatherSelected,
+      onToggleTooltips
+    }
   },
 
   template: /*html*/ `
@@ -123,16 +130,22 @@ export const RootComponent = {
    :tooltipsEnabled="selections.tooltipsEnabled"
    @toggleTooltips="onToggleTooltips"/>
 
-<!-- <div> <TimespanPicker/> </div> -->
-<!--  <highchart-graph v-if="display_graph"></highchart-graph> -->
+    <!-- <TimespanPicker/> -->
+
+    <HighchartComponent 
+    v-if="mapData.chroniques != null "
+    :activeWeather="selections.activeWeather"
+    :chroniques="mapData.chroniques"/>
+
   </section>
 </header>
 <!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
+
 <main class="content">
   <MapGridComponent 
-    :data="mapData" 
-    :selections="selections" />
-</main>`,
+  :selections="selections"
+  :data="mapData" />
+</main>`
 }
 
 export const Breadcrumb = {
@@ -274,19 +287,21 @@ export const MapComponent = {
   setup(props) {
 
     // leaflet.Map object cannot be created before onMounted()
-    // because DOM element does not exist yet 
+    // because DOM container element does not exist yet 
     // keep references to leaflet objects for update/deletion upon user interaction
     let lMap = null
     let lBounds = null
     let lMarkers = []
     let lAttributionControl = null
-    onMounted(initMap)
+    onMounted(() => {
+      initMap()
 
-    // update maps on selectors change
-    // use a getter ()=> to keep reactivity  
-    // cf. https://vuejs.org/guide/essentials/watchers.html#watch-source-types
-    watch(() => props.selections.activeWeather, updateMarkers)
-    watch(() => props.selections.tooltipsEnabled, updateTooltipsVisibility)
+      // update maps on selectors change
+      // use a getter ()=> to keep reactivity  
+      // cf. https://vuejs.org/guide/essentials/watchers.html#watch-source-types
+      watch(() => props.selections.activeWeather, updateMarkers)
+      watch(() => props.selections.tooltipsEnabled, updateTooltipsVisibility)
+    })
 
     // mapId is defined at component creation from a module-level global var.
     let _map_id = 0
@@ -442,12 +457,19 @@ export const MapComponent = {
       }
 
       // tooltip position
-      m.tt_direction = (poi.coords[1] < (props.data.bbox.n + props.data.bbox.s) / 2) ?
-        'top' : 'bottom'
+      let yOffset = 0
+      if (poi.coords[1] < (props.data.bbox.n + props.data.bbox.s) / 2) {
+        m.tt_direction = 'top'
+        yOffset = -30
+      }
+      else {
+        m.tt_direction = 'bottom'
+        yOffset = 10
+      }
       m.tt_offset = (poi.coords[0] < (props.data.bbox.w + props.data.bbox.e) / 2) ?
-        L.point(100, 10) : L.point(-100, 10)
+        L.point(100, yOffset) : L.point(-100, yOffset)
 
-        const msToKmh = (mPerSecond) => { 5 * Math.ceil(3.6 * mPerSecond / 5) }
+      const msToKmh = (mPerSecond) => (5 * Math.ceil(3.6 * mPerSecond / 5))
 
       // other customizations depending on activeWeather
       let w = props.selections.activeWeather
@@ -630,6 +652,157 @@ export const MapComponent = {
   <div :id="mapId()" class="map_component"></div>
 </div>`
 
+}
+
+export const HighchartComponent = {
+  props: {
+    chroniques: Object,
+    activeWeather: String,
+  },
+
+  setup(props) {
+
+    onMounted(() => {
+      console.log("Highchart.onMounted()", props.chroniques)
+      initGraph()
+      updateGraph()
+      watch(() => props.activeWeather, () => updateGraph())
+    })
+
+    const hcId = "highchartContainer"
+    let hcObj = null   // highchart object created in initGraph()
+
+    const hcConf = computed(() => {
+      let w = props.activeWeather
+      if (w == "prev" || w == "vent" || w == "uv") {
+        return {
+          title: 'Temperature',
+          axeY1: '°C',
+          series: {
+            'T': { lineWidth: 1, color: '#BBB' },
+            'Tmax': { lineWidth: 1, color: '#D11' },
+            'Tmin': { lineWidth: 1, color: '#22D' },
+          },
+        }
+      } else if (w == "ress") {
+        return {
+          title: 'Température ressentie',
+          axeY1: 'indice de refroidissement',
+          series: {
+            'Ress': { lineWidth: 1, color: '#444' },
+          },
+        }
+      } else if (w == "humi") {
+        return {
+          title: 'Humidité relative',
+          axeY1: '%',
+          series: {
+            'Hrel': { lineWidth: 1, color: '#BBB' },
+            'Hmax': { lineWidth: 1, color: '#1D1' },
+            'Hmin': { lineWidth: 1, color: '#DD1' },
+          },
+        }
+      } else if (w == "psea") {
+        return {
+          title: 'Pression au niveau de la mer',
+          axeY1: 'hPa',
+          series: {
+            'Psea': { lineWidth: 1, color: '#222' },
+          },
+        }
+      } else if (w == "cloud") {
+        return {
+          title: 'Couverture nuageuse',
+          axeY1: '%',
+          series: {
+            'Cloud': { lineWidth: 1, color: '#222' },
+          },
+        }
+      } else {  // default
+        return {
+          title: '',
+          axeY1: '',
+          series: {},
+        }
+      }
+    })
+
+    // mounts a highchart object on the template <div> container
+    function initGraph() {
+      hcObj = Highcharts.chart(hcId, {
+        chart: {
+          type: 'spline',
+        },
+        plotOptions: {
+          series: {
+            color: '#666699',
+            enableMouseTracking: false,
+            marker: { enabled: false },
+            showInLegend: false,
+            states: { hover: { enabled: false } }
+          },
+          spline: { lineWidth: 1, turboThresold: 3 }
+        },
+        tootip: { enabled: false },
+        xAxis: {
+          id: 'axeX',
+          type: 'datetime',
+          dateTimeLabelFormats: { day: '%e %b' },
+          floor: Date.now() - 24 * 3600 * 1000,
+          plotLines: [{
+            color: '#FC0FC5',
+            value: Date.now(),
+            width: 2,
+            zIndex: 12,
+          }],
+        },
+      })
+    }
+
+    function updateGraph() {
+      let conf = hcConf.value   // computed property
+      // remove all previous series and Y-axis
+      while (hcObj.series.length) {
+        hcObj.series[0].remove(false)
+      }
+      hcObj.axes.forEach((axe) => {
+        axe.isXAxis || axe.remove(false)
+      })
+
+      hcObj.setTitle(
+        { text: conf.title },
+        {},   // no subtitle
+        false // no redraw
+      )
+      hcObj.addAxis(
+        { id: 'axeY1', title: { text: conf.axeY1 } },
+        false, // no Xaxis
+        false // no redraw
+      )
+
+      // iterate over configured series for current activeWeather
+      for (let sName in conf.series) {
+        // chroniques is a set of chroniques of the same "type" (T, Hrel, Twindchill, etc...)
+        // a chronique is an array of [ ts, val ] pairs ( one per POI)
+        let chroniques = props.chroniques[sName]
+        for (let chronique of chroniques) {
+          // deepcopy intended - draw options are not shared anmong each individual serie
+          let opts = Object.assign({}, conf.series[sName]);
+          opts.data = chronique
+          hcObj.addSeries(
+            opts,
+            false,  // do not redraw after each serie
+          )
+        }
+      }
+      hcObj.redraw()
+    }
+
+    return { hcId, hcConf }
+  },
+
+  template: /*html*/`
+<div v-bind:id="hcId"></div>`
 }
 
 

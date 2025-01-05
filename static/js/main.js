@@ -9,6 +9,7 @@ import {
   MapGridComponent,
   MapRowComponent,
   MapComponent,
+  HighchartComponent,
 } from 'components'
 
 
@@ -33,6 +34,7 @@ export function createMeteoApp(mountElt, path) {
   app.component("MapGridComponent", MapGridComponent)
   app.component("MapRowComponent", MapRowComponent)
   app.component("MapComponent", MapComponent)
+  app.component("HighchartComponent", HighchartComponent)
 
   //  app.mount('#vuejs_root')
   app.mount(mountElt)

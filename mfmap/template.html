@@ -6,56 +6,35 @@
     {
       "imports": {
         "vue": "/js/vue.esm-browser.js",
-        "main": "/js/main.js",
-        "components": "/js/components.js"
+        "components": "/js/components.js",
+        "main": "/js/main.js"
       }
     }
   </script>
 
-  <!--   TODO : add gzip compression on static files -->
+  <link rel="stylesheet" href="css/meteo.css" />
+  <link rel="stylesheet" href="/css/leaflet.css" />
 
+  <!-- TODO: add gzip compression on static files -->
   <meta name="description" content="{{.HeadDescription}}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title> {{.HeadTitle}} </title>
-  <link rel="stylesheet" href="css/meteo.css" />
+
+  <!-- TODO: import as modules instead of global objects, when available upstream -->
+  <script src="/js/leaflet.js"></script>
+  <script src="/js/highcharts.js"></script>
+
+
   <!-- Favicon stuff
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="manifest" href="/site.webmanifest"> -->
 
-  <link rel="stylesheet" href="/css/leaflet.css" />
-  <script src="/js/leaflet.js"></script>
 </head>
 
 <body>
-  <div id="vuejs_root">
-    <!-- <header>
-      <nav class="topnav">
-        Gotemplate.Breadcrumb
-      </nav>
-      <section class="selecteurs">
-        <data-picker></data-picker>
-      <div>
-        <timespan-picker></timespan-picker>
-        <tooltips-toggler></tooltips-toggler>
-      </div>
-      <highchart-graph v-if="display_graph"></highchart-graph>
-      </section>
-    </header>
-    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> 
-    <main class="content">
-      <div class="map_grid_container">
-        <map-component v-for='rang in get_rangs' v-bind:key="rang" v-bind:rang="rang">Chargement...</map-component>
-      </div>
-    </main>
--->
-  </div>
-
-  <!--
-  <script src="/js/highcharts.js"></script>
-  <script src="/js/highcharts-debugger.js"></script>
-  <script src="/Gotemplate.Path/data"></script>  -->
+  <div id="vuejs_root"></div>
   <script type="module">
     import {createMeteoApp} from 'main'
     createMeteoApp("#vuejs_root", "{{.Path}}" )
