@@ -71,15 +71,6 @@ func (mc *MeteoContent) Receive(chMaps <-chan *mfmap.MfMap, cr *Crawler) <-chan 
 	return chDone
 }
 
-func (mc *MeteoContent) rebuildMux() {
-	mux := http.NewServeMux()
-	mc.pictos.Register(mux)
-	for _, m := range mc.maps {
-		m.Register(mux)
-	}
-	mc.mux = mux
-}
-
 // pass request to MeteoContent internal ServeMux
 func (mc *MeteoContent) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	mc.mux.ServeHTTP(resp, req)
@@ -91,13 +82,26 @@ func (mc *MeteoContent) Register(mux *http.ServeMux) {
 	mux.Handle("/", mc)
 }
 
+func (mc *MeteoContent) rebuildMux() {
+	mux := http.NewServeMux()
+	mc.pictos.Register(mux)
+	mc.maps.Register(mux)
+	mc.mux = mux
+}
+
+func (ms mapStore) Register(mux *http.ServeMux) {
+	for _, m := range ms {
+		m.Register(mux)
+	}
+}
+
 func (pictos pictoStore) Update(names []string, cr *Crawler) error {
 	for _, name := range names {
 		if _, ok := pictos[name]; ok {
 			continue // do not update known pictos
 		}
 		b, err := cr.getPicto(name)
-		if  err != nil {
+		if err != nil {
 			return err
 		}
 		pictos[name] = b
