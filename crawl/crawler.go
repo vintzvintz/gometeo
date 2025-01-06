@@ -26,97 +26,104 @@ func NewCrawler() *Crawler {
 	}
 }
 
-// GetMap gets https://mf.com/zone html page and related data like
+// getMap gets https://mf.com/zone html page and related data like
 // svg map, pictos, forecasts and list of subzones
 // related data is stored into MfMap fields
-func (c *Crawler) GetMap(path string) (*mfmap.MfMap, error) {
-	log.Printf("GetMap() '%s'", path)
+func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
+	log.Printf("getMap() '%s'", path)
 
-	body, err := c.mainClient.Get(path, CacheDisabled)
+	body, err := cr.mainClient.Get(path, CacheDisabled)
 	if err != nil {
 		return nil, err
 	}
 	defer body.Close()
 
 	// allocate a MfMap and initialize with received content
-	m := mfmap.MfMap{
-		//		Nom: nom,
-		//Parent: parent,
-	}
+	m := &mfmap.MfMap{}
 	err = m.ParseHtml(body)
 	if err != nil {
 		return nil, err
 	}
 
-	// get svg map
-	u, err := m.SvgURL()
-	if err != nil {
+	// get SVG, geographical subzones and actual forecasts
+	if err = cr.getSvg(m); err != nil {
 		return nil, err
 	}
-	body, err = c.mainClient.Get(u.String(), CacheDefault)
-	if err != nil {
+	if err = cr.getGeography(m); err != nil {
 		return nil, err
+	}
+	if err = cr.getMultiforecast(m); err != nil {
+		return nil, err
+	} 
+	return m, nil
+}
+
+// getSvg() downloads SVG map and feed result into MfMap
+func (cr *Crawler) getSvg(m *mfmap.MfMap) error {
+	u, err := m.SvgURL()
+	if err != nil {
+		return err
+	}
+	body, err := cr.mainClient.Get(u.String(), CacheDefault)
+	if err != nil {
+		return err
 	}
 	defer body.Close()
 	err = m.ParseSvgMap(body)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	return nil
+}
 
-	// get geography data
-	u, err = m.GeographyURL()
+func (cr *Crawler) getGeography(m *mfmap.MfMap) error {
+	u, err := m.GeographyURL()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	body, err = c.mainClient.Get(u.String(), CacheDefault)
+	body, err := cr.mainClient.Get(u.String(), CacheDefault)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer body.Close()
 	err = m.ParseGeography(body)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	return nil
+}
 
+func (cr *Crawler) getMultiforecast(m *mfmap.MfMap) error {
 	// create a dedicated client for rpcache-aa host
 	apiBaseUrl, err := m.Data.ApiURL("", nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	api := NewClient(apiBaseUrl.String())
-	api.authToken = c.mainClient.authToken
-	api.noSessionCookie = true // api server do not send auth tokens
+	api.authToken = cr.mainClient.authToken
+	api.noSessionCookie = true // api server do not send auth tokens so dont expect any
 
 	// get all forecasts available on the map
-	u, err = m.ForecastURL()
+	u, err := m.ForecastURL()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	body, err = api.Get(u.String(), CacheDisabled)
+	body, err := api.Get(u.String(), CacheDisabled)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer body.Close()
 	err = m.ParseMultiforecast(body)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	/*
-		// get pictos
-		if pictos != nil {
-			err = pictos.Update(m.PictoNames(), c.mainClient)
-			if err != nil {
-				return nil, err
-			}
-		}
-	*/
-	return &m, nil
+	return nil
 }
 
-// GetAllMaps() fetches a map tree recursively, including pictos
+// FetchAll() fetches a map tree recursively, including pictos
 // * startPath : where to start the tree walk ("/" is the 'root' page)
 // * limit limits the number of maps downloaded
-func (c *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
+func (cr *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
 	var (
 		cnt    int
 		maps   = MapStore{}
@@ -141,7 +148,7 @@ func (c *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
 		// pop queue and process next path
 		next := queue[i]
 		queue = queue[0:i]
-		m, err := c.GetMap(next.path)
+		m, err := cr.getMap(next.path)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +156,7 @@ func (c *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
 		m.Parent = next.parent
 
 		// download pictos (only new ones)
-		err = pictos.Update(m.PictoNames(), c)
+		err = pictos.Update(m.PictoNames(), cr)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +175,7 @@ func (c *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
 	return mc, nil
 }
 
-func (c *Crawler) Fetch(startPath string, limit int) <-chan *mfmap.MfMap {
+func (cr *Crawler) Fetch(startPath string, limit int) <-chan *mfmap.MfMap {
 
 	ch := make(chan (*mfmap.MfMap))
 
@@ -192,9 +199,9 @@ func (c *Crawler) Fetch(startPath string, limit int) <-chan *mfmap.MfMap {
 			// pop queue and process next path
 			next := queue[i]
 			queue = queue[0:i]
-			m, err := c.GetMap(next.path)
+			m, err := cr.getMap(next.path)
 			if err != nil {
-				log.Printf("GetMap(%s) error:%s", next.path, err)
+				log.Printf("getMap(%s) error:%s", next.path, err)
 				continue
 			}
 			// add parent path
@@ -219,7 +226,7 @@ func (c *Crawler) Fetch(startPath string, limit int) <-chan *mfmap.MfMap {
 	return ch
 }
 
-func (cr *Crawler) GetPicto(name string) ([]byte, error) {
+func (cr *Crawler) getPicto(name string) ([]byte, error) {
 	url, err := pictoURL(name)
 	if err != nil {
 		return nil, err

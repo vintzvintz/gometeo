@@ -48,13 +48,13 @@ func getAllMapsTest(t *testing.T, limit int) *MeteoContent {
 }
 
 func getMapTest(t *testing.T, path string) (*mfmap.MfMap, PictoStore) {
-	c := NewCrawler()
-	m, err := c.GetMap(path)
+	cr := NewCrawler()
+	m, err := cr.getMap(path)
 	if err != nil {
-		t.Fatalf("Getmap('%s') error: %s", path, err)
+		t.Fatalf("getmap('%s') error: %s", path, err)
 	}
 	pictos := PictoStore{}
-	pictos.Update(m.PictoNames(), c)
+	pictos.Update(m.PictoNames(), cr)
 	return m, pictos
 }
 

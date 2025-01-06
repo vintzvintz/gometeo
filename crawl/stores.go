@@ -96,17 +96,8 @@ func (pictos PictoStore) Update(names []string, cr *Crawler) error {
 		if _, ok := pictos[name]; ok {
 			continue // do not update known pictos
 		}
-		url, err := pictoURL(name)
-		if err != nil {
-			return err
-		}
-		body, err := cr.mainClient.Get(url.String(), CacheDefault)
-		if err != nil {
-			return err
-		}
-		defer body.Close()
-		b, err := io.ReadAll(body)
-		if err != nil {
+		b, err := cr.getPicto(name)
+		if  err != nil {
 			return err
 		}
 		pictos[name] = b
