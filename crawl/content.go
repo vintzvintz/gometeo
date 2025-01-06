@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"slices"
 
 	"gometeo/mfmap"
 )
@@ -39,8 +40,8 @@ func NewContent() *MeteoContent {
 // Merge and register maps and pictos into current content
 // also replace internal ServeMux instance with new new handlers
 func (mc *MeteoContent) Update(maps mapStore, pictos pictoStore) {
-	for k, v := range maps {
-		mc.maps[k] = v
+	for _, m := range maps {
+		mc.maps.Add(m)
 	}
 	for k, v := range pictos {
 		mc.pictos[k] = v
@@ -62,7 +63,7 @@ func (mc *MeteoContent) Receive(chMaps <-chan *mfmap.MfMap, cr *Crawler) <-chan 
 				log.Printf("error fetching pictos for map '%s': %s", m.Path(), err)
 			}
 			// update content with new map, pictos already updated (in-place just above)
-			mc.maps[m.Path()] = m
+			mc.maps.Add(m)
 			mc.rebuildMux()
 		}
 		log.Println("MeteoContent.Receive() exit")
@@ -93,6 +94,29 @@ func (ms mapStore) Register(mux *http.ServeMux) {
 	for _, m := range ms {
 		m.Register(mux)
 	}
+}
+
+// Add() adds or replace a map in the store.
+// Computes Breadcrumb chain from other maps in the store
+func (ms mapStore) Add(m *mfmap.MfMap) {
+
+	// max depth is 3 but lets allocate 5 to be sure :)
+	bc := make(mfmap.Breadcrumb, 0, 5)
+	cur := m
+	for {
+		bc = append(bc, mfmap.BreadcrumbItem{
+			Nom:  cur.Name(),
+			Path: cur.Path(),
+		})
+		parent, ok := ms[cur.Parent]
+		if !ok {
+			break
+		}
+		cur = parent
+	}
+	slices.Reverse(bc)
+	m.Breadcrumb = bc
+	ms[m.Path()] = m
 }
 
 func (pictos pictoStore) Update(names []string, cr *Crawler) error {

@@ -198,7 +198,7 @@ func (m *MfMap) buildJson() (*JsonMap, error) {
 	j := JsonMap{
 		Name:       m.Name(),
 		Path:       m.Path(),
-		Breadcrumb: m.Breadcrumb(),
+		Breadcrumb: m.Breadcrumb, // not from upstream
 		Idtech:     m.Data.Info.IdTechnique,
 		Taxonomy:   m.Data.Info.Taxonomy,
 		SubZones:   m.Geography.Features, // transfered without modification
@@ -215,21 +215,6 @@ func (m *MfMap) buildJson() (*JsonMap, error) {
 		j.Chroniques = graphdata
 	}
 	return &j, nil
-}
-
-func (m *MfMap) Breadcrumb() []BreadcrumbItem {
-	bc := make([]BreadcrumbItem, 0, 5)
-	// TODO FIXME
-	/*cur := m
-	for {
-		if cur == nil {
-			break
-		}
-		bc = append(bc, BreadcrumbItem{cur.Name(), cur.Path()})
-		cur = cur.Parent
-	}
-	slices.Reverse(bc)*/
-	return bc
 }
 
 // momPtr simplifies and reduce duplication of the switch

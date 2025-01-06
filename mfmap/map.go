@@ -15,16 +15,16 @@ import (
 )
 
 type (
+	// MfMap is the result of parsing upstream data
 	MfMap struct {
-		// data embedded in main html
-		Data *MapData
-		// other data called from main page
+		Data      *MapData
 		Forecasts MultiforecastData
 		SvgMap    []byte
 		Geography *geoCollection
 
 		// parent is used to build breadcrumbs
-		Parent string
+		Parent     string
+		Breadcrumb Breadcrumb
 	}
 
 	MapData struct {

@@ -54,7 +54,7 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 	}
 	if err = cr.getMultiforecast(m); err != nil {
 		return nil, err
-	} 
+	}
 	return m, nil
 }
 
@@ -155,7 +155,7 @@ func (cr *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) 
 		// add parent
 		m.Parent = next.parent
 
-		// download pictos (only new ones)
+		// download pictos used on the current map(only new ones)
 		err = pictos.Update(m.PictoNames(), cr)
 		if err != nil {
 			return nil, err
@@ -213,6 +213,7 @@ func (cr *Crawler) Fetch(startPath string, limit int) <-chan *mfmap.MfMap {
 			}
 			// send map
 			ch <- m
+			//time.Sleep(2* time.Second)
 		}
 		// signal goroutine termination
 		log.Printf("crawl.Fetch('%s') exit", startPath)
