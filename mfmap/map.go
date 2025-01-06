@@ -23,8 +23,8 @@ type (
 		SvgMap    []byte
 		Geography *geoCollection
 
-		// parent map are used to build breadcrumbs
-		Parent *MfMap
+		// parent is used to build breadcrumbs
+		Parent string
 	}
 
 	MapData struct {

@@ -57,9 +57,14 @@ func (mc *MeteoContent) rebuildMux() {
 	mc.mux = mux
 }
 
+/*
+func (mc *MeteoContent) UpdateItem(item *CrawlItem) {
+	mc.Update(item.maps, item.pictos)
+}
+*/
 // call internal ServeMux
-func (c *MeteoContent) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	c.mux.ServeHTTP(resp, req)
+func (mc *MeteoContent) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	mc.mux.ServeHTTP(resp, req)
 }
 
 // Register register itself to mux on "/" path

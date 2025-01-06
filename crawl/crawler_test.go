@@ -15,13 +15,8 @@ const minPictoSize = 200 // bytes
 
 func TestGetAllMaps(t *testing.T) {
 	var cnt int = 10
-	maps, pictos := getAllMapsTest(t, cnt)
-
-	if len(maps) != cnt {
-		t.Errorf( "donwload %d maps, want %d ", len(maps), cnt)
-	}
-	checkMapCollection(t, maps)
-	checkPictos(t, pictos)
+	content := getAllMapsTest(t, cnt)
+	checkMeteoContent(t, content, cnt)
 }
 
 func TestGetMap(t *testing.T) {
@@ -30,29 +25,33 @@ func TestGetMap(t *testing.T) {
 	checkPictos(t, pictos)
 }
 
-func getAllMapsTest(t *testing.T, limit int) (MapStore, PictoStore) {
+func getAllMapsTest(t *testing.T, limit int) *MeteoContent {
 	c := NewCrawler()
-	pictos := PictoStore{}
-	maps, err := c.FetchAll("/", pictos, limit)
+	content, err := c.FetchAll("/", limit)
 	//maps, err := c.GetAllMaps("/previsions-meteo-france/jura/39", nil)
 	if err != nil {
 		t.Fatalf("GetAllMaps() error: %s", err)
 	}
-	return maps, pictos
+	return content
 }
 
 func getMapTest(t *testing.T, path string) (*mfmap.MfMap, PictoStore) {
 	c := NewCrawler()
-	pictos := PictoStore{}
-	m, err := c.GetMap(path, nil, pictos)
+	m, err := c.GetMap(path)
 	if err != nil {
 		t.Fatalf("Getmap('%s') error: %s", path, err)
 	}
+	pictos := PictoStore{}
+	pictos.Update( m.PictoNames(), c.mainClient )
 	return m, pictos
 }
 
-func checkMapCollection(t *testing.T, maps MapStore) {
-	for _, m := range maps {
+func checkMeteoContent(t *testing.T, c *MeteoContent, wantN int) {
+	if len(c.maps) != wantN {
+		t.Errorf( "donwload %d maps, want %d ", len(c.maps), wantN)
+	}
+	checkPictos(t, c.pictos)
+	for _, m := range c.maps {
 		checkMap(t, m)
 	}
 }

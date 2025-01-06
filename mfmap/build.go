@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"slices"
 	"text/template"
 	"time"
 )
@@ -220,7 +219,8 @@ func (m *MfMap) buildJson() (*JsonMap, error) {
 
 func (m *MfMap) Breadcrumb() []BreadcrumbItem {
 	bc := make([]BreadcrumbItem, 0, 5)
-	cur := m
+	// TODO FIXME
+	/*cur := m
 	for {
 		if cur == nil {
 			break
@@ -228,7 +228,7 @@ func (m *MfMap) Breadcrumb() []BreadcrumbItem {
 		bc = append(bc, BreadcrumbItem{cur.Name(), cur.Path()})
 		cur = cur.Parent
 	}
-	slices.Reverse(bc)
+	slices.Reverse(bc)*/
 	return bc
 }
 

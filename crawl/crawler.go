@@ -24,7 +24,7 @@ func NewCrawler() *Crawler {
 // GetMap gets https://mf.com/zone html page and related data like
 // svg map, pictos, forecasts and list of subzones
 // related data is stored into MfMap fields
-func (c *Crawler) GetMap(path string, parent *mfmap.MfMap, pictos PictoStore) (*mfmap.MfMap, error) {
+func (c *Crawler) GetMap(path string) (*mfmap.MfMap, error) {
 	log.Printf("GetMap() '%s'", path)
 
 	body, err := c.mainClient.Get(path, CacheDisabled)
@@ -36,7 +36,7 @@ func (c *Crawler) GetMap(path string, parent *mfmap.MfMap, pictos PictoStore) (*
 	// allocate a MfMap and initialize with received content
 	m := mfmap.MfMap{
 		//		Nom: nom,
-		Parent: parent,
+		//Parent: parent,
 	}
 	err = m.ParseHtml(body)
 	if err != nil {
@@ -96,22 +96,82 @@ func (c *Crawler) GetMap(path string, parent *mfmap.MfMap, pictos PictoStore) (*
 	if err != nil {
 		return nil, err
 	}
+	/*
+		// get pictos
+		if pictos != nil {
+			err = pictos.Update(m.PictoNames(), c.mainClient)
+			if err != nil {
+				return nil, err
+			}
+		}
+	*/
+	return &m, nil
+}
 
-	// get pictos
-	if pictos != nil {
+// GetAllMaps() fetches a map tree recursively, including pictos
+// * startPath : where to start the tree walk ("/" is the 'root' page)
+// * limit limits the number of maps downloaded
+func (c *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
+	var (
+		cnt    int
+		maps   = MapStore{}
+		pictos = PictoStore{}
+	)
+
+	type QueueItem struct {
+		path   string
+		parent string
+	}
+
+	// root map has a nil parent
+	queue := []QueueItem{{startPath, ""}}
+	for {
+		// stop when queue is empty or max count is reached
+		i := len(queue) - 1
+		if ((limit > 0) && (cnt >= limit)) || i < 0 {
+			break
+		}
+		cnt++
+
+		// pop queue and process next path
+		next := queue[i]
+		queue = queue[0:i]
+		m, err := c.GetMap(next.path)
+		if err != nil {
+			return nil, err
+		}
+		// add parent
+		m.Parent = next.parent
+
+		// download pictos (only new ones)
 		err = pictos.Update(m.PictoNames(), c.mainClient)
 		if err != nil {
 			return nil, err
 		}
+
+		// enqueue children maps
+		for _, sz := range m.Data.Subzones {
+			queue = append(queue, QueueItem{sz.Path, m.Path()})
+		}
+
+		// store current map in the collection
+		maps[m.Path()] = m
 	}
-	return &m, nil
+	// store maps and pictos in a MeteoContent
+	mc := NewContent()
+	mc.Update(maps, pictos)
+	return mc, nil
 }
 
-// GetAllMaps() fetches a map tree recursively
-// * startPath : where to start the tree walk ("/" is the 'root' page)
-// * pictos are stored in PictoStore
-// * limit limits the number of maps downloaded
-func (c *Crawler) FetchAll(startPath string, pictos PictoStore, limit int) (MapStore, error) {
+/*
+type CrawlItem struct {
+	maps MapStore
+	pictos PictoStore
+}
+
+func (c * Crawler)Fetch(startPath string, limit int) (<-chan *CrawlItem) {
+
+
 	var (
 		cnt  int
 		maps = MapStore{}
@@ -143,7 +203,14 @@ func (c *Crawler) FetchAll(startPath string, pictos PictoStore, limit int) (MapS
 			queue = append(queue, QueueItem{sz.Path, m})
 		}
 		// store current map in the collection
+
+
 		maps[m.Path()] = m
 	}
 	return maps, nil
-}
+
+
+
+
+	return nil
+}*/
