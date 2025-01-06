@@ -2,10 +2,12 @@ package crawl
 
 import (
 	"bytes"
-	"gometeo/mfmap"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+
+	"gometeo/mfmap"
 )
 
 const (
@@ -15,19 +17,53 @@ const (
 
 type Crawler struct {
 	mainClient *MfClient
-	apiClient  *MfClient
 }
 
-type MapCollection []*mfmap.MfMap
+type MeteoContent struct {
+	Maps   MapStore
+	Pictos PictoStore
+}
 
+// NewContent returns an empty MeteoContent 
+// with 0 length but non-nil Maps and Picto attributes
+func NewContent() MeteoContent {
+	return MeteoContent{
+		Maps: make(MapStore),
+		Pictos: make(PictoStore),
+	}
+}
+
+// MapStore is the collection of donwloaded and parsed maps.
+// key is the source path with slash (i.e. france is "/", not "/france" )
+type MapStore map[string]*mfmap.MfMap
+
+// PictoStore is the collection of available pictos
+// pictos are shared asset and not a member of MfMap
+// key is the name of the picto (ex : p1j, p4n, ...)
 type PictoStore map[string][]byte
 
 // NewCrawler allocates as *MfCrawler
 func NewCrawler() *Crawler {
 	return &Crawler{
 		mainClient: NewClient(httpsMeteofranceCom),
-		// apiClient: nil,  // apiClient needs API base url from main client
 	}
+}
+
+func (c *Crawler) UpdateAll(old MeteoContent, startPath string, limit int) (MeteoContent, error) {
+	if !old.IsEmpty() {
+		return old, fmt.Errorf("not implemented")
+	}
+	pictos := old.Pictos  // picto store is not deep copied ( type = map )
+	newMaps, err := c.GetAllMaps(startPath, pictos, limit)
+	if err != nil {
+		return old, err
+	}
+	return MeteoContent{newMaps, pictos}, nil
+}
+
+
+func (c MeteoContent) IsEmpty() bool {
+	return len(c.Maps)==0
 }
 
 // GetMap gets https://mf.com/zone html page and related data like
@@ -92,16 +128,16 @@ func (c *Crawler) GetMap(path string, parent *mfmap.MfMap, pictos PictoStore) (*
 	if err != nil {
 		return nil, err
 	}
-	c.apiClient = NewClient(apiBaseUrl.String())
-	c.apiClient.authToken = c.mainClient.authToken
-	c.apiClient.noSessionCookie = true // api server do not send auth tokens
+	api := NewClient(apiBaseUrl.String())
+	api.authToken = c.mainClient.authToken
+	api.noSessionCookie = true // api server do not send auth tokens
 
 	// get all forecasts available on the map
 	u, err = m.ForecastURL()
 	if err != nil {
 		return nil, err
 	}
-	body, err = c.apiClient.Get(u.String(), CacheDisabled)
+	body, err = api.Get(u.String(), CacheDisabled)
 	if err != nil {
 		return nil, err
 	}
@@ -148,10 +184,10 @@ func (ps PictoStore) Update(names []string, cl *MfClient) error {
 // * startPath : where to start the tree walk ("/" is the 'root' page)
 // * pictos are stored in PictoStore
 // * limit limits the number of maps downloaded
-func (c *Crawler) GetAllMaps(startPath string, pictos PictoStore, limit int) (MapCollection, error) {
+func (c *Crawler) GetAllMaps(startPath string, pictos PictoStore, limit int) (MapStore, error) {
 	var (
 		cnt  int
-		maps = make(MapCollection, 0, 200)
+		maps = MapStore{}
 	)
 	type QueueItem struct {
 		path   string
@@ -180,7 +216,7 @@ func (c *Crawler) GetAllMaps(startPath string, pictos PictoStore, limit int) (Ma
 			queue = append(queue, QueueItem{sz.Path, m})
 		}
 		// store current map in the collection
-		maps = append(maps, m)
+		maps[m.Path()] = m
 	}
 	return maps, nil
 }

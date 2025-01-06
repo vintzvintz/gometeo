@@ -30,10 +30,10 @@ func TestGetMap(t *testing.T) {
 	checkPictos(t, pictos)
 }
 
-func getAllMapsTest(t *testing.T, limit int) (MapCollection, PictoStore) {
+func getAllMapsTest(t *testing.T, limit int) (MapStore, PictoStore) {
 	c := NewCrawler()
 	pictos := PictoStore{}
-	 maps, err := c.GetAllMaps("/", pictos, limit)
+	maps, err := c.GetAllMaps("/", pictos, limit)
 	//maps, err := c.GetAllMaps("/previsions-meteo-france/jura/39", nil)
 	if err != nil {
 		t.Fatalf("GetAllMaps() error: %s", err)
@@ -51,7 +51,7 @@ func getMapTest(t *testing.T, path string) (*mfmap.MfMap, PictoStore) {
 	return m, pictos
 }
 
-func checkMapCollection(t *testing.T, maps MapCollection) {
+func checkMapCollection(t *testing.T, maps MapStore) {
 	for _, m := range maps {
 		checkMap(t, m)
 	}
@@ -99,7 +99,7 @@ func TestPictosHandler(t *testing.T) {
 		wantStatus int
 	}{
 		"notFound": { "wesh", http.StatusNotFound},
-		"p4n": {"p4n", http.StatusOK},
+		"p3j": {"p3j", http.StatusOK},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {

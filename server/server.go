@@ -15,34 +15,31 @@ const (
 	cacheFile   = "./cachedServer.gob"
 )
 
-type MeteoServer struct {
-	Maps   crawl.MapCollection
-	Pictos crawl.PictoStore
-}
 
 // TODO: refactor in testutils
-func loadServer() *MeteoServer {
+func loadContent() crawl.MeteoContent {
+	content := crawl.NewContent()  // empty but non-nil 
+
 	if !cacheServer {
-		return nil
+		return content
 	}
 	f, err := os.Open(cacheFile)
 	if err != nil {
 		log.Println(err)
-		return nil
+		return content
 	}
 	dec := gob.NewDecoder(f)
-	srv := MeteoServer{}
-	err = dec.Decode(&srv)
+	err = dec.Decode(&content)
 	if err != nil {
 		log.Println(err)
-		return nil
+		return content
 	}
-	log.Printf("cacheMap enabled : map loaded from %s", cacheFile)
-	return &srv
+	log.Printf("content loaded from %s", cacheFile)
+	return content
 }
 
 // TODO: refactor in testutils
-func storeServer(srv *MeteoServer) {
+func storeContent(content crawl.MeteoContent) {
 	if !cacheServer {
 		return
 	}
@@ -51,18 +48,19 @@ func storeServer(srv *MeteoServer) {
 		panic(err)
 	}
 	enc := gob.NewEncoder(f)
-	err = enc.Encode(*srv)
+	err = enc.Encode(content)
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("content stored to %s", cacheFile)
 }
 
-func NewMeteoHandler(maps crawl.MapCollection, pictos crawl.PictoStore) http.Handler {
+func NewMeteoHandler(content crawl.MeteoContent) http.Handler {
 
 	mux := http.ServeMux{}
 	static.AddHandlers(&mux)
-	pictos.AddHandler(&mux)
-	for _, m := range maps {
+	content.Pictos.AddHandler(&mux)
+	for _, m := range content.Maps {
 		m.AddHandlers(&mux)
 	}
 	hdl := withLogging(&mux)
@@ -76,29 +74,38 @@ func StartSimple(addr string) error {
 	var err error
 
 	// for tests/debug
-	srv := loadServer()
+	content := loadContent()
 
-	if srv == nil {
-		p := crawl.PictoStore{}
-		m, err := crawler.GetAllMaps("/", p, 15)
+	if content.IsEmpty() {
+		content, err = crawler.UpdateAll(content, "/", 15)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)
 		}
-		srv = &MeteoServer{Maps: m, Pictos: p}
 
 		// for tests/debug
-		storeServer(srv)
+		storeContent(content)
 	}
 
-	mux := NewMeteoHandler(srv.Maps, srv.Pictos)
+	mux := NewMeteoHandler(content)
+
 	err = http.ListenAndServe(addr, mux)
 	if err != http.ErrServerClosed {
 		return err
 	}
 	return nil
 }
-
+/*
 func (ms *MeteoServer) NewServer(addr string) {
 
 }
+
+
+func Start(addr string) error {
+
+
+
+
+
+	return nil
+}*/
