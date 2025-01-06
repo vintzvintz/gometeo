@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/gob"
 	"log"
 	"net/http"
 	"os"
@@ -10,62 +9,11 @@ import (
 	"gometeo/static"
 )
 
+// for dev/tests/debug
 const (
 	cacheServer = true
-	cacheFile   = "./cachedServer.gob"
+	cacheFile   = "./content_cache.gob"
 )
-
-
-// TODO: refactor in testutils
-func loadContent() crawl.MeteoContent {
-	content := crawl.NewContent()  // empty but non-nil 
-
-	if !cacheServer {
-		return content
-	}
-	f, err := os.Open(cacheFile)
-	if err != nil {
-		log.Println(err)
-		return content
-	}
-	dec := gob.NewDecoder(f)
-	err = dec.Decode(&content)
-	if err != nil {
-		log.Println(err)
-		return content
-	}
-	log.Printf("content loaded from %s", cacheFile)
-	return content
-}
-
-// TODO: refactor in testutils
-func storeContent(content crawl.MeteoContent) {
-	if !cacheServer {
-		return
-	}
-	f, err := os.Create(cacheFile)
-	if err != nil {
-		panic(err)
-	}
-	enc := gob.NewEncoder(f)
-	err = enc.Encode(content)
-	if err != nil {
-		panic(err)
-	}
-	log.Printf("content stored to %s", cacheFile)
-}
-
-func NewMeteoHandler(content crawl.MeteoContent) http.Handler {
-
-	mux := http.ServeMux{}
-	static.AddHandlers(&mux)
-	content.Pictos.AddHandler(&mux)
-	for _, m := range content.Maps {
-		m.AddHandlers(&mux)
-	}
-	hdl := withLogging(&mux)
-	return hdl
-}
 
 // StartSimple fetches data once and serve it forever
 func StartSimple(addr string) error {
@@ -73,39 +21,44 @@ func StartSimple(addr string) error {
 	crawler := crawl.NewCrawler()
 	var err error
 
-	// for tests/debug
-	content := loadContent()
+	var content *crawl.MeteoContent
 
-	if content.IsEmpty() {
-		content, err = crawler.UpdateAll(content, "/", 15)
+	if cacheServer {
+		content = crawl.LoadContent(cacheFile)
+	}
+
+	// fetch data if cache is disabled or failed
+	if content == nil {
+		pictos := crawl.PictoStore{}
+		maps, err := crawler.GetAllMaps("/", pictos, 15)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)
 		}
+		content = crawl.NewContent()
+		content.Update(maps, pictos)
 
-		// for tests/debug
-		storeContent(content)
+		if cacheServer {
+			crawl.StoreContent(cacheFile, content)
+		}
 	}
 
-	mux := NewMeteoHandler(content)
-
-	err = http.ListenAndServe(addr, mux)
+	srv := http.Server{
+		Addr:    ":5151",
+		Handler: makeMeteoHandler(content),
+	}
+	err = srv.ListenAndServe()
 	if err != http.ErrServerClosed {
 		return err
 	}
+	log.Printf("Server closed")
 	return nil
 }
-/*
-func (ms *MeteoServer) NewServer(addr string) {
 
+func makeMeteoHandler(content *crawl.MeteoContent) http.Handler {
+	mux := http.NewServeMux()
+	static.Register(mux)
+	content.Register(mux)
+	hdl := withLogging(mux)
+	return hdl
 }
-
-
-func Start(addr string) error {
-
-
-
-
-
-	return nil
-}*/

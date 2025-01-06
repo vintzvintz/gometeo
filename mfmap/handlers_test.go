@@ -32,9 +32,9 @@ func TestMapHandlers(t *testing.T) {
 
 	//setup server on test data
 	m := buildTestMap(t)
-	mux := http.ServeMux{}
-	m.AddHandlers(&mux)
-	srv := httptest.NewServer(&mux)
+	mux := http.NewServeMux()
+	m.Register(mux)
+	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	cl := srv.Client()
 

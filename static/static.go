@@ -20,7 +20,7 @@ var embedCSS embed.FS
 //go:embed fonts
 var embedFonts embed.FS
 
-func AddHandlers(mux *http.ServeMux) {
+func Register(mux *http.ServeMux) {
 	mux.Handle(Js, http.FileServerFS(embedJS))
 	mux.Handle(Css, http.FileServerFS(embedCSS))
 	mux.Handle(Fonts, http.FileServerFS(embedFonts))

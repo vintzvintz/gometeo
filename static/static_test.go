@@ -63,9 +63,9 @@ var testStaticPaths = map[string][]string{
 
 func TestStaticHandler(t *testing.T) {
 
-	mux := http.ServeMux{}
-	AddHandlers(&mux)
-	srv := httptest.NewServer(&mux)
+	mux := http.NewServeMux()
+	Register(mux)
+	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	cl := srv.Client()
 
