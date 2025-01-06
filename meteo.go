@@ -9,7 +9,7 @@ import (
 
 
 func main() {
-	err := server.StartSimple(":5151")
+	err := server.Start(":5151", 15 )
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)

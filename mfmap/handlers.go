@@ -12,7 +12,7 @@ import (
 // also a redirection from "/"" to "/france"
 func (m *MfMap) Register(mux *http.ServeMux) {
 	p := "/"+m.Path()
-	log.Printf("Register handlers for '%s'", p)
+//	log.Printf("Register handlers for '%s'", p)
 	mux.HandleFunc(p, m.makeMainHandler())
 	mux.HandleFunc(p+"/data", m.makeDataHandler())
 	mux.HandleFunc(p+"/svg", m.makeSvgMapHandler())

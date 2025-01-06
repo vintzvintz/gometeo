@@ -3,7 +3,6 @@ package server
 import (
 	"log"
 	"net/http"
-	"os"
 
 	"gometeo/crawl"
 	"gometeo/static"
@@ -16,43 +15,30 @@ const (
 )
 
 // StartSimple fetches data once and serve it forever
-func StartSimple(addr string) error {
-
+func StartSimple(addr string, limit int) error {
 	var (
 		err     error
 		content *crawl.MeteoContent
 	)
-	// dev/debug/test
+	// for dev/debug/test
 	if cacheServer {
 		content = crawl.LoadContent(cacheFile)
 	}
-
 	// fetch data if cache is disabled or failed
 	if content == nil {
 		crawler := crawl.NewCrawler()
-		content, err = crawler.FetchAll("/", 15)
+		content, err = crawler.FetchAll("/", limit)
 		if err != nil {
-			log.Println(err)
-			os.Exit(1)
+			return err
 		}
-
-		// dev/debug/test
+		// for dev/debug/test
 		if cacheServer {
 			crawl.StoreContent(cacheFile, content)
 		}
 	}
-
-	srv := http.Server{
-		Addr:    addr,
-		Handler: makeMeteoHandler(content),
-	}
-	log.Printf("Start simple server on '%s'", addr)
-	err = srv.ListenAndServe()
-	if err != http.ErrServerClosed {
-		return err
-	}
-	log.Printf("Server closed")
-	return nil
+	done := serveContent(addr, content)
+	// wait for server termination
+	return <-done
 }
 
 func makeMeteoHandler(content *crawl.MeteoContent) http.Handler {
@@ -62,37 +48,61 @@ func makeMeteoHandler(content *crawl.MeteoContent) http.Handler {
 	hdl := withLogging(mux)
 	return hdl
 }
-/*
 
-func Start(addr string) error {
-
-	content := crawl.NewContent()
-
-	// signal when crawling terminates
-	isCrawling := make( chan(struct{}) )
-
-	// fetch maps and update content store forever
-	go func() {
-		crawler := crawl.NewCrawler()
-		for item := range crawler.Fetch( "/", 15 ) {
-			content.UpdateItem(item)
-		}
-		close(isCrawling)
-	}()
-
+func serveContent(addr string, content *crawl.MeteoContent) <-chan error {
 	srv := http.Server{
 		Addr:    addr,
 		Handler: makeMeteoHandler(content),
 	}
-	err := srv.ListenAndServe()
-	if err != http.ErrServerClosed {
-		return err
-	}
+	ch := make(chan error)
+	go func() {
+		log.Printf("Start server on '%s'", addr)
+		err := srv.ListenAndServe()
+		if err != http.ErrServerClosed {
+			log.Printf("server error: %s", err)
+		} else {
+			log.Printf("Server closed")
+		}
+		ch <- err
+		close(ch)
+	}()
+	return ch
+}
+
+// startCrawler returns a "self-updating" MeteoContent
+func startCrawler(startPath string, limit int) (*crawl.MeteoContent, <-chan (struct{})) {
+
+	// concurrent use of http.Client is safe according to official documentation,
+	// so we can share the same client for maps and pictos.
+	cr := crawl.NewCrawler()
+
+	// direct pipe the crawler output channel to MeteoContent.Receive()
+	mapsChan := cr.Fetch(startPath, limit)
+
+	// starts a goroutine to receive fetched maps
+	// returns a chan to signal when mapsChan is closed
+	content := crawl.NewContent()
+	chCrawlerDone := content.Receive(mapsChan, cr)
+
+	return content, chCrawlerDone
+}
+
+func Start(addr string, limit int) error {
+
+	content, crawlerDone := startCrawler("/", limit)
+	srvDone := serveContent(addr, content)
 
 	// block until crawling stops
-	//_ = <- isCrawling
+	select {
+	case <-srvDone:
+		{
+			log.Printf("httpserver termination")
+		}
+	case <-crawlerDone:
+		{
+			log.Printf("crawler termination")
+		}
+	}
 
 	return nil
-}*/
-
-
+}

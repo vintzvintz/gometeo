@@ -240,17 +240,7 @@ func TestAssetsURL(t *testing.T) {
 		}
 	})
 
-	t.Run("picto", func(t *testing.T) {
-		u, err := PictoURL("test")
-		if err != nil {
-			t.Fatal(err)
-		}
-		got := u.String()
-		want := "https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/test.svg"
-		if got != want {
-			t.Errorf("svgPicto() got '%s' want '%s'", got, want)
-		}
-	})
+	// pictoURL test is in crawler.go
 }
 
 // buildTestMap returns a JsonMap structure filled form test files

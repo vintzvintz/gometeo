@@ -1,8 +1,13 @@
 package crawl
 
 import (
-	"gometeo/mfmap"
+	"fmt"
+	"io"
 	"log"
+	"net/url"
+	"strings"
+
+	"gometeo/mfmap"
 )
 
 const (
@@ -144,7 +149,7 @@ func (c *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
 		m.Parent = next.parent
 
 		// download pictos (only new ones)
-		err = pictos.Update(m.PictoNames(), c.mainClient)
+		err = pictos.Update(m.PictoNames(), c)
 		if err != nil {
 			return nil, err
 		}
@@ -163,54 +168,87 @@ func (c *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
 	return mc, nil
 }
 
-/*
-type CrawlItem struct {
-	maps MapStore
-	pictos PictoStore
+func (c *Crawler) Fetch(startPath string, limit int) <-chan *mfmap.MfMap {
+
+	ch := make(chan (*mfmap.MfMap))
+
+	go func() {
+		var cnt int
+		type QueueItem struct {
+			path   string
+			parent string
+		}
+
+		// root map has a nil parent
+		queue := []QueueItem{{startPath, ""}}
+		for {
+			// stop when queue is empty or max count is reached
+			i := len(queue) - 1
+			if ((limit > 0) && (cnt >= limit)) || i < 0 {
+				break
+			}
+			cnt++
+
+			// pop queue and process next path
+			next := queue[i]
+			queue = queue[0:i]
+			m, err := c.GetMap(next.path)
+			if err != nil {
+				log.Printf("GetMap(%s) error:%s", next.path, err)
+				continue
+			}
+			// add parent path
+			m.Parent = next.parent
+
+			// enqueue children maps
+			for _, sz := range m.Data.Subzones {
+				queue = append(queue, QueueItem{sz.Path, m.Path()})
+			}
+			// send map
+			ch <- m
+		}
+		// signal goroutine termination
+		log.Printf("crawl.Fetch('%s') exit", startPath)
+
+		// closing channel will terminate server
+		// we do not want that in "test/limited" mode
+		if limit == 0 {
+			close(ch)
+		}
+	}()
+	return ch
 }
 
-func (c * Crawler)Fetch(startPath string, limit int) (<-chan *CrawlItem) {
-
-
-	var (
-		cnt  int
-		maps = MapStore{}
-	)
-	type QueueItem struct {
-		path   string
-		parent *mfmap.MfMap
+func (cr *Crawler) GetPicto(name string) ([]byte, error) {
+	url, err := pictoURL(name)
+	if err != nil {
+		return nil, err
 	}
-
-	// root map has a nil parent
-	queue := []QueueItem{{startPath, nil}}
-	for {
-		// stop when queue is empty or max count is reached
-		i := len(queue) - 1
-		if ((limit > 0) && (cnt >= limit)) || i < 0 {
-			break
-		}
-		cnt++
-
-		// pop queue and process next path
-		next := queue[i]
-		queue = queue[0:i]
-		m, err := c.GetMap(next.path, next.parent, pictos)
-		if err != nil {
-			return nil, err
-		}
-		// enqueue children maps
-		for _, sz := range m.Data.Subzones {
-			queue = append(queue, QueueItem{sz.Path, m})
-		}
-		// store current map in the collection
-
-
-		maps[m.Path()] = m
+	body, err := cr.mainClient.Get(url.String(), CacheDefault)
+	if err != nil {
+		return nil, err
 	}
-	return maps, nil
+	defer body.Close()
+	b, err := io.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
 
-
-
-
-	return nil
-}*/
+// exemple https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/p3j.svg
+func pictoURL(name string) (*url.URL, error) {
+	elems := []string{
+		"modules",
+		"custom",
+		"mf_tools_common_theme_public",
+		"svg",
+		"weather",
+		fmt.Sprintf("%s.svg", name),
+	}
+	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	if err != nil {
+		return nil, fmt.Errorf("pictoURL() error: %w", err)
+	}
+	return u, nil
+}

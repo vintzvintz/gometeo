@@ -48,6 +48,29 @@ func (mc *MeteoContent) Update(maps MapStore, pictos PictoStore) {
 	mc.rebuildMux()
 }
 
+// Receive updates continuously MeteoContent with MfMaps received from ch
+// a Crawler cr is required to download pictos
+func (mc *MeteoContent) Receive(chMaps <-chan *mfmap.MfMap, cr *Crawler) <-chan struct{} {
+	chDone := make(chan struct{})
+	go func() {
+		log.Println("MeteoContent.Receive() start")
+		for m := range chMaps {
+			// get pictos
+			err := mc.pictos.Update(m.PictoNames(), cr)
+			if err != nil {
+				// non fatal error
+				log.Printf("error fetching pictos for map '%s': %s", m.Path(), err)
+			}
+			// update content with new map, pictos already updated (in-place just above)
+			mc.maps[m.Path()] = m
+			mc.rebuildMux()
+		}
+		log.Println("MeteoContent.Receive() exit")
+		close(chDone)
+	}()
+	return chDone
+}
+
 func (mc *MeteoContent) rebuildMux() {
 	mux := http.NewServeMux()
 	mc.pictos.Register(mux)
@@ -57,12 +80,7 @@ func (mc *MeteoContent) rebuildMux() {
 	mc.mux = mux
 }
 
-/*
-func (mc *MeteoContent) UpdateItem(item *CrawlItem) {
-	mc.Update(item.maps, item.pictos)
-}
-*/
-// call internal ServeMux
+// pass request to MeteoContent internal ServeMux
 func (mc *MeteoContent) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	mc.mux.ServeHTTP(resp, req)
 }
@@ -73,16 +91,16 @@ func (c *MeteoContent) Register(mux *http.ServeMux) {
 	mux.Handle("/", c)
 }
 
-func (ps PictoStore) Update(names []string, cl *MfClient) error {
-	for _, pic := range names {
-		if _, ok := ps[pic]; ok {
+func (pictos PictoStore) Update(names []string, cr *Crawler) error {
+	for _, name := range names {
+		if _, ok := pictos[name]; ok {
 			continue // do not update known pictos
 		}
-		url, err := mfmap.PictoURL(pic)
+		url, err := pictoURL(name)
 		if err != nil {
 			return err
 		}
-		body, err := cl.Get(url.String(), CacheDefault)
+		body, err := cr.mainClient.Get(url.String(), CacheDefault)
 		if err != nil {
 			return err
 		}
@@ -91,7 +109,7 @@ func (ps PictoStore) Update(names []string, cl *MfClient) error {
 		if err != nil {
 			return err
 		}
-		ps[pic] = b
+		pictos[name] = b
 	}
 	return nil
 }

@@ -319,23 +319,6 @@ func (m *MfMap) SvgURL() (*url.URL, error) {
 	return u, nil
 }
 
-// https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/p3j.svg
-func PictoURL(picto string) (*url.URL, error) {
-	elems := []string{
-		"modules",
-		"custom",
-		"mf_tools_common_theme_public",
-		"svg",
-		"weather",
-		fmt.Sprintf("%s.svg", picto),
-	}
-	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
-	if err != nil {
-		return nil, fmt.Errorf("m.pictoURL() error: %w", err)
-	}
-	return u, nil
-}
-
 // UnmarshalJSON unmarshals stringFloat fields
 // lat and lng have mixed float and string types sometimes
 func (sf *stringFloat) UnmarshalJSON(b []byte) error {
