@@ -30,7 +30,7 @@ func StartSimple(addr string) error {
 	// fetch data if cache is disabled or failed
 	if content == nil {
 		pictos := crawl.PictoStore{}
-		maps, err := crawler.GetAllMaps("/", pictos, 15)
+		maps, err := crawler.FetchAll("/", pictos, 15)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)

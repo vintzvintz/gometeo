@@ -33,7 +33,7 @@ func TestGetMap(t *testing.T) {
 func getAllMapsTest(t *testing.T, limit int) (MapStore, PictoStore) {
 	c := NewCrawler()
 	pictos := PictoStore{}
-	maps, err := c.GetAllMaps("/", pictos, limit)
+	maps, err := c.FetchAll("/", pictos, limit)
 	//maps, err := c.GetAllMaps("/previsions-meteo-france/jura/39", nil)
 	if err != nil {
 		t.Fatalf("GetAllMaps() error: %s", err)

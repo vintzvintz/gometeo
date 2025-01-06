@@ -16,7 +16,7 @@ func (m *MfMap) Register(mux *http.ServeMux) {
 	mux.HandleFunc(p, m.makeMainHandler())
 	mux.HandleFunc(p+"/data", m.makeDataHandler())
 	mux.HandleFunc(p+"/svg", m.makeSvgMapHandler())
-	if p == "france" {
+	if p == "/france" {
 		mux.HandleFunc("/{$}", makeRedirectHandler("/france"))
 	}
 }
