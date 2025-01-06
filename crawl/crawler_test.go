@@ -47,13 +47,13 @@ func getAllMapsTest(t *testing.T, limit int) *MeteoContent {
 	return content
 }
 
-func getMapTest(t *testing.T, path string) (*mfmap.MfMap, PictoStore) {
+func getMapTest(t *testing.T, path string) (*mfmap.MfMap, pictoStore) {
 	cr := NewCrawler()
 	m, err := cr.getMap(path)
 	if err != nil {
 		t.Fatalf("getmap('%s') error: %s", path, err)
 	}
-	pictos := PictoStore{}
+	pictos := pictoStore{}
 	pictos.Update(m.PictoNames(), cr)
 	return m, pictos
 }
@@ -85,7 +85,7 @@ func checkMap(t *testing.T, m *mfmap.MfMap) {
 
 // there should be at least xxx different pictos, with minimum size,
 // and with a '<svg' tag
-func checkPictos(t *testing.T, pictos PictoStore) {
+func checkPictos(t *testing.T, pictos pictoStore) {
 	re := regexp.MustCompile("<svg")
 	if len(pictos) < minPictoCount {
 		t.Fatalf("found %d pictos, expected at least %d", len(pictos), minPictoCount)

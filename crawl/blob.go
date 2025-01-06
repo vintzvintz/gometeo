@@ -6,10 +6,10 @@ import (
 	"os"
 )
 
-// utility type to store a MeteoContent without the ServeMux
+// utility type to store a MeteoContent without the ServeMux and exposed fields
 type meteoBlob struct {
-	Maps   MapStore
-	Pictos PictoStore
+	Maps   mapStore
+	Pictos pictoStore
 }
 
 func LoadContent(cacheFile string) *MeteoContent {

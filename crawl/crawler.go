@@ -126,8 +126,8 @@ func (cr *Crawler) getMultiforecast(m *mfmap.MfMap) error {
 func (cr *Crawler) FetchAll(startPath string, limit int) (*MeteoContent, error) {
 	var (
 		cnt    int
-		maps   = MapStore{}
-		pictos = PictoStore{}
+		maps   = mapStore{}
+		pictos = pictoStore{}
 	)
 
 	type QueueItem struct {
