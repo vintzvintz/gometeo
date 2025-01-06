@@ -116,13 +116,15 @@ func (ms mapStore) Add(m *mfmap.MfMap) {
 	}
 	slices.Reverse(bc)
 	m.Breadcrumb = bc
+
+	// TODO: keep few days of past forecasts
 	ms[m.Path()] = m
 }
 
 func (pictos pictoStore) Update(names []string, cr *Crawler) error {
 	for _, name := range names {
 		if _, ok := pictos[name]; ok {
-			continue // do not update known pictos
+			continue // download only new pictos
 		}
 		b, err := cr.getPicto(name)
 		if err != nil {
