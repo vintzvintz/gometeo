@@ -170,7 +170,7 @@ export const TopNav = {
   <a v-for="item in breadcrumb" :href="item.path">{{item.nom}}</a>
   <div class="spacer"></div>
   <a class="no-mobile" href="/about">A propos</a>
-  <a class="no-mobile" href="#" @click="$emit('toggleTooltips')" > 
+  <a class="no-mobile" @click="$emit('toggleTooltips')" > 
      Tooltips : {{tooltipsEnabled ? "Oui" : "Non"}}
   </a>
 </nav>`
@@ -191,14 +191,12 @@ export const WeatherPicker = {
 
   template: /*html*/`
 <div class="data-picker">
-  <ul>
-    <li v-for="w in weatherDisplayOrder":key="w" 
-      @click="$emit('weatherSelected', w)">
-      <a href="#" :class="{ active: (activeWeather==w) }">
-        {{ weatherList[w].text }} 
-      </a> 
-    </li>
-  </ul>
+  <a v-for="w in weatherDisplayOrder" 
+  :key="w"
+  :class="{ active: (activeWeather==w) }"
+  @click="$emit('weatherSelected', w)" >
+      {{ weatherList[w].text }} 
+  </a> 
 </div>`
 }
 /*
