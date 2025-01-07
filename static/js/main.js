@@ -2,10 +2,10 @@ import { createApp, ref } from 'vue'
 
 import {
   RootComponent,
-  Breadcrumb,
+  TopNav,
   WeatherPicker,
 //  TimespanPicker,
-  TooltipsToggler,
+//  TooltipsToggler,
   MapGridComponent,
   MapRowComponent,
   MapComponent,
@@ -27,15 +27,14 @@ export function createMeteoApp(mountElt, path) {
   })
 
   app.component("RootComponent", RootComponent)
-  app.component("Breadcrumb", Breadcrumb)
+  app.component("TopNav", TopNav)
   app.component("WeatherPicker", WeatherPicker)
 //  app.component("TimespanPicker", TimespanPicker)
-  app.component("TooltipsToggler", TooltipsToggler)
+//  app.component("TooltipsToggler", TooltipsToggler)
   app.component("MapGridComponent", MapGridComponent)
   app.component("MapRowComponent", MapRowComponent)
   app.component("MapComponent", MapComponent)
   app.component("HighchartComponent", HighchartComponent)
 
-  //  app.mount('#vuejs_root')
   app.mount(mountElt)
 }

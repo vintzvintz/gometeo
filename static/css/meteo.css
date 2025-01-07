@@ -122,26 +122,47 @@ ul {
   list-style: none;
 }
 
+/****** bandeau de navigation supérieur  **************/
 /* Style the top navigation bar */
 .topnav {
-  overflow: hidden;
+  display: flex;
   background-color: #333;
+  flex-flow: row wrap;
+  justify-content: space-between;
 }
 
-/* Style the topnav links */
-.topnav a {
-  float: left;
-  display: block;
+
+.topnav a,
+.topnav a:visited {
   color: #f2f2f2;
   text-align: center;
   padding: 14px 16px;
   text-decoration: none;
+  /*width: 100%; */
 }
 
-/* Change color on hover */
 .topnav a:hover {
   background-color: #ddd;
   color: black;
+}
+
+
+.topnav .spacer {
+  flex-grow: 1;
+ /* display: none;*/
+}
+
+/************ Masque certaines éléments sur petit ecran ***************/
+.topnav .no-mobile,
+#highchartContainer {
+  display: none;
+}
+
+@media screen and (min-width : 600px) {
+  .topnav .no-mobile,
+  #highchartContainer {
+    display: block;
+  }
 }
 
 /* Style the content */
@@ -160,7 +181,6 @@ ul {
 }
 
 /****** placement des cartes selon la largeur du viewport **************/
-
 
 /* toutes les prévisions disponibles */
 .maps-grid {
@@ -182,15 +202,14 @@ ul {
 /* affichage sur 1 colonne par défaut (mobile & faible largeur) */
 .map-item {
   margin: 0;
-  width: 100%;
   padding: 2px;
+  width: 100%;
 
 }
 
 /* affichage sur deux colonnes */
 @media screen and (min-width : 600px) {
   .map-item {
-    /* deux colonnes */ 
     width: 50%;
   }
 }
@@ -198,7 +217,6 @@ ul {
 /* affichage sur 4 colonnes */
 @media screen and (min-width : 1200px) {
   .map-item {
-    /* 4 colonnes */
     width: 25%;
   }
 }

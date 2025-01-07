@@ -98,9 +98,26 @@ func (ms mapStore) Register(mux *http.ServeMux) {
 
 // Add() adds or replace a map in the store.
 // Computes Breadcrumb chain from other maps in the store
+// TODO: separate forecast updates and map insertion 
+// in 2 functions (insertion is more expensive)
 func (ms mapStore) Add(m *mfmap.MfMap) {
+	// TODO: keep few days of past forecasts
+	ms[m.Path()] = m
+	// rebuild all breadcrumbs is not optimal
+	for name := range ms {
+		ms.buildBreadcrumbs(name)
+	}
+}
 
-	// max depth is 3 but lets allocate 5 to be sure :)
+func (ms mapStore) buildBreadcrumbs(path string) {
+	// get a *MfMap to work on
+	m, ok := ms[path]
+	if !ok || m == nil {
+		log.Printf("rebuildBreadcrumbs(): map '%s' not found", path)
+		return   // non fatal, abort without any modification
+	}
+
+	// max depth is 3 but lets allocate 5 to be sure
 	bc := make(mfmap.Breadcrumb, 0, 5)
 	cur := m
 	for {
@@ -116,9 +133,6 @@ func (ms mapStore) Add(m *mfmap.MfMap) {
 	}
 	slices.Reverse(bc)
 	m.Breadcrumb = bc
-
-	// TODO: keep few days of past forecasts
-	ms[m.Path()] = m
 }
 
 func (pictos pictoStore) Update(names []string, cr *Crawler) error {

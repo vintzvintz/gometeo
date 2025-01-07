@@ -10,7 +10,7 @@ import (
 
 // for dev/tests/debug
 const (
-	cacheServer = false
+	cacheServer = true
 	cacheFile   = "./content_cache.gob"
 )
 

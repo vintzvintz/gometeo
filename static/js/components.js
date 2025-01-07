@@ -119,18 +119,19 @@ export const RootComponent = {
   template: /*html*/ `
   <header>
   
-  <Breadcrumb :breadcrumb="mapData.breadcrumb"/>
+  <TopNav 
+  :breadcrumb="mapData.breadcrumb"
+  :tooltipsEnabled="selections.tooltipsEnabled"
+  @toggleTooltips="onToggleTooltips"/>
 
   <section class="selecteurs">
-   <WeatherPicker 
-   :activeWeather="selections.activeWeather"
-   @weatherSelected="onWeatherSelected" />
+    <WeatherPicker 
+    :activeWeather="selections.activeWeather"
+    @weatherSelected="onWeatherSelected" />
 
-   <TooltipsToggler
-   :tooltipsEnabled="selections.tooltipsEnabled"
-   @toggleTooltips="onToggleTooltips"/>
-
-    <!-- <TimespanPicker/> -->
+<!--    <TooltipsToggler
+    :tooltipsEnabled="selections.tooltipsEnabled"
+    @toggleTooltips="onToggleTooltips"/> -->
 
     <HighchartComponent 
     v-if="mapData.chroniques != null "
@@ -145,24 +146,33 @@ export const RootComponent = {
   <MapGridComponent 
   :selections="selections"
   :data="mapData" />
-</main>`
+</main>
+
+<footer class="footer">
+<p>Footer</p>
+</footer>
+`
 }
 
-export const Breadcrumb = {
+export const TopNav = {
   props: {
-    breadcrumb: Array
+    breadcrumb: Array,
+    tooltipsEnabled: Boolean,
   },
+
+  emits: ['toggleTooltips'],
 
   setup(props) {
   },
 
   template: /*html*/`
 <nav class="topnav">
-  <ul>
-  <li v-for="item in breadcrumb">
-    <a :href="item.path">{{item.nom}}</a>
-  </li>
-  </ul>
+  <a v-for="item in breadcrumb" :href="item.path">{{item.nom}}</a>
+  <div class="spacer"></div>
+  <a class="no-mobile" href="/about">A propos</a>
+  <a class="no-mobile" href="#" @click="$emit('toggleTooltips')" > 
+     Tooltips : {{tooltipsEnabled ? "Oui" : "Non"}}
+  </a>
 </nav>`
 }
 
@@ -191,7 +201,7 @@ export const WeatherPicker = {
   </ul>
 </div>`
 }
-
+/*
 export const TooltipsToggler = {
 
   emits: ['toggleTooltips'],
@@ -203,14 +213,14 @@ export const TooltipsToggler = {
   setup(props) {
   },
 
-  template: /*html*/`
+  template: `
 <div id="tooltip_toggler"@click="$emit('toggleTooltips')">
   <a :class="{active:tooltipsEnabled}" href="#">
   Tooltips : {{tooltipsEnabled ? "Oui" : "Non"}}
   </a>
 </div>`
 }
-
+*/
 /*
 export const TimespanPicker = {
 
@@ -663,13 +673,11 @@ export const HighchartComponent = {
   setup(props) {
 
     onMounted(() => {
-      console.log("Highchart.onMounted()", props.chroniques)
       initGraph()
       updateGraph()
       watch(() => props.activeWeather, updateGraph)
     })
 
-    const hcId = "highchartContainer"
     let hcObj = null   // highchart object created in initGraph()
 
     const hcConf = computed(() => {
@@ -729,7 +737,7 @@ export const HighchartComponent = {
 
     // mounts a highchart object on the template <div> container
     function initGraph() {
-      hcObj = Highcharts.chart(hcId, {
+      hcObj = Highcharts.chart("highchartContainer", {
         chart: {
           type: 'spline',
         },
@@ -798,11 +806,11 @@ export const HighchartComponent = {
       hcObj.redraw()
     }
 
-    return { hcId, hcConf }
+    return { }
   },
 
   template: /*html*/`
-<div v-bind:id="hcId"></div>`
+<div id="highchartContainer"></div>`
 }
 
 

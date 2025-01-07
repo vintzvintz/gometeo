@@ -204,9 +204,9 @@ func (m *MfMap) buildJson() (*JsonMap, error) {
 		SubZones:   m.Geography.Features, // transfered without modification
 		Bbox:       m.Geography.Bbox.Crop(),
 		Prevs:      prevs,
-		//	Chroniques: graphdata,
+		// Chroniques:      // see below
 	}
-	// no highchart for PAYS, only for DEPTs & REGIONs
+	// highchart disabled for PAYS. Only on DEPTs & REGIONs
 	if m.Data.Info.Taxonomy != "PAYS" {
 		graphdata, err := m.Forecasts.toChroniques()
 		if err != nil {
@@ -214,6 +214,7 @@ func (m *MfMap) buildJson() (*JsonMap, error) {
 		}
 		j.Chroniques = graphdata
 	}
+	//log.Printf("'%s'.Breadcrumb = %v", m.Name(), m.Breadcrumb)
 	return &j, nil
 }
 
