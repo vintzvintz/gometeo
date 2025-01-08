@@ -51,6 +51,11 @@ export const RootComponent = {
 
   setup(props) {
 
+    onMounted(() => {
+      fetchMapdata()
+      observeBodyWidth()
+    })
+
     // map data properties must be declared at component creation 
     // filled asynchronously by fetchMapdata() later
     const mapData = reactive({
@@ -70,6 +75,10 @@ export const RootComponent = {
       activeWeather: "prev"
       //activeTimespan: String("")
     })
+
+/*    watch(() => selections.tooltipsEnabled, () => {
+      console.log("tooltipsEnabled=" + selections.tooltipsEnabled)
+    })*/
 
     async function fetchMapdata() {
       console.log(`fetchMapdata() path=${props.path}`)
@@ -97,22 +106,36 @@ export const RootComponent = {
       }
     }
 
-    // callback to toggle tooltips
+    // tooltips visibility
+    const tooltipsMinWidth = 600
+
     function onToggleTooltips() {
       selections.tooltipsEnabled = !selections.tooltipsEnabled   // reactive
     }
+    function setTooltipsState(width) {
+      console.log("setTooltipsState() width", width)
+      selections.tooltipsEnabled = tooltipsMinWidth < width // reactive
+    }
 
-    // get Prevs when static page is loaded
-    onMounted(() => {
-      fetchMapdata()
-    })
+      // react to body.resize events
+      function observeBodyWidth() {
+      const obs = new ResizeObserver((entries) => {
+        for (let entry of entries) {
+          if (entry.contentBoxSize) {
+            setTooltipsState(entry.contentBoxSize[0].inlineSize)
+          }
+        }
+      })
+      obs.observe(document.body)
+    }
 
     // returned objects are available in template
     return {
       mapData,
       selections,
       onWeatherSelected,
-      onToggleTooltips
+      onToggleTooltips,
+      setTooltipsState,
     }
   },
 
@@ -142,15 +165,15 @@ export const RootComponent = {
 </header>
 <!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
 
+<!--   v-if="mapData.path!=null" -->
 <main class="content">
-  <MapGridComponent 
+  <MapGridComponent
   :selections="selections"
-  :data="mapData" />
+  :data="mapData" 
+  @setTooltipsState="setTooltipsState"/>
 </main>
 
-<footer class="footer">
-<p>Footer</p>
-</footer>
+<!--<footer class="footer"> <p>Footer</p> </footer> -->
 `
 }
 
@@ -234,7 +257,9 @@ export const MapGridComponent = {
     selections: Object,
   },
 
-  setup(props) {
+  emits: ['setTooltipsState'],
+
+  setup(props, ctx) {
 
     function displayedJours() {
       const ret = []
@@ -373,8 +398,9 @@ export const MapComponent = {
 
       // trigger markers and resize once on map creation
       // next activeWeather changes are handled with a watcher and reactivity
-      updateMarkers()
       resizeMap()
+      updateMarkers()
+      updateTooltipsVisibility()
     }
 
 
@@ -739,6 +765,9 @@ export const HighchartComponent = {
         chart: {
           type: 'spline',
         },
+        accessibility:{
+          enabled: false,
+        },
         plotOptions: {
           series: {
             color: '#666699',
@@ -804,7 +833,7 @@ export const HighchartComponent = {
       hcObj.redraw()
     }
 
-    return { }
+    return {}
   },
 
   template: /*html*/`

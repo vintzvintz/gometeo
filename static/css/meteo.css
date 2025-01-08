@@ -238,7 +238,6 @@ ul {
 
 /********************** markers sur les cartes ******************/
 .map_component .icon-text {
-  /*  position: absolute;*/
   position: relative;
 
   z-index: 10;
@@ -349,13 +348,13 @@ ul {
 .leaflet-tooltip.leaflet-zoom-animated.leaflet-tooltip-left {
   border-radius: 5px;
 }
-
+/*
 @media screen and (max-width:600px) {
   .leaflet-tooltip-pane {
     display: none;
   }
 }
-
+*/
 .leaflet-tooltip-top:before,
 .leaflet-tooltip-bottom:before,
 .leaflet-tooltip-left:before,
