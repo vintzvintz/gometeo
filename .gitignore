@@ -15,3 +15,4 @@ crawl/coverage.out
 
 # temp files
 __debug_*
+/gometeo
