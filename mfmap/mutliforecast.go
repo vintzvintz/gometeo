@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -102,6 +104,36 @@ const (
 	eveningStr   = "soirée"
 	nightStr     = "nuit"
 )
+
+const (
+	apiMultiforecast = "/multiforecast"
+)
+
+func (m *MfMap) ForecastURL() (*url.URL, error) {
+	// zone is described by a seqence of coordinates
+	ids := make([]string, len(m.Data.Children))
+	for i, poi := range m.Data.Children {
+		ids[i] = poi.Insee
+	}
+	query := make(url.Values)
+	query.Add("bbox", "")
+	query.Add("begin_time", "")
+	query.Add("end_time", "")
+	query.Add("time", "")
+	query.Add("instants", "morning,afternoon,evening,night")
+	query.Add("liste_id", strings.Join(ids, ","))
+
+	return m.Data.ApiURL(apiMultiforecast, &query)
+}
+
+func (m *MfMap) ParseMultiforecast(r io.Reader) error {
+	fc, err := parseMfCollection(r)
+	if err != nil {
+		return err
+	}
+	m.Forecasts = fc.Features
+	return nil
+}
 
 func unmarshalStringValidate(b []byte, want *regexp.Regexp, name string) (string, error) {
 	var s string
@@ -222,10 +254,10 @@ func parseMfCollection(r io.Reader) (*mfCollection, error) {
 	return &fc, nil
 }
 
-// pictoList() return a list of all pictos used on the map
-func (mf MultiforecastData) pictoList() []string {
+// PictoNames() return a list of all pictos used on the map
+func (m *MfMap) PictoNames() []string {
 	pictos := make([]string, 0)
-	for _, feat := range mf {
+	for _, feat := range (*m).Forecasts {
 		for _, prop := range feat.Properties.Forecasts {
 			pictos = append(pictos, prop.WeatherIcon, prop.WindIcon)
 		}
@@ -237,8 +269,9 @@ func (mf MultiforecastData) pictoList() []string {
 	// remove duplicates
 	slices.Sort(pictos)
 	pictos = slices.Compact(pictos)
-	// remove empty string
-	if pictos[0] == "" {
+
+	// remove empty string (in 1st position in sorted slice)
+	if len(pictos) > 0 && pictos[0] == "" {
 		pictos = pictos[1:]
 	}
 	return pictos

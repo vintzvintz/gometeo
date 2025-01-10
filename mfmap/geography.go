@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"regexp"
+	"strings"
 )
 
 type geoCollection struct {
@@ -65,6 +67,59 @@ const (
 	minLng = -12.0
 	maxLng = 15.0
 )
+
+// https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
+func (m *MfMap) GeographyURL() (*url.URL, error) {
+	elems := []string{
+		"modules",
+		"custom",
+		"mf_map_layers_v2",
+		"maps",
+		"desktop",
+		m.Data.Info.PathAssets,
+		"geo_json",
+		strings.ToLower(m.Data.Info.IdTechnique) + "-aggrege.json",
+	}
+	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	if err != nil {
+		return nil, fmt.Errorf("m.geographyURL() error: %w", err)
+	}
+	return u, nil
+}
+
+
+
+func (m *MfMap) ParseGeography(r io.Reader) error {
+	if m.Geography != nil {
+		return fmt.Errorf("MfMap.Geography already populated")
+	}
+	geo, err := parseGeoCollection(r)
+	if err != nil {
+		return err
+	}
+	// keep only geographical subzones having a reference in map metadata
+	geoFeats := make(geoFeatures, 0, len(geo.Features))
+	for _, feat := range geo.Features {
+		sz, ok := m.Data.Subzones[feat.Properties.Prop0.Cible]
+		if !ok {
+			continue
+		}
+		// add subzone path (could also be done client-side but simpler here)
+		feat.Properties.CustomPath = extractPath(sz.Path)
+		geoFeats = append(geoFeats, feat)
+	}
+	// check consistency
+	got := len(geoFeats)
+	want := len(m.Data.Subzones)
+	if got != want {
+		return fmt.Errorf("all subzones defined in map metadata should"+
+			"have a geographical representation (got %d want %d)", got, want)
+	}
+
+	geo.Features = geoFeats // cant simplify geo because m.Geography == nil
+	m.Geography = geo
+	return nil
+}
 
 var polygonStr = regexp.MustCompile("Polygon")
 

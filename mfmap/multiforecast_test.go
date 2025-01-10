@@ -2,7 +2,9 @@ package mfmap
 
 import (
 	"fmt"
+	"gometeo/testutils"
 	"regexp"
+	"slices"
 	"testing"
 )
 
@@ -51,7 +53,7 @@ func TestParseMultiforecast(t *testing.T) {
 
 func testParseMultiforecast(t *testing.T, name string) MultiforecastData {
 
-	j := openFile(t, name)
+	j := testutils.OpenFile(t, name)
 	defer j.Close()
 
 	m := MfMap{}
@@ -65,10 +67,16 @@ func testParseMultiforecast(t *testing.T, name string) MultiforecastData {
 	return m.Forecasts
 }
 
-func TestPictoList(t *testing.T) {
-	mf := testParseMultiforecast(t, fileJsonMultiforecast)
-	pics := mf.pictoList()
-	if len(pics) == 0 {
-		t.Errorf("pictoList() returned nothing from '%s'", fileJsonMultiforecast)
+func TestPictoNames(t *testing.T) {
+	const minLength = 20
+	m := MfMap{
+		Forecasts: testParseMultiforecast(t, fileJsonMultiforecast),
+	}
+	pics := m.PictoNames()
+	if len(pics) < minLength {
+		t.Errorf("picto list is too short (<%d items), %v", minLength, pics)
+	}
+	if slices.Contains[[]string, string](pics, "") {
+		t.Errorf("picto list contains an empty string : %v", pics)
 	}
 }

@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/beevik/etree"
 )
@@ -40,16 +42,47 @@ func (vb vbType) String() string {
 	return fmt.Sprintf("%d %d %d %d", vb[0], vb[1], vb[2], vb[3])
 }
 
+// https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg
+func (m *MfMap) SvgURL() (*url.URL, error) {
+	elems := []string{
+		"modules",
+		"custom",
+		"mf_map_layers_v2",
+		"maps",
+		"desktop",
+		m.Data.Info.PathAssets,
+		fmt.Sprintf("%s.svg", strings.ToLower(m.Data.Info.IdTechnique)),
+	}
+	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	if err != nil {
+		return nil, fmt.Errorf("m.svgURL() error: %w", err)
+	}
+	return u, nil
+}
+
+func (m *MfMap) ParseSvgMap(r io.Reader) error {
+	r, err := cropSVG(r)
+	if err != nil {
+		return err
+	}
+	svg, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	m.SvgMap = svg
+	return nil
+}
+
 func (sz svgSize) crop() svgSize {
 	newW := int(float64(sz.Viewbox[2]) * (1 - cropPcLeft - cropPcRight))
 	newH := int(float64(sz.Viewbox[3]) * (1 - cropPcTop - cropPcBottom))
 
 	return svgSize{
-		Width:   newW,
-		Height:  newH,
+		Width:  newW,
+		Height: newH,
 		Viewbox: vbType{
-			sz.Viewbox[0] + int(float64(sz.Viewbox[2]) * cropPcLeft),
-			sz.Viewbox[1] + int(float64(sz.Viewbox[3]) * cropPcTop),
+			sz.Viewbox[0] + int(float64(sz.Viewbox[2])*cropPcLeft),
+			sz.Viewbox[1] + int(float64(sz.Viewbox[3])*cropPcTop),
 			newW,
 			newH,
 		},

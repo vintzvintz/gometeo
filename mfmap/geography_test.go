@@ -2,14 +2,27 @@ package mfmap
 
 import (
 	"fmt"
+	"gometeo/testutils"
 	"regexp"
 	"testing"
 )
 
-const fileJsonGeography = "geography.json"
+func TestParseGeography(t *testing.T) {
+	t.Skip("skipped : test files are not up to date")
+	j := testutils.OpenFile(t, fileJsonGeography)
+	defer j.Close()
+
+	m := MfMap{
+		Data: testMapParser(t, fileJsonRacine),
+	}
+	err := m.ParseGeography(j)
+	if err != nil {
+		t.Fatalf("ParseGeography() error: %s", err)
+	}
+}
 
 func testParseGeoCollection(t *testing.T, file string) *geoCollection {
-	j := openFile(t, file)
+	j := testutils.OpenFile(t, file)
 	defer j.Close()
 
 	geo, err := parseGeoCollection(j)

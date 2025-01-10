@@ -2,8 +2,8 @@ package mfmap
 
 import (
 	"bytes"
+	"gometeo/testutils"
 	"io"
-	"os"
 	"reflect"
 	"testing"
 	"text/template"
@@ -137,12 +137,8 @@ func TestGetSvgSize(t *testing.T) {
 	}
 }
 
-func testCropSVG(t *testing.T, file string) (*svgTree, *bytes.Buffer) {
-	name := assets_path + file
-	f, err := os.Open(name)
-	if err != nil {
-		t.Fatalf("os.Open(%s) error: %s", name, err)
-	}
+func testCropSVG(t *testing.T, name string) (*svgTree, *bytes.Buffer) {
+	f := testutils.OpenFile(t, name)
 	defer f.Close()
 
 	buf := bytes.Buffer{}
@@ -179,10 +175,12 @@ func TestCropSVG(t *testing.T) {
 	if !reflect.DeepEqual(*got, want) {
 		t.Fatalf("got:%v want:%v", *got, want)
 	}
-	// bonus : write cropped file to check with a browser
-	if err := (*etree.Document)(tree).WriteToFile(assets_path + "cropped.svg"); err != nil {
-		t.Error(err)
-	}
+	/*
+		// bonus : write cropped file to check with a browser
+		if err := (*etree.Document)(tree).WriteToFile(assets_path + "cropped.svg"); err != nil {
+			t.Error(err)
+		}
+	*/
 }
 
 func TestCroppedSize(t *testing.T) {
@@ -213,20 +211,19 @@ func TestCroppedSize(t *testing.T) {
 	}
 }
 
-/*
-TODO: déplacer ici ce code venu de geography_test.go
+func TestSvgURL(t *testing.T) {
+	t.Run("map_svg", func(t *testing.T) {
+		m := parseHtml(t, fileHtmlRacine)
 
-func TestSvgQuery(t *testing.T) {
-t.Run("svgURL", func(t *testing.T) {
-	u, err := m.SvgURL()
-	if err != nil {
-		t.Fatalf("svgURL() error: %s", err)
-	}
-	expr := regexp.MustCompile(svgRegexp)
-	if !expr.Match([]byte(u.String())) {
-		t.Errorf("svgUrl()='%s' does not match '%s'", u.String(), svgRegexp)
-	}
-})
+		name := m.Name()
+		u, err := m.SvgURL()
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := u.String()
+		want := "https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg"
+		if got != want {
+			t.Errorf("svgUrl('%s') got '%s' want '%s'", name, got, want)
+		}
+	})
 }
-
-*/
