@@ -77,7 +77,7 @@ func (mc *MeteoContent) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	mc.mux.ServeHTTP(resp, req)
 }
 
-// Register register itself to mux on "/" path
+// Register registers itself to mux on "/" path
 // should be registered last, after more specific paths like static assets
 func (mc *MeteoContent) Register(mux *http.ServeMux) {
 	mux.Handle("/", mc)

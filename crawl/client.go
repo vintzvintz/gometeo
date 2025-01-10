@@ -8,23 +8,23 @@ import (
 	"net/http"
 )
 
-type MfClient struct {
+type Client struct {
 	baseUrl         string
 	noSessionCookie bool // do not expect mfsession cookie
 	authToken       string
 	client          *http.Client
-	cache           *MfCache
+	cache           *Cache
 }
 
 const userAgentFirefox = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"
 
 // NewClient allocates a *MfClient.
-// cache is an optional pre-initialized cache. cache=nil is allowed.
-func NewClient(baseUrl string) *MfClient {
-	return &MfClient{
+// cache is an optional pre-initialized cache.
+func NewClient(baseUrl string) *Client {
+	return &Client{
 		baseUrl: baseUrl,
 		client:  &http.Client{},
-		cache:   &MfCache{},
+		cache:   &Cache{},
 	}
 }
 
@@ -35,7 +35,7 @@ func (e MissingCookieError) Error() string {
 	return "MissingCookieError: " + string(e)
 }
 
-type MfCache map[string][]byte
+type Cache map[string][]byte
 
 // Declaring an enum type for cache control
 type CachePolicy int
@@ -47,21 +47,22 @@ const (
 	CacheOnly                        // do not send any request, only cache data only
 )
 
-func (m MfCache) lookup(path string) (io.ReadCloser, bool) {
+func (m Cache) lookup(path string) (io.ReadCloser, bool) {
 	data, ok := m[path]
 	return io.NopCloser(bytes.NewReader(data)), ok
 }
 
-// cacheUpdater wraps Respose.Body to store bytes in the cache
+// cacheUpdater is a io.Reader wrapping a Respose.Body 
+// to intercept Read() calls and store downloaded content in the cache
 type cacheUpdater struct {
-	cache  MfCache // cache[path] is updated on Close()
+	cache  Cache // cache[path] is updated on Close()
 	path   string
 	body   io.ReadCloser
 	buf    []byte
 	closed bool
 }
 
-func (c MfCache) NewUpdater(path string, body io.ReadCloser) *cacheUpdater {
+func (c Cache) NewUpdater(path string, body io.ReadCloser) *cacheUpdater {
 	return &cacheUpdater{
 		cache: c,
 		path:  path,
@@ -93,7 +94,7 @@ func (cu *cacheUpdater) Close() error {
 // updateAuthToken() extracts and store authentication token from
 // a Set-Cookie "mfsession" header present in every response.
 // Warns if token changes during a session
-func (cl *MfClient) updateAuthToken(resp *http.Response) error {
+func (cl *Client) updateAuthToken(resp *http.Response) error {
 	if cl.noSessionCookie { // do not expect a session cookie from api server (rpcache-aa)
 		return nil
 	}
@@ -120,7 +121,7 @@ func (cl *MfClient) updateAuthToken(resp *http.Response) error {
 //   - path unchanged if path starts with base
 //   - base+path if path starts with a slash
 //   - error in other cases
-func (cl *MfClient) addUrlBase(path string) (string, error) {
+func (cl *Client) addUrlBase(path string) (string, error) {
 	base := cl.baseUrl
 	l := min(len(path), len(base))
 	switch {
@@ -139,7 +140,7 @@ func (cl *MfClient) addUrlBase(path string) (string, error) {
 
 // Get issues a GET request to path, prefixed with 'baseUrl' constant.
 // implement a basic cache, controlled with policy parameter
-func (cl *MfClient) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
+func (cl *Client) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
 	// commence par chercher dans le cache avant de lancer la requete
 	// le cache est ignoré avec CacheDisabled et CacheUpdate
 	if policy == CacheDefault || policy == CacheOnly {

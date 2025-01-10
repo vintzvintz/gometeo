@@ -12,8 +12,8 @@ import (
 
 const assets_dir = "../test_data/"
 
-func dataSet01() *MfCache {
-	return &MfCache{
+func dataSet01() *Cache {
+	return &Cache{
 		"key_nil":      nil,
 		"key_empty":    []byte(""),
 		"key_wesh":     []byte("wèèèsh"),
@@ -107,7 +107,7 @@ func TestAddUrlBase(t *testing.T) {
 }
 
 func TestUpdater(t *testing.T) {
-	cache := MfCache{}
+	cache := Cache{}
 	for k, v := range *dataSet01() {
 		body := io.NopCloser(bytes.NewReader(v))
 		updater := cache.NewUpdater(k, body)
@@ -133,7 +133,7 @@ func TestUpdater(t *testing.T) {
 }
 
 func TestUpdaterDoubleClose(t *testing.T) {
-	c := MfCache{}
+	c := Cache{}
 	data := io.NopCloser(strings.NewReader("data"))
 	key := "double_close_test_key"
 
@@ -155,7 +155,7 @@ func TestUpdaterDoubleClose(t *testing.T) {
 	})
 }
 
-func setupServerAndClient(t *testing.T, filename string, cnt *int) (srv *httptest.Server, client *MfClient) {
+func setupServerAndClient(t *testing.T, filename string, cnt *int) (srv *httptest.Server, client *Client) {
 	cookie := &http.Cookie{Name: sessionCookie, Value: "random_auth_token_value"}
 	srv = setupServerCustom(t, filename, cnt, cookie)
 	client = NewClient(srv.URL)
@@ -202,7 +202,7 @@ func setupServerWithStatus(t *testing.T, status int) *httptest.Server {
 	return srv
 }
 
-func assertGetEqualsFile(t *testing.T, client *MfClient, filename string, policy CachePolicy) {
+func assertGetEqualsFile(t *testing.T, client *Client, filename string, policy CachePolicy) {
 	t.Helper()
 	path := assets_dir + filename
 	f, err := os.Open(path)
@@ -213,7 +213,7 @@ func assertGetEqualsFile(t *testing.T, client *MfClient, filename string, policy
 	assertGetEqualsBytes(t, client, "/"+filename, f, policy)
 }
 
-func assertGetEqualsBytes(t *testing.T, client *MfClient, path string, r io.Reader, policy CachePolicy) {
+func assertGetEqualsBytes(t *testing.T, client *Client, path string, r io.Reader, policy CachePolicy) {
 	t.Helper()
 	want, err := io.ReadAll(r)
 	if err != nil {
@@ -295,7 +295,7 @@ func TestGetCacheDisabled(t *testing.T) {
 	srv, client := setupServerAndClient(t, file, &cnt)
 	defer srv.Close()
 	// pre-fill cache with data which must not be updated by Get() calls
-	client.cache = &MfCache{path: []byte(initialCachedData)}
+	client.cache = &Cache{path: []byte(initialCachedData)}
 
 	const nbReq = 3
 	t.Run("repeated requests", func(t *testing.T) {
@@ -320,7 +320,7 @@ func TestGetCacheUpdate(t *testing.T) {
 	defer srv.Close()
 
 	// pre-fill cache with data to be updated by Get() calls
-	client.cache = &MfCache{path: []byte(initialCachedData)}
+	client.cache = &Cache{path: []byte(initialCachedData)}
 
 	// send requests with CacheUpdate mode
 	assertGetEqualsFile(t, client, file, CacheUpdate)
@@ -336,7 +336,7 @@ func TestGetCacheUpdate(t *testing.T) {
 	}
 }
 
-func testClientGet(t *testing.T, client *MfClient, path string, policy CachePolicy) []byte {
+func testClientGet(t *testing.T, client *Client, path string, policy CachePolicy) []byte {
 	t.Helper()
 	body, err := client.Get(path, policy)
 	if err != nil {
@@ -379,7 +379,7 @@ func TestGetMissingCookie(t *testing.T) {
 	})
 }
 
-func assertCookie(t *testing.T, client *MfClient, cookieVal string) {
+func assertCookie(t *testing.T, client *Client, cookieVal string) {
 	t.Helper()
 	cookie := &http.Cookie{Name: sessionCookie, Value: cookieVal}
 	srv := setupServerCustom(t, fileRacine, nil, cookie) // no counter

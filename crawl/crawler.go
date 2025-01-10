@@ -16,7 +16,7 @@ const (
 )
 
 type Crawler struct {
-	mainClient *MfClient
+	mainClient *Client
 }
 
 // NewCrawler allocates a Crawler with a pre-configured client
@@ -45,75 +45,55 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 		return nil, err
 	}
 
-	// get SVG, geographical subzones and actual forecasts
-	if err = cr.getSvg(m); err != nil {
+	// prepare closure returning a preconfigured api client
+	apiClient := func() (*Client, error) {
+		apiBaseUrl, err := m.Data.ApiURL("", nil)
+		if err != nil {
+			return nil, err
+		}
+		cl := NewClient(apiBaseUrl.String())
+		cl.authToken = cr.mainClient.authToken
+		cl.noSessionCookie = true // api server do not send auth tokens so dont expect any
+		return cl, nil
+	}
+
+	// subqueries to retreive SVG, geographical subzones and actual forecasts
+	if err = cr.getAsset(m.SvgURL, m.ParseSvgMap, nil); err != nil {
 		return nil, err
 	}
-	if err = cr.getGeography(m); err != nil {
+	if err = cr.getAsset(m.GeographyURL, m.ParseGeography, nil); err != nil {
 		return nil, err
 	}
-	if err = cr.getMultiforecast(m); err != nil {
+	if err = cr.getAsset(m.ForecastURL, m.ParseMultiforecast, apiClient); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
 // getSvg() downloads SVG map and feed result into MfMap
-func (cr *Crawler) getSvg(m *mfmap.MfMap) error {
-	u, err := m.SvgURL()
+func (cr *Crawler) getAsset(
+	urlGetter func() (*url.URL, error), // closure (over a mfmap.MfMap) returning asset url
+	parser func(io.Reader) error, // closure (over a mfmap.MfMap) parsing the content
+	clientGetter func() (*Client, error),
+) error {
+	u, err := urlGetter()
 	if err != nil {
 		return err
 	}
-	body, err := cr.mainClient.Get(u.String(), CacheDefault)
-	if err != nil {
-		return err
+	cl := cr.mainClient
+	if clientGetter != nil {
+		cl, err = clientGetter()
+		if err != nil {
+			return err
+		}
+		// cl = cr.createApiClient( cl // ientGetter()m.Data.ApiURL("", nil) )
 	}
-	defer body.Close()
-	err = m.ParseSvgMap(body)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (cr *Crawler) getGeography(m *mfmap.MfMap) error {
-	u, err := m.GeographyURL()
-	if err != nil {
-		return err
-	}
-	body, err := cr.mainClient.Get(u.String(), CacheDefault)
+	body, err := cl.Get(u.String(), CacheDefault)
 	if err != nil {
 		return err
 	}
 	defer body.Close()
-	err = m.ParseGeography(body)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (cr *Crawler) getMultiforecast(m *mfmap.MfMap) error {
-	// create a dedicated client for rpcache-aa host
-	apiBaseUrl, err := m.Data.ApiURL("", nil)
-	if err != nil {
-		return err
-	}
-	api := NewClient(apiBaseUrl.String())
-	api.authToken = cr.mainClient.authToken
-	api.noSessionCookie = true // api server do not send auth tokens so dont expect any
-
-	// get all forecasts available on the map
-	u, err := m.ForecastURL()
-	if err != nil {
-		return err
-	}
-	body, err := api.Get(u.String(), CacheDisabled)
-	if err != nil {
-		return err
-	}
-	defer body.Close()
-	err = m.ParseMultiforecast(body)
+	err = parser(body)
 	if err != nil {
 		return err
 	}
