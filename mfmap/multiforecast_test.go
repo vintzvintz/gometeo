@@ -1,8 +1,9 @@
-package mfmap
+package mfmap_test
 
 import (
 	"fmt"
 	"gometeo/testutils"
+	"gometeo/mfmap"
 	"regexp"
 	"slices"
 	"testing"
@@ -51,12 +52,12 @@ func TestParseMultiforecast(t *testing.T) {
 	_ = testParseMultiforecast(t)
 }
 
-func testParseMultiforecast(t *testing.T) MultiforecastData {
+func testParseMultiforecast(t *testing.T) mfmap.MultiforecastData {
 
 	j := testutils.MultiforecastReader(t)
 	defer j.Close()
 
-	m := MfMap{}
+	m := mfmap.MfMap{}
 	err := m.ParseMultiforecast(j)
 	if err != nil {
 		t.Fatal(fmt.Errorf("parseMultiforecast() error: %w", err))
@@ -69,7 +70,7 @@ func testParseMultiforecast(t *testing.T) MultiforecastData {
 
 func TestPictoNames(t *testing.T) {
 	const minLength = 20
-	m := MfMap{
+	m := mfmap.MfMap{
 		Forecasts: testParseMultiforecast(t),
 	}
 	pics := m.PictoNames()

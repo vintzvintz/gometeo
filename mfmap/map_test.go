@@ -1,34 +1,19 @@
-package mfmap
+package mfmap_test
 
 import (
-	"io"
 	"strings"
 	"testing"
 
+	"gometeo/mfmap"
 	"gometeo/testutils"
 )
 
-func TestHtmlFilter(t *testing.T) {
-	f := testutils.HtmlReader(t)
-	defer f.Close()
-
-	// get json content
-	r, err := htmlFilter(f)
-	if err != nil {
-		t.Fatalf("jsonFilter error : %s", err)
-	}
-	_, err = io.ReadAll(r)
-	if err != nil {
-		t.Fatalf("failed to extract JSON map data")
-	}
-}
-
 func TestParseHtml(t *testing.T) {
-	const expect = "/meteo-france"
+	const want = "/meteo-france"
 	m := testParseHtml(t)
 	// check some content
 	if m.Data.Info.Path != "/meteo-france" {
-		t.Errorf("MfMap.ParseHtml() Info.Path='%s' expected '%s'", m.Data.Info.Path, expect)
+		t.Errorf("MfMap.ParseHtml() Info.Path='%s' want '%s'", m.Data.Info.Path, want)
 	}
 }
 
@@ -56,7 +41,7 @@ func TestMapParseFail(t *testing.T) {
 <body>
 </html>`,
 	}
-	m := MfMap{}
+	m := mfmap.MfMap{}
 	for name, html := range tests {
 		t.Run(name, func(t *testing.T) {
 			r := strings.NewReader(html)
@@ -68,18 +53,21 @@ func TestMapParseFail(t *testing.T) {
 	}
 }
 
-func testParseHtml(t *testing.T) *MfMap {
+func testParseHtml(t *testing.T) *mfmap.MfMap {
 	f := testutils.HtmlReader(t)
 	defer f.Close()
 
-	m := MfMap{}
+	m := mfmap.MfMap{}
 	if err := m.ParseHtml(f); err != nil {
 		t.Fatalf("MfMap.ParseHtml() error: %s", err)
 	}
 	return &m
 }
 
-const apiBaseURL = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
+const (
+	apiBaseURL       = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
+	apiMultiforecast = "/multiforecast"
+)
 
 func TestApiUrl(t *testing.T) {
 
@@ -118,11 +106,11 @@ func TestApiUrl(t *testing.T) {
 }
 
 // buildTestMap returns a JsonMap structure filled form test files
-func testBuildMap(t *testing.T) *MfMap {
-	return &MfMap{
+func testBuildMap(t *testing.T) *mfmap.MfMap {
+	return &mfmap.MfMap{
 		Data:      testParseMap(t),
 		Forecasts: testParseMultiforecast(t),
-		Geography: testParseGeoCollection(t),
+		Geography: testParseGeography(t),
 		SvgMap:    testParseSvg(t),
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-type geoCollection struct {
+type GeoCollection struct {
 	Type     FeatureCollectionType `json:"type"`
 	Bbox     Bbox                  `json:"bbox"`
 	Features geoFeatures           `json:"features"`
@@ -149,10 +149,10 @@ func (bbox *Bbox) UnmarshalJSON(b []byte) error {
 
 func (b Bbox) Crop() Bbox {
 	return Bbox{
-		LngW: b.LngW + cropPcLeft*(b.LngE-b.LngW),
-		LatS: b.LatS + cropPcBottom*(b.LatN-b.LatS),
-		LngE: b.LngE - cropPcRight*(b.LngE-b.LngW),
-		LatN: b.LatN - cropPcTop*(b.LatN-b.LatS),
+		LngW: b.LngW + cropPc.Left*(b.LngE-b.LngW),
+		LatS: b.LatS + cropPc.Bottom*(b.LatN-b.LatS),
+		LngE: b.LngE - cropPc.Right*(b.LngE-b.LngW),
+		LatN: b.LatN - cropPc.Top*(b.LatN-b.LatS),
 	}
 }
 
@@ -165,8 +165,8 @@ func (pt *PolygonType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func parseGeoCollection(r io.Reader) (*geoCollection, error) {
-	var gc geoCollection
+func parseGeoCollection(r io.Reader) (*GeoCollection, error) {
+	var gc GeoCollection
 	j, err := io.ReadAll(r)
 	if err != nil {
 		return nil, fmt.Errorf("could not read geography data: %w", err)

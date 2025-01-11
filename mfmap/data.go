@@ -7,7 +7,8 @@ import (
 	"log"
 	"net/url"
 	"regexp"
-	"strconv"
+
+	sf "gometeo/stringfloat"
 )
 
 type (
@@ -27,18 +28,15 @@ type (
 		IdTechnique string `json:"field_id_technique"`
 	}
 
-	// lat et lgn are mixed type float / string
-	stringFloat float64
-
 	Poi struct {
-		Title      string      `json:"title"`
-		Lat        stringFloat `json:"lat"`
-		Lng        stringFloat `json:"lng"`
-		Path       string      `json:"path"`
-		Insee      string      `json:"insee"`
-		Taxonomy   string      `json:"taxonomy"`
-		CodePostal string      `json:"code_postal"`
-		Timezone   string      `json:"timezone"`
+		Title      string         `json:"title"`
+		Lat        sf.StringFloat `json:"lat"`
+		Lng        sf.StringFloat `json:"lng"`
+		Path       string         `json:"path"`
+		Insee      string         `json:"insee"`
+		Taxonomy   string         `json:"taxonomy"`
+		CodePostal string         `json:"code_postal"`
+		Timezone   string         `json:"timezone"`
 	}
 
 	Subzone struct {
@@ -84,7 +82,7 @@ func (sz Subzones) filterSubzones(taxonomy string) {
 }
 
 // mapParser parses json data to initialise a MfMap data structure
-func mapParser(r io.Reader) (*MapData, error) {
+func ParseData(r io.Reader) (*MapData, error) {
 	var j MapData
 	buf, err := io.ReadAll(r)
 	if err != nil {
@@ -162,33 +160,4 @@ func (j *MapData) ApiURL(path string, query *url.Values) (*url.URL, error) {
 		path,
 		querystring)
 	return url.Parse(raw)
-}
-
-// UnmarshalJSON unmarshals stringFloat fields
-// lat and lng have mixed float and string types sometimes
-func (sf *stringFloat) UnmarshalJSON(b []byte) error {
-	// convert the bytes into an interface
-	// this will help us check the type of our value
-	// if it is a string that can be converted into a float we convert it
-	// otherwise we return an error
-	var item interface{}
-	if err := json.Unmarshal(b, &item); err != nil {
-		return err
-	}
-	switch v := item.(type) {
-	case float64:
-		*sf = stringFloat(v)
-	case int:
-		*sf = stringFloat(float64(v))
-	case string:
-		// here convert the string into a float
-		i, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			// the string might not be of float type
-			// so return an error
-			return err
-		}
-		*sf = stringFloat(i)
-	}
-	return nil
 }

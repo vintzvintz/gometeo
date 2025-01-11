@@ -1,4 +1,4 @@
-package mfmap
+package mfmap_test
 
 import (
 	"gometeo/testutils"

@@ -21,15 +21,12 @@ type MfMap struct {
 	SvgMap []byte
 
 	// Geography are geographical boundaries of subzones
-	Geography *geoCollection
+	Geography *GeoCollection
 
 	// breadcrumb is built by recursive parent lookup in MapCollection
 	Parent     string
 	Breadcrumb Breadcrumb
 
-	//lastUpdate time.Time
-	//lastHit    time.Time
-	// hitCount   int
 	stats Stats
 }
 
@@ -38,7 +35,7 @@ func (m *MfMap) ParseHtml(html io.Reader) error {
 	if err != nil {
 		return err
 	}
-	data, err := mapParser(j)
+	data, err := ParseData(j)
 	if err != nil {
 		return err
 	}

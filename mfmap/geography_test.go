@@ -1,7 +1,7 @@
-package mfmap
+package mfmap_test
 
 import (
-	"fmt"
+	"gometeo/mfmap"
 	"gometeo/testutils"
 	"regexp"
 	"testing"
@@ -12,7 +12,7 @@ func TestParseGeography(t *testing.T) {
 	j := testutils.GeoCollectionReader(t)
 	defer j.Close()
 
-	m := MfMap{
+	m := mfmap.MfMap{
 		Data: testParseMap(t),
 	}
 	err := m.ParseGeography(j)
@@ -21,22 +21,18 @@ func TestParseGeography(t *testing.T) {
 	}
 }
 
-func testParseGeoCollection(t *testing.T) *geoCollection {
+func testParseGeography(t *testing.T) *mfmap.GeoCollection {
 	j := testutils.GeoCollectionReader(t)
 	defer j.Close()
 
-	geo, err := parseGeoCollection(j)
+	m := mfmap.MfMap{
+		Data: testParseMap(t),
+	}
+	err := m.ParseGeography(j)
 	if err != nil {
-		t.Fatal(fmt.Errorf("parseGeoCollection() error: %w", err))
+		t.Fatalf("ParseGeography() error: %s", err)
 	}
-	return geo
-}
-
-func TestParseGeoCollection(t *testing.T) {
-	geo := testParseGeoCollection(t)
-	if geo == nil {
-		t.Fatal("parseGeography() returned no data")
-	}
+	return m.Geography
 }
 
 const (

@@ -26,7 +26,7 @@ func (m *MfMap) makeMainHandler() func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		// do not stream directly to resp before knowing error status
 		buf := bytes.Buffer{}
-		err := m.BuildHtml(&buf)
+		err := m.WriteHtml(&buf)
 		if err != nil {
 			resp.WriteHeader(http.StatusInternalServerError)
 			log.Printf("BuildHtml on req '%s' error: %s", req.URL, err)
@@ -42,7 +42,7 @@ func (m *MfMap) makeMainHandler() func(http.ResponseWriter, *http.Request) {
 func (m *MfMap) makeDataHandler() func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		buf := bytes.Buffer{}
-		err := m.BuildJson(&buf)
+		err := m.WriteJson(&buf)
 		if err != nil {
 			resp.WriteHeader(http.StatusInternalServerError)
 			log.Printf("BuildHtml on req '%s' error: %s", req.URL, err)

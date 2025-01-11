@@ -164,7 +164,7 @@ var dailiesChroniques = []string{
 	Uv,
 }
 
-func (m *MfMap) BuildHtml(wr io.Writer) error {
+func (m *MfMap) WriteHtml(wr io.Writer) error {
 	return htmlTemplate.Execute(wr, &TemplateData{
 		HeadDescription: fmt.Sprintf("Description de %s", m.Data.Info.Name),
 		HeadTitle:       fmt.Sprintf("Titre de %s", m.Data.Info.Name),
@@ -172,8 +172,8 @@ func (m *MfMap) BuildHtml(wr io.Writer) error {
 	})
 }
 
-func (m *MfMap) BuildJson(wr io.Writer) error {
-	obj, err := m.buildJson()
+func (m *MfMap) WriteJson(wr io.Writer) error {
+	obj, err := m.BuildJson()
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (m *MfMap) BuildJson(wr io.Writer) error {
 	return nil
 }
 
-func (m *MfMap) buildJson() (*JsonMap, error) {
+func (m *MfMap) BuildJson() (*JsonMap, error) {
 
 	prevs, err := m.Forecasts.byEcheance()
 	if err != nil {

@@ -4,42 +4,18 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/beevik/etree"
+
+	svt "gometeo/svgtools"
 )
 
-type svgTree etree.Document
-
-type svgRoot etree.Element
-
-type svgSize struct {
-	Width   int
-	Height  int
-	Viewbox vbType
-}
-
-type vbType [4]int
-
-const (
-	cropPcLeft   = 0.20
-	cropPcRight  = 0.08
-	cropPcTop    = 0.08
-	cropPcBottom = 0.08
-)
-
-const (
-	xmlRoot    = "svg"
-	xmlHeight  = "height"
-	xmlWidth   = "width"
-	xmlViewbox = "viewBox"
-)
-
-// String() serialises a vbType into an XML attribute value
-func (vb vbType) String() string {
-	return fmt.Sprintf("%d %d %d %d", vb[0], vb[1], vb[2], vb[3])
+var cropPc = svt.CropRatio{
+	Left   : 0.20,
+	Right  : 0.08,
+	Top    : 0.08,
+	Bottom :0.08,
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg
@@ -60,156 +36,6 @@ func (m *MfMap) SvgURL() (*url.URL, error) {
 	return u, nil
 }
 
-func (sz svgSize) crop() svgSize {
-	newW := int(float64(sz.Viewbox[2]) * (1 - cropPcLeft - cropPcRight))
-	newH := int(float64(sz.Viewbox[3]) * (1 - cropPcTop - cropPcBottom))
-
-	return svgSize{
-		Width:  newW,
-		Height: newH,
-		Viewbox: vbType{
-			sz.Viewbox[0] + int(float64(sz.Viewbox[2])*cropPcLeft),
-			sz.Viewbox[1] + int(float64(sz.Viewbox[3])*cropPcTop),
-			newW,
-			newH,
-		},
-	}
-}
-
-func pxToInt(px []byte) (int, error) {
-	const expr = `^([0-9-]+)px$` // width and height are "666px"-like
-	re := regexp.MustCompile(expr)
-	m := re.FindSubmatch(px)
-	if m == nil {
-		return 0, fmt.Errorf("'%s' does not match `%s`", string(px), expr)
-	}
-	n, err := strconv.Atoi(string(m[1])) // m[0] is the full match
-	if err != nil {
-		return 0, err
-	}
-	return n, nil
-}
-
-func viewboxToInt(b []byte) (vbType, error) {
-	const expr = `^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$` // 4 integers expected
-	re := regexp.MustCompile(expr)
-	m := re.FindSubmatch(b)
-	if m == nil {
-		return vbType{}, fmt.Errorf("'%s' does not match `%s`", string(b), expr)
-	}
-	var vb vbType
-	for i := 0; i < 4; i++ {
-		n, err := strconv.Atoi(string(m[i+1])) // m[0] is the full match
-		if err != nil {
-			return vbType{}, fmt.Errorf("cant parse '%s' into [4]int : %w", string(m[i+1]), err)
-		}
-		vb[i] = n
-	}
-	return vb, nil
-}
-
-func (doc *svgTree) getRoot() (*svgRoot, error) {
-	root := doc.SelectElement(xmlRoot)
-	if root == nil {
-		return nil, fmt.Errorf("<svg> root element not found")
-	}
-	return (*svgRoot)(root), nil
-}
-
-func (root *svgRoot) getAttr(a string) (*etree.Attr, error) {
-	attr := (*etree.Element)(root).SelectAttr(a)
-	if attr == nil {
-		return nil, fmt.Errorf("attr %s not found", a)
-	}
-	return attr, nil
-}
-
-func (root *svgRoot) setAttr(name, val string) error {
-	attr, err := root.getAttr(name)
-	if err != nil {
-		return err
-	}
-	attr.Value = val
-	return nil
-}
-
-func (root *svgRoot) getHeight() (int, error) {
-	attr, err := root.getAttr(xmlHeight)
-	if err != nil {
-		return 0, err
-	}
-	return pxToInt([]byte(attr.Value))
-}
-
-func (root *svgRoot) setHeight(h int) error {
-	return root.setAttr(xmlHeight, fmt.Sprintf("%dpx", h))
-}
-
-func (root *svgRoot) getWidth() (int, error) {
-	attr, err := root.getAttr(xmlWidth)
-	if err != nil {
-		return 0, err
-	}
-	return pxToInt([]byte(attr.Value))
-}
-
-func (root *svgRoot) setWidth(w int) error {
-	return root.setAttr(xmlWidth, fmt.Sprintf("%dpx", w))
-}
-
-func (root *svgRoot) getViewbox() (vbType, error) {
-	attr, err := root.getAttr(xmlViewbox)
-	if err != nil {
-		return vbType{}, err
-	}
-	return viewboxToInt([]byte(attr.Value))
-}
-
-func (root *svgRoot) setViewbox(vb vbType) error {
-	return root.setAttr(xmlViewbox, vb.String())
-}
-
-func (doc *svgTree) getSize() (*svgSize, error) {
-	// get root element
-	root, err := doc.getRoot()
-	if err != nil {
-		return nil, err
-	}
-	// extract width & height & viewBox
-	h, err := root.getHeight()
-	if err != nil {
-		return nil, err
-	}
-	w, err := root.getWidth()
-	if err != nil {
-		return nil, err
-	}
-	vb, err := root.getViewbox()
-	if err != nil {
-		return nil, err
-	}
-	return &svgSize{Height: h, Width: w, Viewbox: vb}, nil
-}
-
-func (doc *svgTree) setSize(sz svgSize) error {
-	// get root element
-	root, err := doc.getRoot()
-	if err != nil {
-		return err
-	}
-	// call setter methods
-	if err = root.setHeight(sz.Height); err != nil {
-		return err
-	}
-	if err = root.setWidth(sz.Width); err != nil {
-		return err
-	}
-	if err = root.setViewbox(sz.Viewbox); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (m *MfMap) ParseSvgMap(r io.Reader) error {
 	_, buf, err := cropSVG(r)
 	if err != nil {
@@ -219,8 +45,8 @@ func (m *MfMap) ParseSvgMap(r io.Reader) error {
 	return nil
 }
 
-// cropSVG and readSVG are separate functions for better testing
-func readSVG(svg io.Reader) (*svgTree, []byte, error) {
+// cropSVG and readSVG are separate functions for testing purposes
+func ReadSVG(svg io.Reader) (*svt.Tree, []byte, error) {
 	xml, err := io.ReadAll(svg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read error: %w", err)
@@ -231,24 +57,24 @@ func readSVG(svg io.Reader) (*svgTree, []byte, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("xml parse error: %w", err)
 	}
-	return (*svgTree)(doc), xml, nil
+	return (*svt.Tree)(doc), xml, nil
 }
 
-// cropSVG and readSVG are separate functions for better testing
-func cropSVG(svg io.Reader) (*svgTree, []byte, error) {
+// cropSVG and readSVG are separate functions for testing purposes
+func cropSVG(svg io.Reader) (*svt.Tree, []byte, error) {
 
 	// build xml tree from svg
-	tree, _, err := readSVG(svg)
+	tree, _, err := ReadSVG(svg)
 	if err != nil {
 		return nil, nil, err
 	}
-	szOrig, err := tree.getSize()
+	szOrig, err := tree.GetSize()
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not get svg size: %w", err)
 	}
 	// set cropped size attributes to the <svg> root element
-	sz := szOrig.crop()
-	err = tree.setSize(sz)
+	sz := szOrig.Crop(cropPc)
+	err = tree.SetSize(sz)
 	if err != nil {
 		return nil, nil, fmt.Errorf("svgTree.setSize(%v) error: %w", sz, err)
 	}
