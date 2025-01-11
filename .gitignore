@@ -9,10 +9,10 @@ crawl/coverage.out
 
 # binary temp files
 *.gob 
-*.pyc
 
 /www/svg/*.svg
 
 # temp files
 __debug_*
+__pycache__
 /gometeo
