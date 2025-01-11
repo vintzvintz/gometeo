@@ -59,7 +59,7 @@ func TestMapParser(t *testing.T) {
 			got: func(j *MapData) interface{} { return j.Subzones["REGIN10"] },
 		},
 	}
-	data := testMapParser(t, fileJsonRacine)
+	data := testParseMap(t)
 	for key, test := range mapParseTests {
 		t.Run(key, func(t *testing.T) {
 			got := test.got(data)
@@ -71,7 +71,7 @@ func TestMapParser(t *testing.T) {
 }
 
 func TestMapParserFail(t *testing.T) {
-	f := testutils.OpenFile(t, fileJsonFilterFail)
+	f := testutils.JsonFailReader(t)
 	_, err := mapParser(f)
 	if err == nil {
 		t.Error("error expected")
@@ -79,19 +79,19 @@ func TestMapParserFail(t *testing.T) {
 	}
 }
 
-func testMapParser(t *testing.T, file string) *MapData {
-	f := testutils.OpenFile(t, file)
+func testParseMap(t *testing.T) *MapData {
+	f := testutils.JsonReader(t)
 	defer f.Close()
 	data, err := mapParser(f)
 	if err != nil {
-		t.Fatalf("mapParser(%s) error: %v", file, err)
+		t.Fatalf("mapParser() error: %s", err)
 	}
 	return data
 }
 
 func TestName(t *testing.T) {
 	m := MfMap{
-		Data: testMapParser(t, fileJsonRacine),
+		Data: testParseMap(t),
 	}
 	t.Run("name", func(t *testing.T) {
 		want := "France"

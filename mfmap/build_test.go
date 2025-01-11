@@ -9,7 +9,7 @@ import (
 )
 
 func TestBuildHtml(t *testing.T) {
-	m := buildTestMap(t)
+	m := testBuildMap(t)
 
 	buf := &bytes.Buffer{}
 	err := m.BuildHtml(buf)
@@ -23,7 +23,7 @@ func TestBuildHtml(t *testing.T) {
 }
 
 func TestBuildJson(t *testing.T) {
-	m := buildTestMap(t)
+	m := testBuildMap(t)
 	j, err := m.buildJson()
 	if err != nil {
 		t.Fatalf("BuildJson() error: %s", err)
@@ -37,13 +37,13 @@ func TestBuildJson(t *testing.T) {
 
 func TestByEcheances(t *testing.T) {
 
-	mf := testParseMultiforecast(t, fileJsonMultiforecast)
+	mf := testParseMultiforecast(t)
 	prevs, err := mf.byEcheance()
 	if err != nil {
 		t.Fatalf("byEcheance error: %s", err)
 	}
 	if len(prevs) == 0 {
-		t.Errorf("No forecast found in %s", fileJsonMultiforecast)
+		t.Error("No forecast found in test data")
 	}
 }
 
@@ -61,7 +61,7 @@ func inspectGraphdata(t *testing.T, g Graphdata) {
 }
 
 func TestToChronique(t *testing.T) {
-	mf := testParseMultiforecast(t, fileJsonMultiforecast)
+	mf := testParseMultiforecast(t)
 	g, err := mf.toChroniques()
 	if err != nil {
 		t.Fatalf("toChronique() error: %s", err)
@@ -104,7 +104,7 @@ func TestDaysFrom(t *testing.T) {
 }
 
 func TestFindDaily(t *testing.T) {
-	mf := testParseMultiforecast(t, fileJsonMultiforecast)
+	mf := testParseMultiforecast(t)
 
 	// these values must be updated after a change in test_data...
 	id := CodeInsee("751010") // "name": "Paris—1er Arrondissement"

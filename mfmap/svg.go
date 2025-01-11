@@ -1,7 +1,6 @@
 package mfmap
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/url"
@@ -38,6 +37,7 @@ const (
 	xmlViewbox = "viewBox"
 )
 
+// String() serialises a vbType into an XML attribute value
 func (vb vbType) String() string {
 	return fmt.Sprintf("%d %d %d %d", vb[0], vb[1], vb[2], vb[3])
 }
@@ -58,19 +58,6 @@ func (m *MfMap) SvgURL() (*url.URL, error) {
 		return nil, fmt.Errorf("m.svgURL() error: %w", err)
 	}
 	return u, nil
-}
-
-func (m *MfMap) ParseSvgMap(r io.Reader) error {
-	r, err := cropSVG(r)
-	if err != nil {
-		return err
-	}
-	svg, err := io.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	m.SvgMap = svg
-	return nil
 }
 
 func (sz svgSize) crop() svgSize {
@@ -223,40 +210,52 @@ func (doc *svgTree) setSize(sz svgSize) error {
 	return nil
 }
 
-func readSVG(svg io.Reader) (*svgTree, error) {
+func (m *MfMap) ParseSvgMap(r io.Reader) error {
+	_, buf, err := cropSVG(r)
+	if err != nil {
+		return err
+	}
+	m.SvgMap = buf
+	return nil
+}
+
+// cropSVG and readSVG are separate functions for better testing
+func readSVG(svg io.Reader) (*svgTree, []byte, error) {
 	xml, err := io.ReadAll(svg)
 	if err != nil {
-		return nil, fmt.Errorf("read error: %w", err)
+		return nil, nil, fmt.Errorf("read error: %w", err)
 	}
 	// parse original svg to get its original size attributes
 	doc := etree.NewDocument()
 	err = doc.ReadFromBytes(xml)
 	if err != nil {
-		return nil, fmt.Errorf("xml parse error: %w", err)
+		return nil, nil, fmt.Errorf("xml parse error: %w", err)
 	}
-	return (*svgTree)(doc), nil
+	return (*svgTree)(doc), xml, nil
 }
 
-func cropSVG(svg io.Reader) (io.Reader, error) {
+// cropSVG and readSVG are separate functions for better testing
+func cropSVG(svg io.Reader) (*svgTree, []byte, error) {
+
 	// build xml tree from svg
-	tree, err := readSVG(svg)
+	tree, _, err := readSVG(svg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	szOrig, err := tree.getSize()
 	if err != nil {
-		return nil, fmt.Errorf("could not get svg size: %w", err)
+		return nil, nil, fmt.Errorf("could not get svg size: %w", err)
 	}
 	// set cropped size attributes to the <svg> root element
 	sz := szOrig.crop()
 	err = tree.setSize(sz)
 	if err != nil {
-		return nil, fmt.Errorf("svgTree.setSize(%v) error: %w", sz, err)
+		return nil, nil, fmt.Errorf("svgTree.setSize(%v) error: %w", sz, err)
 	}
 	// serialize to a byte slice
 	cropped, err := (*etree.Document)(tree).WriteToBytes()
 	if err != nil {
-		return nil, fmt.Errorf("xml serialization error: %w", err)
+		return nil, nil, fmt.Errorf("xml serialization error: %w", err)
 	}
-	return bytes.NewReader(cropped), nil
+	return tree, cropped, nil
 }

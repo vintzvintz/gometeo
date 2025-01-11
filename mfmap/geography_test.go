@@ -9,11 +9,11 @@ import (
 
 func TestParseGeography(t *testing.T) {
 	t.Skip("skipped : test files are not up to date")
-	j := testutils.OpenFile(t, fileJsonGeography)
+	j := testutils.GeoCollectionReader(t)
 	defer j.Close()
 
 	m := MfMap{
-		Data: testMapParser(t, fileJsonRacine),
+		Data: testParseMap(t),
 	}
 	err := m.ParseGeography(j)
 	if err != nil {
@@ -21,8 +21,8 @@ func TestParseGeography(t *testing.T) {
 	}
 }
 
-func testParseGeoCollection(t *testing.T, file string) *geoCollection {
-	j := testutils.OpenFile(t, file)
+func testParseGeoCollection(t *testing.T) *geoCollection {
+	j := testutils.GeoCollectionReader(t)
 	defer j.Close()
 
 	geo, err := parseGeoCollection(j)
@@ -33,7 +33,7 @@ func testParseGeoCollection(t *testing.T, file string) *geoCollection {
 }
 
 func TestParseGeoCollection(t *testing.T) {
-	geo := testParseGeoCollection(t, fileJsonGeography)
+	geo := testParseGeoCollection(t)
 	if geo == nil {
 		t.Fatal("parseGeography() returned no data")
 	}
@@ -46,7 +46,7 @@ const (
 
 func TestGeographyQuery(t *testing.T) {
 
-	m := parseHtml(t, fileHtmlRacine)
+	m := testParseHtml(t)
 
 	t.Run("geographyURL", func(t *testing.T) {
 		u, err := m.GeographyURL()

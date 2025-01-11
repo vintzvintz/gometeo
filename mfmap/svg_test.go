@@ -11,8 +11,6 @@ import (
 	"github.com/beevik/etree"
 )
 
-const fileSvgRacine = "pays007.svg"
-
 func TestPxToInt(t *testing.T) {
 	type testType struct {
 		px       string
@@ -137,35 +135,27 @@ func TestGetSvgSize(t *testing.T) {
 	}
 }
 
-func testCropSVG(t *testing.T, name string) (*svgTree, *bytes.Buffer) {
-	f := testutils.OpenFile(t, name)
-	defer f.Close()
+func TestParseSvg(t *testing.T) {
 
-	buf := bytes.Buffer{}
-	tree, err := readSVG(io.TeeReader(f, &buf))
-	if err != nil {
-		t.Fatalf("parse error on '%s': %s", name, err)
+	// use unexported function to get original size
+	tree, _, err := readSVG(testutils.SvgReader(t))
+	var szOrig *svgSize
+	if err == nil {
+		szOrig, err = tree.getSize()
 	}
-	return tree, &buf
-}
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := szOrig.crop()
 
-func TestCropSVG(t *testing.T) {
-	file := fileSvgRacine
-	tree, buf := testCropSVG(t, file)
-	sz_orig, err := tree.getSize()
+	// call tested code
+	cropped := testParseSvg(t)
+
+	//use unexported function to parse the cropped image
+	// and get its size
+	tree, _, err = readSVG(bytes.NewReader(cropped))
 	if err != nil {
-		t.Fatalf("cant get original '%s' size: %s", file, err)
-	}
-	want := sz_orig.crop()
-	// call cropSVG() to be tested
-	cropReader, err := cropSVG(buf)
-	if err != nil {
-		t.Fatalf("error while cropping %s: %s", file, err)
-	}
-	// parse result to get size
-	tree, err = readSVG(cropReader)
-	if err != nil {
-		t.Fatalf("parse error on cropped '%s': %s", file, err)
+		t.Fatalf("error parsing cropped SVG: %s", err)
 	}
 	got, err := tree.getSize()
 	if err != nil {
@@ -175,12 +165,18 @@ func TestCropSVG(t *testing.T) {
 	if !reflect.DeepEqual(*got, want) {
 		t.Fatalf("got:%v want:%v", *got, want)
 	}
-	/*
-		// bonus : write cropped file to check with a browser
-		if err := (*etree.Document)(tree).WriteToFile(assets_path + "cropped.svg"); err != nil {
-			t.Error(err)
-		}
-	*/
+}
+
+// returns a cropped and serialized svg image
+func testParseSvg(t *testing.T) []byte {
+	//m.ParseSvgMap( testutils.SvgReader(t))
+
+	m := MfMap{}
+	err := m.ParseSvgMap(testutils.SvgReader(t))
+	if err != nil {
+		t.Fatalf("error parsing original SVG: %s", err)
+	}
+	return m.SvgMap
 }
 
 func TestCroppedSize(t *testing.T) {
@@ -213,8 +209,7 @@ func TestCroppedSize(t *testing.T) {
 
 func TestSvgURL(t *testing.T) {
 	t.Run("map_svg", func(t *testing.T) {
-		m := parseHtml(t, fileHtmlRacine)
-
+		m := testBuildMap(t)
 		name := m.Name()
 		u, err := m.SvgURL()
 		if err != nil {

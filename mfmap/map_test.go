@@ -8,17 +8,8 @@ import (
 	"gometeo/testutils"
 )
 
-const (
-	fileHtmlRacine        = "racine.html"
-	fileJsonFilterFail    = "json_filter_fail.html"
-	fileJsonRacine        = "racine.json"
-	fileJsonMultiforecast = "multiforecast.json"
-	fileJsonGeography     = "geography.json"
-)
-
 func TestHtmlFilter(t *testing.T) {
-	name := fileHtmlRacine
-	f := testutils.OpenFile(t, name)
+	f := testutils.HtmlReader(t)
 	defer f.Close()
 
 	// get json content
@@ -28,13 +19,13 @@ func TestHtmlFilter(t *testing.T) {
 	}
 	_, err = io.ReadAll(r)
 	if err != nil {
-		t.Fatalf("failed to extract JSON data from %s", name)
+		t.Fatalf("failed to extract JSON map data")
 	}
 }
 
 func TestParseHtml(t *testing.T) {
 	const expect = "/meteo-france"
-	m := parseHtml(t, fileHtmlRacine)
+	m := testParseHtml(t)
 	// check some content
 	if m.Data.Info.Path != "/meteo-france" {
 		t.Errorf("MfMap.ParseHtml() Info.Path='%s' expected '%s'", m.Data.Info.Path, expect)
@@ -77,13 +68,13 @@ func TestMapParseFail(t *testing.T) {
 	}
 }
 
-func parseHtml(t *testing.T, filename string) *MfMap {
-	f := testutils.OpenFile(t, filename)
+func testParseHtml(t *testing.T) *MfMap {
+	f := testutils.HtmlReader(t)
 	defer f.Close()
 
 	m := MfMap{}
 	if err := m.ParseHtml(f); err != nil {
-		t.Fatalf("MfMap.Parse(%s) error: %s", filename, err)
+		t.Fatalf("MfMap.ParseHtml() error: %s", err)
 	}
 	return &m
 }
@@ -110,7 +101,7 @@ func TestApiUrl(t *testing.T) {
 		},
 	}
 
-	m := parseHtml(t, fileHtmlRacine)
+	m := testParseHtml(t)
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -127,20 +118,11 @@ func TestApiUrl(t *testing.T) {
 }
 
 // buildTestMap returns a JsonMap structure filled form test files
-func buildTestMap(t *testing.T) *MfMap {
-	d := testMapParser(t, fileJsonRacine)
-	f := testParseMultiforecast(t, fileJsonMultiforecast)
-	g := testParseGeoCollection(t, fileJsonGeography)
-	_, svgBuf := testCropSVG(t, fileSvgRacine)
-	s, err := io.ReadAll(svgBuf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func testBuildMap(t *testing.T) *MfMap {
 	return &MfMap{
-		Data:      d,
-		Forecasts: f,
-		Geography: g,
-		SvgMap:    s,
+		Data:      testParseMap(t),
+		Forecasts: testParseMultiforecast(t),
+		Geography: testParseGeoCollection(t),
+		SvgMap:    testParseSvg(t),
 	}
 }

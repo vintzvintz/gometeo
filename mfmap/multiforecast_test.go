@@ -16,7 +16,7 @@ const (
 )
 
 func TestForecastQuery(t *testing.T) {
-	m := parseHtml(t, fileHtmlRacine)
+	m := testParseHtml(t)
 
 	validationRegexps := map[string]string{
 		"bbox":       emptyRegexp,
@@ -48,12 +48,12 @@ func TestForecastQuery(t *testing.T) {
 }
 
 func TestParseMultiforecast(t *testing.T) {
-	_ = testParseMultiforecast(t, fileJsonMultiforecast)
+	_ = testParseMultiforecast(t)
 }
 
-func testParseMultiforecast(t *testing.T, name string) MultiforecastData {
+func testParseMultiforecast(t *testing.T) MultiforecastData {
 
-	j := testutils.OpenFile(t, name)
+	j := testutils.MultiforecastReader(t)
 	defer j.Close()
 
 	m := MfMap{}
@@ -70,7 +70,7 @@ func testParseMultiforecast(t *testing.T, name string) MultiforecastData {
 func TestPictoNames(t *testing.T) {
 	const minLength = 20
 	m := MfMap{
-		Forecasts: testParseMultiforecast(t, fileJsonMultiforecast),
+		Forecasts: testParseMultiforecast(t),
 	}
 	pics := m.PictoNames()
 	if len(pics) < minLength {
