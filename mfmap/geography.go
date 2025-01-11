@@ -87,8 +87,6 @@ func (m *MfMap) GeographyURL() (*url.URL, error) {
 	return u, nil
 }
 
-
-
 func (m *MfMap) ParseGeography(r io.Reader) error {
 	if m.Geography != nil {
 		return fmt.Errorf("MfMap.Geography already populated")
@@ -108,14 +106,6 @@ func (m *MfMap) ParseGeography(r io.Reader) error {
 		feat.Properties.CustomPath = extractPath(sz.Path)
 		geoFeats = append(geoFeats, feat)
 	}
-	// check consistency
-	got := len(geoFeats)
-	want := len(m.Data.Subzones)
-	if got != want {
-		return fmt.Errorf("all subzones defined in map metadata should"+
-			"have a geographical representation (got %d want %d)", got, want)
-	}
-
 	geo.Features = geoFeats // cant simplify geo because m.Geography == nil
 	m.Geography = geo
 	return nil
