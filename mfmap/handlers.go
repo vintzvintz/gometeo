@@ -53,6 +53,9 @@ func (m *MfMap) makeDataHandler() func(http.ResponseWriter, *http.Request) {
 		if err != nil {
 			log.Printf("send error: %s", err)
 		}
+		// update on data handler (JSON request) instead of main handler 
+		// to allow main page caching and avoid simplest bots
+		m.LogHit()  
 	}
 }
 

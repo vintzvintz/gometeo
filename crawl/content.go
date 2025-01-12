@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"unicode/utf8"
 
 	"gometeo/mfmap"
 )
@@ -74,6 +75,8 @@ func (mc *MeteoContent) Receive(chMaps <-chan *mfmap.MfMap, cr *Crawler) <-chan 
 
 // pass request to MeteoContent internal ServeMux
 func (mc *MeteoContent) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	// mux is replaced after Update() or Receive(), but this 
+	// implmentation detail is private to *MeteoContent
 	mc.mux.ServeHTTP(resp, req)
 }
 
@@ -91,6 +94,7 @@ func (mc *MeteoContent) rebuildMux() {
 }
 
 func (ms mapStore) Register(mux *http.ServeMux) {
+	mux.Handle("/statusse", ms.makeStatusHandler())
 	for _, m := range ms {
 		m.Register(mux)
 	}
@@ -133,6 +137,29 @@ func (ms mapStore) buildBreadcrumbs(path string) {
 	}
 	slices.Reverse(bc)
 	m.Breadcrumb = bc
+}
+
+func (ms mapStore) makeStatusHandler() http.HandlerFunc {
+	return func(resp http.ResponseWriter, _ *http.Request ) {
+		// sort keys by name for displaying maps in constant ordre
+		var names = make( []string, 0, len(ms) )
+		var maxLen int
+		for k := range ms {
+			names = append(names, k)
+			// also finds max length
+			n := utf8.RuneCountInString(k)
+			if n > maxLen {
+				maxLen = n
+			}
+		}
+		slices.Sort(names)
+		b := &bytes.Buffer{}
+		for _, name := range names {
+			m := ms[name]
+			b.WriteString(m.Stats().Format(maxLen))
+		}
+		io.Copy(resp, b)
+	}
 }
 
 func (pictos pictoStore) Update(names []string, cr *Crawler) error {

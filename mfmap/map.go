@@ -27,7 +27,8 @@ type MfMap struct {
 	Parent     string
 	Breadcrumb Breadcrumb
 
-	stats Stats
+	// unexported - use concurrence-safe accessors instead
+	stats atomicStats
 }
 
 func (m *MfMap) ParseHtml(html io.Reader) error {

@@ -67,6 +67,7 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 	if err = cr.getAsset(m.ForecastURL, m.ParseMultiforecast, apiClient); err != nil {
 		return nil, err
 	}
+	m.LogUpdate()  // record update time
 	return m, nil
 }
 
