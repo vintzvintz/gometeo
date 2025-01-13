@@ -16,29 +16,27 @@ const (
 
 // StartSimple fetches data once and serve it forever
 func StartSimple(addr string, limit int) error {
-	var (
-		err     error
-		content *crawl.MeteoContent
-	)
+	var content *crawl.MeteoContent
+
 	// for dev/debug/test
 	if cacheServer {
-		content = crawl.LoadContent(cacheFile)
+		content = crawl.LoadBlob(cacheFile)
 	}
 	// fetch data if cache is disabled or failed
+
 	if content == nil {
-		crawler := crawl.NewCrawler()
-		content, err = crawler.FetchAll("/", limit)
-		if err != nil {
-			return err
-		}
+		var crawlerDone <-chan struct{}
+		content, crawlerDone = crawl.Start("/", limit, crawl.ModeOnce)
+		<-crawlerDone // wait for all maps downloads to complete
+
 		// for dev/debug/test
 		if cacheServer {
-			crawl.StoreContent(cacheFile, content)
+			content.SaveBlob(cacheFile)
 		}
 	}
-	done := serveContent(addr, content)
+	serverDone := serveContent(addr, content)
 	// wait for server termination
-	return <-done
+	return <-serverDone
 }
 
 func makeMeteoHandler(content *crawl.MeteoContent) http.Handler {
@@ -69,40 +67,19 @@ func serveContent(addr string, content *crawl.MeteoContent) <-chan error {
 	return ch
 }
 
-// startCrawler returns a "self-updating" MeteoContent
-func startCrawler(startPath string, limit int) (*crawl.MeteoContent, <-chan (struct{})) {
-
-	// concurrent use of http.Client is safe according to official documentation,
-	// so we can share the same client for maps and pictos.
-	cr := crawl.NewCrawler()
-
-	// direct pipe the crawler output channel to MeteoContent.Receive()
-	mapsChan := cr.Fetch(startPath, limit)
-
-	// starts a goroutine to receive fetched maps
-	// returns a chan to signal when mapsChan is closed
-	content := crawl.NewContent()
-	chCrawlerDone := content.Receive(mapsChan, cr)
-
-	return content, chCrawlerDone
-}
-
+/*
 func Start(addr string, limit int) error {
 
-	content, crawlerDone := startCrawler("/", limit)
+	content, crawlerDone := crawl.CreateAndStart("/", limit)
 	srvDone := serveContent(addr, content)
 
 	// block until crawling stops
 	select {
 	case <-srvDone:
-		{
 			log.Printf("httpserver termination")
-		}
 	case <-crawlerDone:
-		{
 			log.Printf("crawler termination")
-		}
 	}
-
 	return nil
 }
+*/

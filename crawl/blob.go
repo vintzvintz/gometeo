@@ -1,19 +1,22 @@
 package crawl
 
 import (
+	"bytes"
 	"encoding/gob"
+	"gometeo/mfmap"
 	"log"
 	"os"
 )
 
 // utility type to store a MeteoContent without the ServeMux and exposed fields
 type meteoBlob struct {
-	Maps   mapStore
-	Pictos pictoStore
+	Maps   []byte
+	Pictos []byte
 }
 
-func LoadContent(cacheFile string) *MeteoContent {
-	f, err := os.Open(cacheFile)
+func LoadBlob(fname string) *MeteoContent {
+	// load and decode the whole blob
+	f, err := os.Open(fname)
 	if err != nil {
 		log.Println(err)
 		return nil
@@ -25,25 +28,72 @@ func LoadContent(cacheFile string) *MeteoContent {
 		log.Println(err)
 		return nil
 	}
-	log.Printf("loaded maps & pictos from %s", cacheFile)
-	mc := NewContent() // empty but non-nil
-	mc.Update(blob.Maps, blob.Pictos)
+
+	// decode maps
+	var maps map[string]*mfmap.MfMap
+	dec = gob.NewDecoder(bytes.NewReader(blob.Maps))
+	err = dec.Decode(&maps)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	// decode pictos
+	var pictos map[string][]byte
+	dec = gob.NewDecoder(bytes.NewReader(blob.Pictos))
+	err = dec.Decode(&pictos)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	mc := newContent() // empty but non-nil
+	mc.Import(maps, pictos)
+
+	log.Printf("loaded maps & pictos from %s", fname)
 	return mc
 }
 
-func StoreContent(cacheFile string, mc *MeteoContent) {
-	f, err := os.Create(cacheFile)
+func (mc *MeteoContent) SaveBlob(fname string) {
+
+	blob := meteoBlob{
+		Maps:   mc.maps.ToBlob(),
+		Pictos: mc.pictos.ToBlob(),
+	}
+
+	f, err := os.Create(fname)
 	if err != nil {
 		panic(err)
 	}
-	blob := meteoBlob{
-		Maps:   mc.maps,
-		Pictos: mc.pictos,
-	}
+
 	enc := gob.NewEncoder(f)
 	err = enc.Encode(blob)
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("content stored to %s", cacheFile)
+	log.Printf("content stored to %s", fname)
+}
+
+func (ms *mapStore) ToBlob() []byte {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+	b := &bytes.Buffer{}
+	enc := gob.NewEncoder(b)
+	err := enc.Encode(ms.store)
+	if err != nil {
+		panic(err)
+	}
+	return b.Bytes()
+}
+
+func (ps *pictoStore) ToBlob() []byte {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+	b := &bytes.Buffer{}
+	enc := gob.NewEncoder(b)
+	err := enc.Encode(ps.store)
+	if err != nil {
+		panic(err)
+	}
+	return b.Bytes()
 }
