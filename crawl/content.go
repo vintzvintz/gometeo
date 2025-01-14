@@ -68,6 +68,10 @@ func (mc *MeteoContent) Import(maps map[string]*mfmap.MfMap, pictos map[string][
 	mc.rebuildMux()
 }
 
+func (mc *MeteoContent) Close() {
+	log.Println("MeteoContent closed")
+}
+
 func (mc *MeteoContent) receive(
 	chMaps chan *mfmap.MfMap,
 	chPictos chan *Picto,
@@ -80,19 +84,15 @@ func (mc *MeteoContent) receive(
 		for {
 			select {
 			case m, ok := <-chMaps:
-				{
-					if !ok {
-						break loop
-					}
-					mc.maps.receive(m)
+				if !ok {
+					break loop
 				}
+				mc.maps.receive(m)
 			case p, ok := <-chPictos:
-				{
-					if !ok {
-						break loop
-					}
-					mc.pictos.receive(p)
+				if !ok {
+					break loop
 				}
+				mc.pictos.receive(p)
 			}
 			mc.rebuildMux()
 		}
