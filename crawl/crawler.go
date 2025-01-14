@@ -31,29 +31,43 @@ type CrawlMode int
 
 const (
 	ModeOnce CrawlMode = iota
+	ModeForever
 )
 
 // startCrawler returns a "self-updating" MeteoContent
-func Start(startPath string, limit int, mode CrawlMode) (
+func Start(path string, limit int, mode CrawlMode) (
 	content *MeteoContent, done <-chan struct{}) {
 
 	// concurrent use of http.Client is safe according to official documentation,
 	// so we can share the same client for maps and pictos.
 	cr := newCrawler()
 
-	// direct pipe from crawler output channel to MeteoContent.Receive()
-	if mode == ModeOnce {
-		chMap, chPicto := cr.FetchOnce(startPath, limit)
-
-		// returns a chan to signal when mapsChan is closed
-		content = newContent()
-
-		// bind crawler output channels to MeteoContent receive()
-		contentDone := content.receive(chMap, chPicto)
-
-		return content, contentDone
+	if (mode == ModeOnce)||(mode== ModeForever) {
+		// direct pipe from crawler output channel to MeteoContent.Receive()
+		content, done = cr.startOnce(path, limit)
 	}
-	panic(fmt.Errorf("crawl mode unknown : %d", int(mode)))
+	if mode == ModeForever {
+		// TODO update loop
+	}
+	if (content== nil) ||(done==nil) {
+		panic(fmt.Errorf("crawl mode unknown : %d", int(mode)))		
+	}
+	return content, done
+
+}
+
+func (cr *Crawler) startOnce(startPath string, limit int) (
+	content *MeteoContent, done <-chan struct{}) {
+	// direct pipe from crawler output channel to MeteoContent.Receive()
+	chMap, chPicto := cr.FetchOnce(startPath, limit)
+
+	// returns a chan to signal when mapsChan is closed
+	content = newContent()
+
+	// bind crawler output channels to MeteoContent receive()
+	contentDone := content.receive(chMap, chPicto)
+
+	return content, contentDone
 }
 
 func (cr *Crawler) FetchOnce(startPath string, limit int) (
@@ -67,7 +81,7 @@ func (cr *Crawler) FetchOnce(startPath string, limit int) (
 	go func() {
 		// closing channel signals a crawler exit and terminates server
 		defer func() {
-			log.Printf("Closing chMap and chPicto")
+			log.Printf("close chMap and chPicto")
 			close(chMap)
 			close(chPicto)
 		}()
@@ -112,7 +126,7 @@ func (cr *Crawler) FetchOnce(startPath string, limit int) (
 		wgPictos.Wait()
 
 		// signal goroutine termination
-		log.Printf("crawl.Fetch('%s') exit", startPath)
+		log.Printf("crawl.FetchOnce('%s') exit", startPath)
 	}()
 	// both channels are closed on goroutine termination (deferred)
 	return chMap, chPicto

@@ -9,6 +9,7 @@ import (
 )
 
 // for dev/tests/debug
+// TODO : refactor into a StartSimple() parameter
 const (
 	cacheServer = true
 	cacheFile   = "./content_cache.gob"
@@ -34,9 +35,30 @@ func StartSimple(addr string, limit int) error {
 			content.SaveBlob(cacheFile)
 		}
 	}
-	serverDone := serveContent(addr, content)
+	_, serverDone := serveContent(addr, content)
 	// wait for server termination
 	return <-serverDone
+}
+
+// TODO add more crawl/serve/config options, maybe in a struct
+func Start(addr string, limit int) error {
+
+	var content *crawl.MeteoContent
+	var crawlerDone <-chan struct{}
+	content, crawlerDone = crawl.Start("/", limit, crawl.ModeForever)
+	defer content.Close()
+
+	srv, serverDone := serveContent(addr, content)
+	defer srv.Close()
+
+	// block until either server or crawler terminates
+	select {
+	case <-serverDone:
+			log.Printf("server exited")
+	case <-crawlerDone:
+			log.Printf("crawler exited")
+	}
+	return nil
 }
 
 func makeMeteoHandler(content *crawl.MeteoContent) http.Handler {
@@ -47,7 +69,7 @@ func makeMeteoHandler(content *crawl.MeteoContent) http.Handler {
 	return hdl
 }
 
-func serveContent(addr string, content *crawl.MeteoContent) <-chan error {
+func serveContent(addr string, content *crawl.MeteoContent) (*http.Server, <-chan error) {
 	srv := http.Server{
 		Addr:    addr,
 		Handler: makeMeteoHandler(content),
@@ -64,22 +86,6 @@ func serveContent(addr string, content *crawl.MeteoContent) <-chan error {
 		ch <- err
 		close(ch)
 	}()
-	return ch
+	return &srv, ch
 }
 
-/*
-func Start(addr string, limit int) error {
-
-	content, crawlerDone := crawl.CreateAndStart("/", limit)
-	srvDone := serveContent(addr, content)
-
-	// block until crawling stops
-	select {
-	case <-srvDone:
-			log.Printf("httpserver termination")
-	case <-crawlerDone:
-			log.Printf("crawler termination")
-	}
-	return nil
-}
-*/
