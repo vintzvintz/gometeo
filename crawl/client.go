@@ -1,19 +1,24 @@
 package crawl
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 )
 
 type Client struct {
 	baseUrl         string
 	noSessionCookie bool // do not expect mfsession cookie
-	authToken       string
+	token           atomicToken
 	client          *http.Client
 	cache           *Cache
+}
+
+type atomicToken struct {
+	mutex sync.Mutex
+	token string
 }
 
 const userAgentFirefox = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"
@@ -35,60 +40,16 @@ func (e MissingCookieError) Error() string {
 	return "MissingCookieError: " + string(e)
 }
 
-type Cache map[string][]byte
-
-// Declaring an enum type for cache control
-type CachePolicy int
-
-const (
-	CacheDefault  CachePolicy = iota // default. return cached data if available, otherwise send a request
-	CacheUpdate                      // ignore cache but store response
-	CacheDisabled                    // ignore cache and do not store response
-	CacheOnly                        // do not send any request, only cache data only
-)
-
-func (m Cache) lookup(path string) (io.ReadCloser, bool) {
-	data, ok := m[path]
-	return io.NopCloser(bytes.NewReader(data)), ok
+func (t *atomicToken) Get() string {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	return t.token
 }
 
-// cacheUpdater is a io.Reader wrapping a Respose.Body
-// to intercept Read() calls and store downloaded content in the cache
-type cacheUpdater struct {
-	cache  Cache // cache[path] is updated on Close()
-	path   string
-	body   io.ReadCloser
-	buf    []byte
-	closed bool
-}
-
-func (c Cache) NewUpdater(path string, body io.ReadCloser) *cacheUpdater {
-	return &cacheUpdater{
-		cache: c,
-		path:  path,
-		body:  body,
-	}
-}
-
-func (cu *cacheUpdater) Read(p []byte) (int, error) {
-	nr, err := cu.body.Read(p)
-	if err == nil || err == io.EOF {
-		cu.buf = append(cu.buf, p[:nr]...)
-	}
-	return nr, err
-}
-
-// Close() updates the cache and close resp.Body()
-func (cu *cacheUpdater) Close() error {
-	if cu.closed {
-		return nil
-	}
-	cu.closed = true
-	cu.cache[cu.path] = cu.buf
-	cu.buf = nil
-	cu.body.Close()
-	cu.body = nil
-	return nil
+func (t *atomicToken) Set(token string) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	t.token = token
 }
 
 // updateAuthToken() extracts and store authentication token from
@@ -113,7 +74,8 @@ func (cl *Client) updateAuthToken(resp *http.Response) error {
 	/*if cl.authToken != "" && cl.authToken != tok {
 		log.Println("Cookie de session modifié.")
 	}*/
-	cl.authToken = tok
+
+	cl.token.Set(tok)
 	return nil
 }
 
@@ -165,8 +127,9 @@ func (cl *Client) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
 		return nil, errors.New(msg)
 	}
 	// execute la requête avec le token d'authentification et un user agent courant
-	if cl.authToken != "" {
-		req.Header.Add("Authorization", "Bearer "+cl.authToken)
+	token := cl.token.Get()
+	if token != "" {
+		req.Header.Add("Authorization", "Bearer "+token)
 	}
 	req.Header.Add("user-agent", userAgentFirefox)
 

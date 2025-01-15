@@ -96,7 +96,7 @@ func (mc *MeteoContent) receive(
 			}
 			mc.rebuildMux()
 		}
-		log.Println("MeteoContent.Receive() exit")
+		log.Println("MeteoContent.receive() exit")
 	}()
 	return doneCh
 }
