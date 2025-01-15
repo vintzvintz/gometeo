@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"gometeo/mfmap"
 )
@@ -35,25 +36,35 @@ const (
 )
 
 // startCrawler returns a "self-updating" MeteoContent
-func Start(path string, limit int, mode CrawlMode) (
-	content *MeteoContent, done <-chan struct{}) {
+func Start(path string, limit int, mode CrawlMode) (*MeteoContent, <-chan struct{}) {
 
+	var done <-chan struct{}
 	// concurrent use of http.Client is safe according to official documentation,
 	// so we can share the same client for maps and pictos.
 	cr := newCrawler()
+	if (mode != ModeOnce) && (mode != ModeForever) {
+		panic(fmt.Errorf("crawl mode unknown : %d", int(mode)))
+	}
 
-	if (mode == ModeOnce)||(mode== ModeForever) {
-		// direct pipe from crawler output channel to MeteoContent.Receive()
-		content, done = cr.startOnce(path, limit)
+	// direct pipe from crawler output channel to MeteoContent.Receive()
+	content, onceDone := cr.startOnce(path, limit)
+	if mode == ModeOnce {
+		done = onceDone
 	}
 	if mode == ModeForever {
-		// TODO update loop
-	}
-	if (content== nil) ||(done==nil) {
-		panic(fmt.Errorf("crawl mode unknown : %d", int(mode)))		
-	}
+		// do not close(done) in ModeForever, crawler should never exit
+		// from the update loop 
+		go func() {
+			<-onceDone
+			log.Printf("enter forever update loop")
+			for {
+				updateDone := cr.UpdateOneMap(content)
+				<-updateDone
+				time.Sleep(5 * time.Second)
+			}
+		}()
+		}
 	return content, done
-
 }
 
 func (cr *Crawler) startOnce(startPath string, limit int) (
@@ -65,9 +76,30 @@ func (cr *Crawler) startOnce(startPath string, limit int) (
 	content = newContent()
 
 	// bind crawler output channels to MeteoContent receive()
-	contentDone := content.receive(chMap, chPicto)
+	crawlerDone := content.receive(chMap, chPicto)
 
-	return content, contentDone
+	return content, crawlerDone
+}
+
+func (cr *Crawler) UpdateOneMap(mc *MeteoContent) <-chan struct{} {
+	done := make(chan (struct{}))
+	go func() {
+		mc.maps.mutex.Lock()
+		defer mc.maps.mutex.Unlock()
+		defer close(done)
+
+		for name, m := range mc.maps.store {
+			if m.NeedUpdate() {
+				newMap, err  := cr.getMap(m.OriginalPath) 
+				if err != nil {
+					log.Printf("error updating %#q: %s", name, err)
+					break
+				}
+				m.Merge( newMap )
+			}
+		}
+	}()
+	return done
 }
 
 func (cr *Crawler) FetchOnce(startPath string, limit int) (
@@ -145,7 +177,9 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 	defer body.Close()
 
 	// allocate a MfMap and initialize with received content
-	m := &mfmap.MfMap{}
+	m := &mfmap.MfMap{
+		OriginalPath: path,
+	}
 	err = m.ParseHtml(body)
 	if err != nil {
 		return nil, err
@@ -158,7 +192,7 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 			return nil, err
 		}
 		cl := NewClient(apiBaseUrl.String())
-		cl.authToken = cr.mainClient.authToken
+		cl.token.Set( cr.mainClient.token.Get() )
 		cl.noSessionCookie = true // api server do not send auth tokens so dont expect any
 		return cl, nil
 	}

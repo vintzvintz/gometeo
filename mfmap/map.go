@@ -11,6 +11,10 @@ import (
 // MfMap is the main in-memory storage type of this project.
 // Holds all dynamic data
 type MfMap struct {
+
+	// original path used on the GET request sent upstream
+	OriginalPath string
+
 	// Data is the result of parsing upstream html main page
 	Data *MapData
 

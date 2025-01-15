@@ -36,18 +36,18 @@ func TestHitCountRace(t *testing.T) {
 
 func TestLogUpdate(t *testing.T) {
 	m := MfMap{}
-	before := m.ShouldUpdate()
+	before := m.NeedUpdate()
 	if !before {
 		t.Error("ShouldUpdate() on zero-valued map must be true")
 	}
 	m.LogUpdate()
-	after := m.ShouldUpdate()
+	after := m.NeedUpdate()
 	if after {
 		t.Error("ShouldUpdate() on just-updated map must be false")
 	}
 }
 
-func TestShouldUpdate(t *testing.T) {
+func TestNeedUpdate(t *testing.T) {
 
 	var tests = map[string]struct {
 		update int64
@@ -88,7 +88,7 @@ func TestShouldUpdate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			m.stats.lastUpdate.Store(test.update)
 			m.stats.lastHit.Store(test.hit)
-			got := m.ShouldUpdate()
+			got := m.NeedUpdate()
 			if got != test.want {
 				t.Errorf("ShouldUpdate() got %v, want %v", got, test.want)
 			}

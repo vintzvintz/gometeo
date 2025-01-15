@@ -57,7 +57,7 @@ func (m *MfMap) HitCount() int64 {
 	return m.stats.hitCount.Load()
 }
 
-func (m *MfMap) ShouldUpdate() bool {
+func (m *MfMap) NeedUpdate() bool {
 	updateAge := time.Since(time.Unix(m.stats.lastUpdate.Load(), 0))
 	hitAge := time.Since(time.Unix(m.stats.lastHit.Load(), 0))
 	if hitAge < fastModeDuration {
