@@ -12,44 +12,6 @@ import (
 
 const assets_dir = "../test_data/"
 
-func dataSet01() *Cache {
-	return &Cache{
-		"key_nil":      nil,
-		"key_empty":    []byte(""),
-		"key_wesh":     []byte("wèèèsh"),
-		"":             []byte("Empty key"),
-		"unicode_data": []byte(strings.Repeat("Azêrty uiop ", 30)),
-		"unicode_kèy":  []byte(strings.Repeat("Azerty uiop ", 30)),
-	}
-}
-
-func TestLookup(t *testing.T) {
-	c := dataSet01()
-	for key, data := range *c {
-		t.Run(key, func(t *testing.T) {
-			r, ok := c.lookup(key)
-			if !ok {
-				t.Fatalf("MfCache.lookup(%s) failed. expected: %s", key, data)
-			}
-			defer r.Close()
-			got, err := io.ReadAll(r)
-			if err != nil {
-				t.Fatalf("ReadAll() error: %v", err)
-			}
-			if !bytes.Equal(got, data) {
-				t.Fatalf("MfCache.lookup(%s) got '%s' expected '%s'", key, got, data)
-			}
-		})
-	}
-
-	key := "missing_key"
-	t.Run(key, func(t *testing.T) {
-		if _, ok := c.lookup(key); ok {
-			t.Fatalf("MfCache.lookup(%s) : want error", key)
-		}
-	})
-}
-
 // addUrlBase tests
 var urlBaseTest string = "https://example.com"
 
@@ -102,55 +64,6 @@ func TestAddUrlBase(t *testing.T) {
 					t.Errorf("got:'%s' expected:'%s", got, d.expected)
 				}
 			})
-		}
-	})
-}
-
-func TestUpdater(t *testing.T) {
-	cache := Cache{}
-	for k, v := range *dataSet01() {
-		body := io.NopCloser(bytes.NewReader(v))
-		updater := cache.NewUpdater(k, body)
-
-		// lit toutes les données
-		_, err := io.ReadAll(updater)
-		if err != nil {
-			t.Fatal(err)
-		}
-		// Close() provoque la mise à jour du cache
-		updater.Close()
-	}
-	// verifie que le cache a capturé toutes les données
-	for k, v := range *dataSet01() {
-		got, ok := cache[k]
-		if !ok {
-			t.Fatalf("Key %s not found in cache", k)
-		}
-		if !bytes.Equal(cache[k], v) {
-			t.Fatalf("MfCache[%s] got '%s' expected '%s'", k, got, v)
-		}
-	}
-}
-
-func TestUpdaterDoubleClose(t *testing.T) {
-	c := Cache{}
-	data := io.NopCloser(strings.NewReader("data"))
-	key := "double_close_test_key"
-
-	t.Run("double close", func(t *testing.T) {
-		u := c.NewUpdater(key, data)
-		if err := u.Close(); err != nil {
-			t.Errorf("cacheUpdater.Close() error on first call :%v", err)
-		}
-		if err := u.Close(); err != nil {
-			t.Errorf("cacheUpdater.Close() error on second call :%v", err)
-		}
-	})
-
-	t.Run("updated after double close", func(t *testing.T) {
-		// is cache properly updated after double close ?
-		if _, ok := c.lookup(key); !ok {
-			t.Error("cache not updated after double Close()")
 		}
 	})
 }
@@ -231,8 +144,8 @@ const fileRacine = "racine.html"
 
 func TestCacheHit(t *testing.T) {
 	cl := NewClient("")
-	cl.cache = dataSet01()
-	for path, expected := range *dataSet01() {
+	cl.cache = NewCache(dataSet01())
+	for path, expected := range dataSet01() {
 		t.Run(path, func(t *testing.T) {
 			body, err := cl.Get(path, CacheOnly)
 			if err != nil {
@@ -249,7 +162,7 @@ func TestCacheHit(t *testing.T) {
 func TestCacheMiss(t *testing.T) {
 	key := "missing_key"
 	cl := NewClient("")
-	cl.cache = dataSet01()
+	cl.cache = NewCache(dataSet01())
 	cl.client = nil
 	_, err := cl.Get(key, CacheOnly)
 	if err == nil {
@@ -295,7 +208,9 @@ func TestGetCacheDisabled(t *testing.T) {
 	srv, client := setupServerAndClient(t, file, &cnt)
 	defer srv.Close()
 	// pre-fill cache with data which must not be updated by Get() calls
-	client.cache = &Cache{path: []byte(initialCachedData)}
+	client.cache = NewCache(map[string][]byte{
+		path: []byte(initialCachedData),
+	})
 
 	const nbReq = 3
 	t.Run("repeated requests", func(t *testing.T) {
@@ -320,7 +235,9 @@ func TestGetCacheUpdate(t *testing.T) {
 	defer srv.Close()
 
 	// pre-fill cache with data to be updated by Get() calls
-	client.cache = &Cache{path: []byte(initialCachedData)}
+	client.cache = NewCache(map[string][]byte{
+		path: []byte(initialCachedData),
+	})
 
 	// send requests with CacheUpdate mode
 	assertGetEqualsFile(t, client, file, CacheUpdate)

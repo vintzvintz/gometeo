@@ -21,6 +21,16 @@ type atomicToken struct {
 	token string
 }
 
+// Declaring an enum type for cache control
+type CachePolicy int
+
+const (
+	CacheDefault  CachePolicy = iota // default. return cached data if available, otherwise send a request
+	CacheUpdate                      // ignore cache but store response
+	CacheDisabled                    // ignore cache and do not store response
+	CacheOnly                        // do not send any request, only cache data only
+)
+
 const userAgentFirefox = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"
 
 // NewClient allocates a *MfClient.
@@ -29,7 +39,7 @@ func NewClient(baseUrl string) *Client {
 	return &Client{
 		baseUrl: baseUrl,
 		client:  &http.Client{},
-		cache:   &Cache{},
+		cache:   NewCache(nil),
 	}
 }
 
@@ -67,14 +77,10 @@ func (cl *Client) updateAuthToken(resp *http.Response) error {
 		}
 	}
 	if tok == "" {
-		msg := fmt.Sprintf("no Set-Cookie mfsession from url '%s'", resp.Request.URL.String())
+		msg := fmt.Sprintf("no Set-Cookie mfsession from '%s'", resp.Request.URL.String())
 		return MissingCookieError(msg)
 	}
 	tok, _ = Rot13(tok)
-	/*if cl.authToken != "" && cl.authToken != tok {
-		log.Println("Cookie de session modifié.")
-	}*/
-
 	cl.token.Set(tok)
 	return nil
 }
@@ -106,7 +112,7 @@ func (cl *Client) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
 	// commence par chercher dans le cache avant de lancer la requete
 	// le cache est ignoré avec CacheDisabled et CacheUpdate
 	if policy == CacheDefault || policy == CacheOnly {
-		body, ok := cl.cache.lookup(path)
+		body, ok := cl.cache.Lookup(path)
 		if ok {
 			return body, nil
 		}

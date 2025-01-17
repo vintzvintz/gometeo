@@ -3,60 +3,79 @@ package crawl
 import (
 	"bytes"
 	"io"
+	"sync"
 )
 
-type Cache map[string][]byte
+type Cache struct {
+	data  map[string][]byte
+	mutex sync.Mutex
+}
 
-// Declaring an enum type for cache control
-type CachePolicy int
+func NewCache(data map[string][]byte) *Cache {
+	if data == nil {
+		data = make(map[string][]byte)
+	}
+	return &Cache{
+		data: data,
+	}
+}
 
-const (
-	CacheDefault  CachePolicy = iota // default. return cached data if available, otherwise send a request
-	CacheUpdate                      // ignore cache but store response
-	CacheDisabled                    // ignore cache and do not store response
-	CacheOnly                        // do not send any request, only cache data only
-)
-
-func (m Cache) lookup(path string) (io.ReadCloser, bool) {
-	data, ok := m[path]
+func (c *Cache) Lookup(path string) (io.ReadCloser, bool) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	data, ok := c.data[path]
+	if !ok {
+		return nil, false
+	}
 	return io.NopCloser(bytes.NewReader(data)), ok
 }
 
-// cacheUpdater is a io.Reader wrapping a Respose.Body
-// to intercept Read() calls and store downloaded content in the cache
-type cacheUpdater struct {
-	cache  Cache // cache[path] is updated on Close()
-	path   string
-	body   io.ReadCloser
-	buf    []byte
-//	closed bool
+func (c *Cache) Update(path string, body []byte) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.data[path] = body
 }
 
-func (c Cache) NewUpdater(path string, body io.ReadCloser) *cacheUpdater {
+// cacheUpdater is a io.ReadCloser wrapping a Respose.Body
+// to intercept Read() calls and update cache with downloaded content
+type cacheUpdater struct {
+	fnUpdate cacheUpdateCallback //  called on Close()
+	path     string
+	body     io.ReadCloser
+	buf      bytes.Buffer
+}
+
+type cacheUpdateCallback func(path string, body []byte)
+
+func (c *Cache) NewUpdater(path string, body io.ReadCloser) *cacheUpdater {
 	return &cacheUpdater{
-		cache: c,
-		path:  path,
-		body:  body,
+		path: path,
+		body: body,
+		fnUpdate: func(path string, body []byte) {
+			c.Update(path, body)
+		},
 	}
 }
 
 func (cu *cacheUpdater) Read(p []byte) (int, error) {
-	nr, err := cu.body.Read(p)
+	n, err := cu.body.Read(p)
 	if err == nil || err == io.EOF {
-		cu.buf = append(cu.buf, p[:nr]...)
+		cu.buf.Write(p[:n])
 	}
-	return nr, err
+	return n, err
 }
 
-// Close() updates the cache and close resp.Body()
+// Close() fires the update callback and propagates to body.Close()
 func (cu *cacheUpdater) Close() error {
-//	if cu.closed {
-//		return nil
-//	}
-//	cu.closed = true
-	cu.cache[cu.path] = cu.buf
-	cu.buf = nil
-	cu.body.Close()
+	if cu.body == nil {
+		return nil
+	}
+	cu.fnUpdate(cu.path, cu.buf.Bytes())
+	err := cu.body.Close()
+	if err != nil {
+		return err
+	}
 	cu.body = nil
+	cu.buf.Reset()
 	return nil
 }
