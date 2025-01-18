@@ -23,6 +23,8 @@ type Stats struct {
 
 const (
 	fastModeDuration = 3 * 24 * time.Hour // duration of fast update after last hit
+//	fastModeMaxAge   = 30*time.Second
+//	slowModeMaxAge   = 30*time.Second
 	fastModeMaxAge   = 30 * time.Minute
 	slowModeMaxAge   = 4 * time.Hour
 )

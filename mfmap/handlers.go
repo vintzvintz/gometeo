@@ -34,7 +34,7 @@ func (m *MfMap) makeMainHandler() func(http.ResponseWriter, *http.Request) {
 		}
 		_, err = io.Copy(resp, &buf)
 		if err != nil {
-			log.Printf("send error: %s", err)
+			log.Printf("ignored send error: %s", err)
 		}
 	}
 }
@@ -51,7 +51,7 @@ func (m *MfMap) makeDataHandler() func(http.ResponseWriter, *http.Request) {
 		resp.Header().Add("Content-Type", "application/json")
 		_, err = io.Copy(resp, &buf)
 		if err != nil {
-			log.Printf("send error: %s", err)
+			log.Printf("ignored send error: %s", err)
 		}
 		// update on data handler (JSON request) instead of main handler 
 		// to allow main page caching and avoid simplest bots
@@ -70,7 +70,7 @@ func (m *MfMap) makeSvgMapHandler() func(http.ResponseWriter, *http.Request) {
 		resp.Header().Add("Content-Type", "image/svg+xml")
 		_, err := io.Copy(resp, bytes.NewReader(m.SvgMap))
 		if err != nil {
-			log.Printf("send error: %s", err)
+			log.Printf("ignored send error: %s", err)
 		}
 	}
 }

@@ -2,13 +2,15 @@ package crawl
 
 import (
 	"regexp"
+	"sync"
 	"testing"
 
+	"gometeo/content"
 	"gometeo/mfmap"
 )
 
-const minPictoCount = 10
-const minPictoSize = 200 // bytes
+const minPictosPerMap = 10 // temps, vent, uv....
+const minPictoSize = 200   // bytes
 
 func TestPictoUrl(t *testing.T) {
 	u, err := pictoURL("test")
@@ -22,19 +24,44 @@ func TestPictoUrl(t *testing.T) {
 	}
 }
 
-func TestGetAllMaps(t *testing.T) {
-	var cnt int = 5
-	content, done := Start("/", cnt, ModeOnce)
-	<-done
-	checkMeteoContent(t, content, cnt)
+func TestFetch(t *testing.T) {
+	var wantN int = 7
+	maps, pictos := newCrawler().Fetch("/", wantN)
+
+	var nbMaps, nbPics int
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		for m := range maps {
+			nbMaps++
+			checkMap(t, m)
+		}
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		for p := range pictos {
+			nbPics++
+			checkPicto(t, p)
+		}
+		wg.Done()
+	}()
+	wg.Wait()
+
+	if nbMaps != wantN {
+		t.Errorf("donwload %d maps, want %d ", nbMaps, wantN)
+	}
+	wantPictos := minPictosPerMap * wantN
+	if nbPics < wantPictos {
+		t.Fatalf("found %d pictos, expected at least %d", nbPics, wantPictos)
+	}
 }
 
 func TestGetMap(t *testing.T) {
 	maps := getMapTest(t, "/")
 	checkMap(t, maps)
-	// checkPictos(t, pictos)
 }
-
 
 func getMapTest(t *testing.T, path string) *mfmap.MfMap {
 	cr := newCrawler()
@@ -43,16 +70,6 @@ func getMapTest(t *testing.T, path string) *mfmap.MfMap {
 		t.Fatalf("getmap('%s') error: %s", path, err)
 	}
 	return m
-}
-
-func checkMeteoContent(t *testing.T, c *MeteoContent, wantN int) {
-	if len(c.maps.store) != wantN {
-		t.Errorf("donwload %d maps, want %d ", len(c.maps.store), wantN)
-	}
-	checkPictos(t, &(c.pictos))
-	for _, m := range c.maps.store {
-		checkMap(t, m)
-	}
 }
 
 func checkMap(t *testing.T, m *mfmap.MfMap) {
@@ -70,21 +87,15 @@ func checkMap(t *testing.T, m *mfmap.MfMap) {
 	}
 }
 
-// there should be at least xxx different pictos, with minimum size,
-// and with a '<svg' tag
-func checkPictos(t *testing.T, pictos *pictoStore) {
-	re := regexp.MustCompile("<svg")
-	if len(pictos.store) < minPictoCount {
-		t.Fatalf("found %d pictos, expected at least %d", len(pictos.store), minPictoCount)
+var hasSvgTag *regexp.Regexp = regexp.MustCompile("<svg")
+
+func checkPicto(t *testing.T, p content.Picto) {
+	//svg := p.Img
+	if !hasSvgTag.Match(p.Img) {
+		t.Errorf("no <svg> tag in picto '%s'", p.Name)
 	}
-	for p := range pictos.store {
-		svg := pictos.store[p]
-		if !re.Match(svg) {
-			t.Errorf("no <svg> tag in picto '%s'", p)
-		}
-		if len(svg) < minPictoSize {
-			t.Errorf("picto %s size too small ( %d < %d )", p, len(svg), minPictoSize)
-		}
+	if len(p.Img) < minPictoSize {
+		t.Errorf("picto %s too small size=%d minimum=%d", p.Name, len(p.Img), minPictoSize)
 	}
 }
 

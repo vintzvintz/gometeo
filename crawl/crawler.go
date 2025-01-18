@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"gometeo/content"
 	"gometeo/mfmap"
 )
 
@@ -36,7 +37,7 @@ const (
 )
 
 // startCrawler returns a "self-updating" MeteoContent
-func Start(path string, limit int, mode CrawlMode) (*MeteoContent, <-chan struct{}) {
+func Start(path string, limit int, mode CrawlMode) (*content.Meteo, <-chan struct{}) {
 
 	var done <-chan struct{}
 	// concurrent use of http.Client is safe according to official documentation,
@@ -47,83 +48,57 @@ func Start(path string, limit int, mode CrawlMode) (*MeteoContent, <-chan struct
 	}
 
 	// direct pipe from crawler output channel to MeteoContent.Receive()
-	content, onceDone := cr.startOnce(path, limit)
+	mc := content.New()
+	initDone := mc.Receive(cr.Fetch(path, limit))
 	if mode == ModeOnce {
-		done = onceDone
+		done = initDone
 	}
 	if mode == ModeForever {
-		// do not close(done) in ModeForever, crawler should never exit
-		// from the update loop 
+		// do not close(done) in ModeForever,
+		// crawler does never exit the update loop
 		go func() {
-			<-onceDone
+			<-initDone // wait for init completion
 			log.Printf("enter forever update loop")
 			for {
-				updateDone := cr.UpdateOneMap(content)
-				<-updateDone
 				time.Sleep(5 * time.Second)
+				path := mc.Updatable()
+				if path == "" {
+					continue
+				}
+				// TODO: add timeout
+				<-mc.Receive(cr.Fetch(path, 1))
 			}
 		}()
-		}
-	return content, done
+	}
+	return mc, done
 }
 
-func (cr *Crawler) startOnce(startPath string, limit int) (
-	content *MeteoContent, done <-chan struct{}) {
-	// direct pipe from crawler output channel to MeteoContent.Receive()
-	chMap, chPicto := cr.FetchOnce(startPath, limit)
-
-	// returns a chan to signal when mapsChan is closed
-	content = newContent()
-
-	// bind crawler output channels to MeteoContent receive()
-	crawlerDone := content.receive(chMap, chPicto)
-
-	return content, crawlerDone
-}
-
-func (cr *Crawler) UpdateOneMap(mc *MeteoContent) <-chan struct{} {
-	done := make(chan (struct{}))
-	go func() {
-		mc.maps.mutex.Lock()
-		defer mc.maps.mutex.Unlock()
-		defer close(done)
-
-		for name, m := range mc.maps.store {
-			if m.NeedUpdate() {
-				newMap, err  := cr.getMap(m.OriginalPath) 
-				if err != nil {
-					log.Printf("error updating %#q: %s", name, err)
-					break
-				}
-				m.Merge( newMap )
-			}
-		}
-	}()
-	return done
-}
-
-func (cr *Crawler) FetchOnce(startPath string, limit int) (
+// TODO: add timeout
+func (cr *Crawler) Fetch(startPath string, limit int) (
 	chMap chan *mfmap.MfMap,
-	chPicto chan *Picto,
+	chPicto chan content.Picto,
 ) {
 	chMap = make(chan (*mfmap.MfMap))
-	chPicto = make(chan (*Picto))
+	chPicto = make(chan (content.Picto))
 
-	wgPictos := sync.WaitGroup{}
 	go func() {
 		// closing channel signals a crawler exit and terminates server
 		defer func() {
-			log.Printf("close chMap and chPicto")
 			close(chMap)
 			close(chPicto)
 		}()
-		var cnt int
+
 		type QueueItem struct {
 			path   string
 			parent string
 		}
-		// root map has a nil parent
-		queue := []QueueItem{{startPath, ""}}
+
+		var (
+			cnt      int
+			wgPictos sync.WaitGroup
+			queue    = []QueueItem{{startPath, ""}}
+		)
+
 		for {
 			// stop when queue is empty or max count is reached
 			i := len(queue) - 1
@@ -150,15 +125,11 @@ func (cr *Crawler) FetchOnce(startPath string, limit int) (
 			chMap <- m
 
 			// donwload pictos
-			// cache will avoid multiple real downloads of same a picto
+			// cache will avoid multiple downloads of same a picto
 			cr.fetchPictos(m.PictoNames(), &wgPictos, chPicto)
 		}
-
-		// wait
+		// wait pictos completion, then close the channels (deferred)
 		wgPictos.Wait()
-
-		// signal goroutine termination
-		log.Printf("crawl.FetchOnce('%s') exit", startPath)
 	}()
 	// both channels are closed on goroutine termination (deferred)
 	return chMap, chPicto
@@ -192,7 +163,7 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 			return nil, err
 		}
 		cl := NewClient(apiBaseUrl.String())
-		cl.token.Set( cr.mainClient.token.Get() )
+		cl.token.Set(cr.mainClient.token.Get())
 		cl.noSessionCookie = true // api server do not send auth tokens so dont expect any
 		return cl, nil
 	}
@@ -227,7 +198,6 @@ func (cr *Crawler) getAsset(
 		if err != nil {
 			return err
 		}
-		// cl = cr.createApiClient( cl // ientGetter()m.Data.ApiURL("", nil) )
 	}
 	body, err := cl.Get(u.String(), CacheDefault)
 	if err != nil {
@@ -243,7 +213,7 @@ func (cr *Crawler) getAsset(
 
 // fetchPictos retrieves pictos from upstream
 // cr.mainCient has a cache to avoid multiple downloads
-func (cr *Crawler) fetchPictos(names []string, wg *sync.WaitGroup, out chan *Picto) {
+func (cr *Crawler) fetchPictos(names []string, wg *sync.WaitGroup, out chan<- content.Picto) {
 	wg.Add(1)
 	go func() {
 		for _, name := range names {
@@ -252,7 +222,7 @@ func (cr *Crawler) fetchPictos(names []string, wg *sync.WaitGroup, out chan *Pic
 				log.Printf("getPicto(%s): %s", name, err)
 				continue
 			}
-			out <- &Picto{name, p}
+			out <- content.Picto{Name: name, Img: p}
 		}
 		wg.Done()
 	}()

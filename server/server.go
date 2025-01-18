@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"gometeo/content"
 	"gometeo/crawl"
 	"gometeo/static"
 )
@@ -17,25 +18,25 @@ const (
 
 // StartSimple fetches data once and serve it forever
 func StartSimple(addr string, limit int) error {
-	var content *crawl.MeteoContent
+	var c *content.Meteo
 
 	// for dev/debug/test
 	if cacheServer {
-		content = crawl.LoadBlob(cacheFile)
+		c = content.LoadBlob(cacheFile)
 	}
 	// fetch data if cache is disabled or failed
 
-	if content == nil {
+	if c == nil {
 		var crawlerDone <-chan struct{}
-		content, crawlerDone = crawl.Start("/", limit, crawl.ModeOnce)
+		c, crawlerDone = crawl.Start("/", limit, crawl.ModeOnce)
 		<-crawlerDone // wait for all maps downloads to complete
 
 		// for dev/debug/test
 		if cacheServer {
-			content.SaveBlob(cacheFile)
+			c.SaveBlob(cacheFile)
 		}
 	}
-	_, serverDone := serveContent(addr, content)
+	_, serverDone := serveContent(addr, c)
 	// wait for server termination
 	return <-serverDone
 }
@@ -43,12 +44,10 @@ func StartSimple(addr string, limit int) error {
 // TODO add more crawl/serve/config options, maybe in a struct
 func Start(addr string, limit int) error {
 
-	var content *crawl.MeteoContent
-	var crawlerDone <-chan struct{}
-	content, crawlerDone = crawl.Start("/", limit, crawl.ModeForever)
-	defer content.Close()
+	c, crawlerDone := crawl.Start("/", limit, crawl.ModeForever)
+	defer c.Close()
 
-	srv, serverDone := serveContent(addr, content)
+	srv, serverDone := serveContent(addr, c)
 	defer srv.Close()
 
 	// block until either server or crawler terminates
@@ -61,18 +60,18 @@ func Start(addr string, limit int) error {
 	return nil
 }
 
-func makeMeteoHandler(content *crawl.MeteoContent) http.Handler {
+func makeMeteoHandler(mc *content.Meteo) http.Handler {
 	mux := http.NewServeMux()
 	static.Register(mux)
-	content.Register(mux)
+	mux.Handle("/", mc)
 	hdl := withLogging(mux)
 	return hdl
 }
 
-func serveContent(addr string, content *crawl.MeteoContent) (*http.Server, <-chan error) {
+func serveContent(addr string, mc *content.Meteo) (*http.Server, <-chan error) {
 	srv := http.Server{
 		Addr:    addr,
-		Handler: makeMeteoHandler(content),
+		Handler: makeMeteoHandler(mc),
 	}
 	ch := make(chan error)
 	go func() {
