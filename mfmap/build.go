@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"text/template"
 	"time"
 )
@@ -25,10 +26,8 @@ type (
 		Chroniques Graphdata   `json:"chroniques"`
 	}
 
-	PrevList map[Jour]PrevsAtDay
-
 	// relative day from "today" (-1:yesterday, +1 tomorrow, ...)
-	Jour int
+	PrevList map[int]PrevsAtDay
 
 	// data for a day, to be displayed as a row of 4 moments
 	// use pointers so unavailable entries can be nil
@@ -57,7 +56,18 @@ type (
 	// Prevlist key is a composite type
 	Echeance struct {
 		Moment MomentName
-		Day    time.Time // yyyy-mm-dd @ 00-00-00 UTC
+		Date   Date // yyyy-mm-dd @ 00-00-00 UTC
+	}
+
+	Date struct {
+		Year  int
+		Month time.Month
+		Day   int
+	}
+
+	// implemented by Daily and Forecast types
+	Echeancer interface {
+		Echeance() Echeance
 	}
 )
 
@@ -252,19 +262,24 @@ func (pad *PrevsAtDay) getMomentPtr(e Echeance, prevTime, updateTime time.Time) 
 	return momPtr
 }
 
-func (prev *Forecast) getEcheance() Echeance {
-
-	// build an Echeance to use as PrevList key
+func (prev Forecast) Echeance() Echeance {
 	year, month, day := prev.Time.Date()
 	// "night" moment is equal or after midnight, but displayed with previous day
 	if prev.Moment == nightStr {
 		day -= 1
 	}
-	e := Echeance{
+	return Echeance{
 		Moment: prev.Moment,
-		Day:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
+		Date:   Date{Day: day, Month: month, Year: year},
 	}
-	return e
+}
+
+func (d Daily) Echeance() Echeance {
+	year, month, day := d.Time.Date()
+	return Echeance{
+		Moment: "daily",
+		Date:   Date{Day: day, Month: month, Year: year},
+	}
 }
 
 // byEcheance reshapes original data (poi->echeance) into a
@@ -285,12 +300,11 @@ func (mf MultiforecastData) byEcheance() (PrevList, error) {
 		for j := range *prevs {
 
 			prev := &((*prevs)[j])
-			e := prev.getEcheance()
-			jour := e.DaysFrom(time.Now())
+			e := prev.Echeance()
+			jour := e.Date.DaysFromNow()
 
-			// pl[j] is not directly adressable, so we work on a local struct,
-			// copy is OK because pad struct contains just 4 pointers.
-			// we update pl[j] map entry at loop end.
+			// pl[j] not directly adressable, so we work on a temp copy
+			// pl[j] is updated (replaced) at the end of the loop
 			pad, ok := pl[jour]
 			if !ok {
 				pad = PrevsAtDay{}
@@ -299,7 +313,7 @@ func (mf MultiforecastData) byEcheance() (PrevList, error) {
 			momPtr := pad.getMomentPtr(e, prev.Time, updateTime)
 
 			// get daily prev for the day/poi
-			daily := mf.findDaily(insee, e.Day)
+			daily := mf.findDaily(insee, e.Date)
 			if daily == nil {
 				log.Default().Printf("Missing daily data for id=%s (%s) echeance %s",
 					insee, name, e)
@@ -322,10 +336,19 @@ func (mf MultiforecastData) byEcheance() (PrevList, error) {
 }
 
 func (e Echeance) String() string {
-	return fmt.Sprintf("%s %s",
-		e.Day.Format(time.DateOnly),
-		e.Moment,
-	)
+	return fmt.Sprintf("%s %s", e.Date, e.Moment)
+}
+
+func (d Date) String() string {
+	return d.asTime().Format(time.DateOnly)
+}
+
+func (d Date) asTime() time.Time {
+	return time.Date(d.Year, d.Month, d.Day, 0, 0, 0, 0, time.UTC)
+}
+
+func NewDate(t time.Time) Date {
+	return Date{Year: t.Year(), Month: t.Month(), Day: t.Day()}
 }
 
 // MarshalText marshals an Echeance (composite type) to a json object key (string)
@@ -334,15 +357,19 @@ func (e Echeance) MarshalText() (text []byte, err error) {
 	return []byte(e.String()), nil
 }
 
-// RelDay is the number of days since "now"; may be negative for past Echeances
-// used to decide on which "row" of the map is displayed
-// now : only year, month and days are considered,
-// hours/minutes/seconds and timezone are discarded.
-func (e Echeance) DaysFrom(now time.Time) Jour {
-	year, month, day := now.Date()
-	today := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
-	d := e.Day.Sub(today).Round(24*time.Hour).Hours() / 24
-	return Jour(d)
+// Sub() returns duration in calendar days from Date ref
+// used to decide on which row the map will be displayed
+func (d Date) Sub(ref Date) int {
+	t1 := d.asTime()
+	t2 := ref.asTime()
+	diff := t1.Sub(t2).Round(24*time.Hour).Hours() / 24
+	return int(math.Round(diff))
+}
+
+func (d Date) DaysFromNow() int {
+	// TODO : Paramétrer un décalage du changement de date par rapport à 00h00 UTC
+	today := NewDate(time.Now())
+	return d.Sub(today)
 }
 
 // toChroniques() formats Multiforecastdata into Graphdata
@@ -388,8 +415,9 @@ func (c Chronique) truncateAfter(t time.Time) Chronique {
 	return ret
 }
 
-func (mf *MultiforecastData) findDaily(id codeInsee, day time.Time) *Daily {
-	for _, feat := range *mf {
+func (mf MultiforecastData) findDaily(id codeInsee, date Date) *Daily {
+	day := date.asTime()
+	for _, feat := range mf {
 		if feat.Properties.Insee != id {
 			continue
 		}

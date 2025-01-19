@@ -47,6 +47,8 @@ type pictoStore struct {
 	mutex sync.Mutex
 }
 
+const KEEP_PAST_DAYS = 2
+
 // NewContent() returns an empty MeteoContent
 func New() *Meteo {
 	return &Meteo{
@@ -99,7 +101,7 @@ func (mc *Meteo) ReceiveMaps(ch <-chan *mfmap.MfMap) <-chan struct{} {
 	go func() {
 		defer close(done)
 		for m := range ch {
-			mc.maps.update(m)
+			mc.maps.update(m, KEEP_PAST_DAYS)
 			mc.rebuildMux()
 		}
 	}()
@@ -136,17 +138,20 @@ func (mc *Meteo) rebuildMux() {
 	mc.mux.setMux(newMux) // concurrent-safe accessor
 }
 
-// update() adds or replace a map in the store.
-// also updates breadcrumbs from other maps in the store
-func (ms *mapStore) update(m *mfmap.MfMap) {
+// update()  adds or replace a map in the store.
+// Updates breadcrumbs from other maps in the store.
+// Takes ownership of m
+func (ms *mapStore) update(m *mfmap.MfMap, pastDays int) {
 	// TODO: keep few days of past forecasts
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 
 	path := m.Path()
-	old := ms.store[path]
-	merged := mfmap.Merge(old, m)
-	ms.store[m.Path()] = merged
+	old, ok := ms.store[path]
+	if ok {
+		m.MergeOld(old, pastDays)
+	}
+	ms.store[m.Path()] = m
 	// rebuild all breadcrumbs is not optimal
 	for name := range ms.store {
 		ms.buildBreadcrumbs(name)
@@ -164,8 +169,8 @@ func (ms *mapStore) buildBreadcrumbs(path string) {
 		return // non fatal, abort without any modification
 	}
 
-	// max depth is 3 but lets allocate 5 to be sure
-	bc := make(mfmap.Breadcrumb, 0, 5)
+	// max depth is 3 France/Region/Dept
+	bc := make(mfmap.Breadcrumb, 0, 3)
 	cur := m
 	for {
 		bc = append(bc, mfmap.BreadcrumbItem{

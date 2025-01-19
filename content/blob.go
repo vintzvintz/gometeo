@@ -31,7 +31,7 @@ func LoadBlob(fname string) *Meteo {
 	}
 	mc := New()
 	for _, m := range blob.Maps {
-		mc.maps.update(m)
+		mc.maps.update(m, -1)
 	}
 	for _, p := range blob.Pictos {
 		mc.pictos.update(p)

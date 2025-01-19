@@ -60,33 +60,35 @@ func TestToChronique(t *testing.T) {
 func TestEcheanceString(t *testing.T) {
 	m := morningStr
 	d, _ := time.Parse(time.RFC3339, "2024-12-02T15:51:12.000Z")
-	e := Echeance{MomentName(m), d}
-	want := fmt.Sprintf("%4d-%02d-%02d %s", d.Year(), d.Month(), d.Day(), m)
+	e := Echeance{Date: NewDate(d), Moment: MomentName(m)}
 
+	want := fmt.Sprintf("%4d-%02d-%02d %s", d.Year(), d.Month(), d.Day(), m)
 	got := e.String()
 	if got != want {
 		t.Errorf("Echeance.String()='%s' want '%s'", got, want)
 	}
 }
 
-func TestDaysFrom(t *testing.T) {
-	now := time.Date(2024, 12, 28, 0, 0, 0, 0, time.UTC)
+func TestDateSub(t *testing.T) {
+	now := Date{2024, 12, 28}
 	tests := []struct {
-		e    Echeance
-		want Jour
+		y int
+		m int
+		d int
+		want int
 	}{
-		{e: Echeance{Day: time.Date(2024, 12, 26, 0, 0, 0, 0, time.UTC)}, want: -2},
-		{e: Echeance{Day: time.Date(2024, 12, 27, 0, 0, 0, 0, time.UTC)}, want: -1},
-		{e: Echeance{Day: time.Date(2024, 12, 28, 0, 0, 0, 0, time.UTC)}, want: 0},
-		{e: Echeance{Day: time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)}, want: 3},
-		{e: Echeance{Day: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}, want: 4},
-		{e: Echeance{Day: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)}, want: 5},
-		{e: Echeance{Day: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, want: 365 + 4},
+		{ y: 2024, m: 12, d: 20, want: -8},
+		{ y: 2024, m: 12, d: 27, want: -1},
+		{ y: 2024, m: 12, d: 28, want: 0},
+		{ y: 2025, m: 1, d: 1, want: 4},
+		{ y: 2025, m: 1, d: 2, want: 5},
+		{ y: 2026, m: 1, d: 1, want: 365+4},
 	}
-	for i, test := range tests {
-		got := test.e.DaysFrom(now)
+	for _, test := range tests {
+		d := Date{Year:test.y, Month:time.Month(test.m), Day:test.d}
+		got := d.Sub(now)
 		if got != test.want {
-			t.Errorf("DaysFrom() test #%d : %s -> %s got %d want %d", i, now, test.e, got, test.want)
+			t.Errorf("DaysFrom() test : (%s)-(%s) got %d want %d", d, now, got, test.want)
 		}
 	}
 }
@@ -100,7 +102,7 @@ func TestFindDaily(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := mf.findDaily(id, ech)
+	d := mf.findDaily(id, NewDate(ech))
 	if d == nil {
 		t.Fatalf("FindDaily() did not found daily forecast for location '%s' at '%s'", id, ech)
 	}
