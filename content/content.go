@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"slices"
 	"sync"
-	"unicode/utf8"
 
 	"gometeo/mfmap"
 )
@@ -188,37 +187,11 @@ func (ms *mapStore) register(mux *http.ServeMux) {
 	mux.Handle("/statusse", ms.makeStatusHandler())
 }
 
-func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
-	return func(resp http.ResponseWriter, _ *http.Request) {
-		ms.mutex.Lock()
-		defer ms.mutex.Unlock()
-
-		// sort keys by name for displaying maps in constant ordre
-		var names = make([]string, 0, len(ms.store))
-		var maxLen int
-		for k := range ms.store {
-			names = append(names, k)
-			// also finds max length
-			n := utf8.RuneCountInString(k)
-			if n > maxLen {
-				maxLen = n
-			}
-		}
-		slices.Sort(names)
-		b := &bytes.Buffer{}
-		for _, name := range names {
-			m := ms.store[name]
-			b.WriteString(m.Stats().Format(maxLen))
-		}
-		io.Copy(resp, b)
-	}
-}
-
 func (ms *mapStore) updatable() (path string) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 	for _, m := range ms.store {
-		if m.NeedUpdate() {
+		if m.DurationToUpdate() <= 0 {
 			return m.OriginalPath
 		}
 	}

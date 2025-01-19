@@ -36,14 +36,14 @@ func TestHitCountRace(t *testing.T) {
 
 func TestLogUpdate(t *testing.T) {
 	m := MfMap{}
-	before := m.NeedUpdate()
-	if !before {
-		t.Error("ShouldUpdate() on zero-valued map must be true")
+	dur := m.DurationToUpdate()
+	if dur > 0 {
+		t.Error("DurationToUpdate() on zero-valued map expected negative")
 	}
 	m.LogUpdate()
-	after := m.NeedUpdate()
-	if after {
-		t.Error("ShouldUpdate() on just-updated map must be false")
+	dur = m.DurationToUpdate()
+	if dur < 0  {
+		t.Error("DurationToUpdate() on just-updated map must be positive")
 	}
 }
 
@@ -88,9 +88,9 @@ func TestNeedUpdate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			m.stats.lastUpdate.Store(test.update)
 			m.stats.lastHit.Store(test.hit)
-			got := m.NeedUpdate()
+			got := m.DurationToUpdate() < 0
 			if got != test.want {
-				t.Errorf("ShouldUpdate() got %v, want %v", got, test.want)
+				t.Errorf("DurationToUpdate()<0 got %v, want %v", got, test.want)
 			}
 		})
 	}

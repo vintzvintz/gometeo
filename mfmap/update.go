@@ -2,10 +2,8 @@ package mfmap
 
 import (
 	"fmt"
-	"strings"
 	"sync/atomic"
 	"time"
-	"unicode/utf8"
 )
 
 type atomicStats struct {
@@ -15,29 +13,43 @@ type atomicStats struct {
 }
 
 type Stats struct {
-	name       string
-	lastUpdate time.Time
-	lastHit    time.Time
-	hitCount   int64
+	Name       string
+	LastUpdate time.Time
+	LastHit    time.Time
+	NextUpdate time.Duration
+	UpdateMode UpdateMode
+	HitCount   int64
 }
+
+type UpdateMode int
+
+const (
+	UPDATE_SLOW UpdateMode = iota
+	UPDATE_FAST
+)
 
 const (
 	fastModeDuration = 3 * 24 * time.Hour // duration of fast update after last hit
-//	fastModeMaxAge   = 30*time.Second
-//	slowModeMaxAge   = 30*time.Second
-	fastModeMaxAge   = 30 * time.Minute
-	slowModeMaxAge   = 4 * time.Hour
+	fastModeMaxAge   = 30 * time.Second
+	slowModeMaxAge   = 30 * time.Second
+	//fastModeMaxAge = 30 * time.Minute
+	//slowModeMaxAge = 4 * time.Hour
 )
 
 func (m *MfMap) Stats() Stats {
-	// return a static copy of atomic data
-
 	return Stats{
-		name:       m.Name(),
-		hitCount:   m.stats.hitCount.Load(),
-		lastHit:    time.Unix(m.stats.lastHit.Load(), 0),
-		lastUpdate: time.Unix(m.stats.lastUpdate.Load(), 0),
+		Name:       m.Name(),
+		HitCount:   m.HitCount(),
+		UpdateMode: m.UpdateMode(),
+		LastHit:    m.LastHit(),
+		LastUpdate: m.LastUpdate(),
+		NextUpdate: m.DurationToUpdate(),
 	}
+}
+
+func (s Stats) String() string {
+	return fmt.Sprintf("%s mode:%d lastUpdate:%v lastHit:%v hitCount:%d\n",
+		s.Name, s.UpdateMode, s.LastUpdate, s.LastHit, s.HitCount)
 }
 
 func (m *MfMap) LogUpdate() {
@@ -55,38 +67,32 @@ func (m *MfMap) LastHit() time.Time {
 	return time.Unix(m.stats.lastHit.Load(), 0)
 }
 
+func (m *MfMap) LastUpdate() time.Time {
+	return time.Unix(m.stats.lastUpdate.Load(), 0)
+}
+
 func (m *MfMap) HitCount() int64 {
 	return m.stats.hitCount.Load()
 }
 
-func (m *MfMap) NeedUpdate() bool {
-	updateAge := time.Since(time.Unix(m.stats.lastUpdate.Load(), 0))
-	hitAge := time.Since(time.Unix(m.stats.lastHit.Load(), 0))
-	if hitAge < fastModeDuration {
-		return updateAge > fastModeMaxAge
+func (m *MfMap) UpdateMode() UpdateMode {
+	hitAge := time.Since(m.LastHit())
+	switch {
+	case hitAge < fastModeDuration:
+		return UPDATE_FAST
+	default:
+		return UPDATE_SLOW
 	}
-	return updateAge > slowModeMaxAge
 }
 
-func (s Stats) String() string {
-	return fmt.Sprintf("%s lastUpdate:%v lastHit:%v hitCount:%d\n",
-		s.name, s.lastUpdate, s.lastHit, s.hitCount)
-}
-
-func (s Stats) Format(nameWidth int) string {
-	// start with map name
-	b := strings.Builder{}
-	b.WriteString(s.name)
-	// append space padding
-	n := max(0, nameWidth-utf8.RuneCountInString(s.name))
-	b.WriteString(strings.Repeat(" ", n))
-	// append counters values
-	b.WriteString(fmt.Sprintf(
-		" lastUpdate:%v\tlastHit:%v", s.lastUpdate, s.lastHit))
-
-	if s.hitCount > 0 {
-		b.WriteString(fmt.Sprintf(" hitCount:%d", s.hitCount))
+func (m *MfMap) DurationToUpdate() time.Duration {
+	updateAge := time.Since(m.LastUpdate())
+	switch m.UpdateMode() {
+	case UPDATE_FAST:
+		return fastModeMaxAge - updateAge
+	case UPDATE_SLOW:
+		fallthrough
+	default:
+		return slowModeMaxAge - updateAge
 	}
-	b.WriteByte('\n')
-	return b.String()
 }
