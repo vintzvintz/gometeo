@@ -76,6 +76,7 @@ func (sz Subzones) filterSubzones(taxonomy string) {
 	for id := range sz {
 		if !re.MatchString(id) {
 			delete(sz, id)
+			// TODO verbose
 			log.Printf("ignore subzone %s", id)
 		}
 	}

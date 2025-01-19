@@ -95,7 +95,7 @@ func TestFindDaily(t *testing.T) {
 	mf := makeMultiforecast(t)
 
 	// these values must be updated after a change in test_data...
-	id := CodeInsee("751010") // "name": "Paris—1er Arrondissement"
+	id := codeInsee("751010") // "name": "Paris—1er Arrondissement"
 	ech, err := time.Parse(time.RFC3339, "2025-01-02T00:00:00.000Z")
 	if err != nil {
 		t.Fatal(err)

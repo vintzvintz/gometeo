@@ -40,7 +40,7 @@ type MfProperties struct {
 	Country   countryFr  `json:"country"`
 	Dept      string     `json:"french_department"`
 	Timezone  tzParis    `json:"timezone"`
-	Insee     CodeInsee  `json:"insee"`
+	Insee     codeInsee  `json:"insee"`
 	Altitude  int        `json:"altitude"`
 	Forecasts []Forecast `json:"forecast"`
 	Dailies   []Daily    `json:"daily_forecast"`
@@ -83,7 +83,7 @@ type (
 	tzParis               string
 	countryFr             string
 	MomentName            string
-	CodeInsee             string
+	codeInsee             string
 )
 
 var (
@@ -214,7 +214,7 @@ func (c *Coordinates) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]float64{c.Lng, c.Lat})
 }
 
-func (code *CodeInsee) UnmarshalJSON(b []byte) error {
+func (code *codeInsee) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return fmt.Errorf("code insee unmarshal error: %w", err)
@@ -222,7 +222,7 @@ func (code *CodeInsee) UnmarshalJSON(b []byte) error {
 	if len(s) < codeInseeMinLen {
 		return fmt.Errorf("code insee '%s' length=%d, expected >= %d bytes", s, len(s), codeInseeMinLen)
 	}
-	*code = CodeInsee(s)
+	*code = codeInsee(s)
 	return nil
 }
 

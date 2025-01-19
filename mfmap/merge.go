@@ -3,8 +3,10 @@ package mfmap
 import "log"
 
 
-func (m *MfMap)Merge(new *MfMap) *MfMap {
-	log.Printf("Merge() m=%s new=%s", m.Path(), new.Path())
+func Merge(old, new *MfMap) *MfMap {
+	if old == nil {
+		return new
+	}
+	log.Printf("Merge() old=%s new=%s", old.Path(), new.Path())
 	return new
-
 }

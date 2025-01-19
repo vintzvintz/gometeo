@@ -1,7 +1,6 @@
 package mfmap
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -10,15 +9,6 @@ type atomicStats struct {
 	lastUpdate atomic.Int64 // unix time, casted to time.Time by accessors
 	lastHit    atomic.Int64 // unix time, casted to time.Time by accessors
 	hitCount   atomic.Int64 // simple counter
-}
-
-type Stats struct {
-	Name       string
-	LastUpdate time.Time
-	LastHit    time.Time
-	NextUpdate time.Duration
-	UpdateMode UpdateMode
-	HitCount   int64
 }
 
 type UpdateMode int
@@ -30,27 +20,11 @@ const (
 
 const (
 	fastModeDuration = 3 * 24 * time.Hour // duration of fast update after last hit
-	fastModeMaxAge   = 30 * time.Second
-	slowModeMaxAge   = 30 * time.Second
+	fastModeMaxAge   = 10 * time.Second
+	slowModeMaxAge   = 10 * time.Second
 	//fastModeMaxAge = 30 * time.Minute
 	//slowModeMaxAge = 4 * time.Hour
 )
-
-func (m *MfMap) Stats() Stats {
-	return Stats{
-		Name:       m.Name(),
-		HitCount:   m.HitCount(),
-		UpdateMode: m.UpdateMode(),
-		LastHit:    m.LastHit(),
-		LastUpdate: m.LastUpdate(),
-		NextUpdate: m.DurationToUpdate(),
-	}
-}
-
-func (s Stats) String() string {
-	return fmt.Sprintf("%s mode:%d lastUpdate:%v lastHit:%v hitCount:%d\n",
-		s.Name, s.UpdateMode, s.LastUpdate, s.LastHit, s.HitCount)
-}
 
 func (m *MfMap) LogUpdate() {
 	now := time.Now().Unix()

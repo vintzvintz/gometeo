@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"sync"
+	"time"
 
 	"gometeo/mfmap"
 )
@@ -142,7 +143,10 @@ func (ms *mapStore) update(m *mfmap.MfMap) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 
-	ms.store[m.Path()] = m
+	path := m.Path()
+	old := ms.store[path]
+	merged := mfmap.Merge(old, m)
+	ms.store[m.Path()] = merged
 	// rebuild all breadcrumbs is not optimal
 	for name := range ms.store {
 		ms.buildBreadcrumbs(name)
@@ -187,12 +191,17 @@ func (ms *mapStore) register(mux *http.ServeMux) {
 	mux.Handle("/statusse", ms.makeStatusHandler())
 }
 
+// returns map with the highest negative delay to update
 func (ms *mapStore) updatable() (path string) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
+
+	var min time.Duration
 	for _, m := range ms.store {
-		if m.DurationToUpdate() <= 0 {
-			return m.OriginalPath
+		d := m.DurationToUpdate()
+		if d <= min {
+			min = d
+			path = m.OriginalPath
 		}
 	}
 	return

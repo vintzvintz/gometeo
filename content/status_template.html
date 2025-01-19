@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application status</title>
+  <!--    <link rel="stylesheet" href="style.css"> -->
+</head>
+
+<body>
+  <table>
+    <tr>
+      <th>Carte</th>
+      <th>Hits</th>
+      <th>Mode</th>
+      <th>Next update</th>
+    </tr>
+    {{range .}}
+    <tr>
+      <td>{{ .Name}}</td>
+      <td>{{ .HitCount}}</td>
+      <td>{{ .UpdateMode}}</td>
+      <td>{{ .NextUpdate}}</td>
+    </tr>
+    {{end}}
+  </table>
+</body>
+
+</html>

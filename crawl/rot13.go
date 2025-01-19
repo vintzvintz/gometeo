@@ -21,8 +21,7 @@ func rot13(r byte) byte {
 	}
 }
 
-// Read() reads bytes from underliying r13.r
-// and applies rot13 transformation
+// Read() reads bytes from r13 and applies rot13 transformation
 func (r13 rot13Reader) Read(buf []byte) (int, error) {
 	// fill buffer
 	n, err := r13.r.Read(buf)

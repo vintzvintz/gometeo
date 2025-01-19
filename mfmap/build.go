@@ -388,7 +388,7 @@ func (c Chronique) truncateAfter(t time.Time) Chronique {
 	return ret
 }
 
-func (mf *MultiforecastData) findDaily(id CodeInsee, day time.Time) *Daily {
+func (mf *MultiforecastData) findDaily(id codeInsee, day time.Time) *Daily {
 	for _, feat := range *mf {
 		if feat.Properties.Insee != id {
 			continue

@@ -146,7 +146,7 @@ func (cl *Client) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%s on '%s'", resp.Status, resp.Request.URL)
 	}
-	//log.Printf("request '%s' %d", resp.Request.URL, resp.StatusCode)
+	// log.Printf("request '%s' %d", resp.Request.URL, resp.StatusCode)
 	// met à jour le token de session
 	err = cl.updateAuthToken(resp)
 	if err != nil {

@@ -16,7 +16,8 @@ const (
 	cacheFile   = "./content_cache.gob"
 )
 
-// StartSimple fetches data once and serve it forever
+// StartSimple fetches data once (no updates) 
+// and serve it forever when done
 func StartSimple(addr string, limit int) error {
 	var c *content.Meteo
 
@@ -25,7 +26,6 @@ func StartSimple(addr string, limit int) error {
 		c = content.LoadBlob(cacheFile)
 	}
 	// fetch data if cache is disabled or failed
-
 	if c == nil {
 		var crawlerDone <-chan struct{}
 		c, crawlerDone = crawl.Start("/", limit, crawl.ModeOnce)

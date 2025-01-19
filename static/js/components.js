@@ -264,7 +264,7 @@ export const MapGridComponent = {
     function displayedJours() {
       const ret = []
       if (typeof props.data.prevs !== 'undefined') {
-        for (var i = -1; i < 2; i++) {
+        for (var i = -1; i < 4; i++) {
           if (Object.hasOwn(props.data.prevs, i)) {
             ret.push(props.data.prevs[i])
           }
