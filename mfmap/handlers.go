@@ -55,7 +55,7 @@ func (m *MfMap) makeDataHandler() func(http.ResponseWriter, *http.Request) {
 		}
 		// update on data handler (JSON request) instead of main handler 
 		// to allow main page caching and avoid simplest bots
-		m.LogHit()  
+		m.MarkHit()  
 	}
 }
 

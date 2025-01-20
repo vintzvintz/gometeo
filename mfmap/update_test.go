@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestHitCountRace(t *testing.T) {
+func TestAtomicRace(t *testing.T) {
 	m := MfMap{}
 	var wg sync.WaitGroup
 	start := make(chan struct{})
@@ -18,10 +18,11 @@ func TestHitCountRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start // wait for start signal
-			m.LogHit()
+			m.MarkHit()
+			m.MarkUpdate()
 		}()
 	}
-	// start all goroutines for massive hitting !
+	// unleach all goroutines for a massive attack !
 	close(start)
 	// wait for hitting to complete
 	wg.Wait()
@@ -40,7 +41,7 @@ func TestLogUpdate(t *testing.T) {
 	if dur > 0 {
 		t.Error("DurationToUpdate() on zero-valued map expected negative")
 	}
-	m.LogUpdate()
+	m.MarkUpdate()
 	dur = m.DurationToUpdate()
 	if dur < 0  {
 		t.Error("DurationToUpdate() on just-updated map must be positive")

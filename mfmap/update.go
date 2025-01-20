@@ -20,18 +20,18 @@ const (
 
 const (
 	fastModeDuration = 3 * 24 * time.Hour // duration of fast update after last hit
-	fastModeMaxAge   = 10 * time.Second
-	slowModeMaxAge   = 10 * time.Second
+	fastModeMaxAge   = 600 * time.Second
+	slowModeMaxAge   = 3600 * time.Second
 	//fastModeMaxAge = 30 * time.Minute
 	//slowModeMaxAge = 4 * time.Hour
 )
 
-func (m *MfMap) LogUpdate() {
+func (m *MfMap) MarkUpdate() {
 	now := time.Now().Unix()
 	m.stats.lastUpdate.Store(now)
 }
 
-func (m *MfMap) LogHit() {
+func (m *MfMap) MarkHit() {
 	now := time.Now().Unix()
 	m.stats.lastHit.Store(now)
 	m.stats.hitCount.Add(1)
