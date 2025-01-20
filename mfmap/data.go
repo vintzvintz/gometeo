@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"regexp"
 
@@ -77,7 +76,7 @@ func (sz Subzones) filterSubzones(taxonomy string) {
 		if !re.MatchString(id) {
 			delete(sz, id)
 			// TODO verbose
-			log.Printf("ignore subzone %s", id)
+			// log.Printf("ignore subzone %s", id)
 		}
 	}
 }

@@ -257,7 +257,7 @@ func parseMfCollection(r io.Reader) (*mfCollection, error) {
 // PictoNames() return a list of all pictos used on the map
 func (m *MfMap) PictoNames() []string {
 	pictos := make([]string, 0)
-	for _, feat := range (*m).Forecasts {
+	for _, feat := range m.Forecasts {
 		for _, prop := range feat.Properties.Forecasts {
 			pictos = append(pictos, prop.WeatherIcon, prop.WindIcon)
 		}

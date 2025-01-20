@@ -121,12 +121,13 @@ func (cr *Crawler) Fetch(startPath string, limit int) (
 			for _, sz := range m.Data.Subzones {
 				queue = append(queue, QueueItem{sz.Path, m.Path()})
 			}
-			// send map
-			chMap <- m
-
 			// donwload pictos
 			// cache will avoid multiple downloads of same a picto
 			cr.fetchPictos(m.PictoNames(), &wgPictos, chPicto)
+
+			// send map and drop pointer because ownership is transferred
+			chMap <- m
+			m = nil
 		}
 		// wait pictos completion, then close the channels (deferred)
 		wgPictos.Wait()
