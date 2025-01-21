@@ -62,6 +62,7 @@ type Forecast struct {
 	Hrel          int        `json:"relative_humidity"`
 	Pression      float64    `json:"P_sea"`
 	Confiance     int        `json:"weather_confidence_index"`
+	LongTerme     bool       `json:"long_term"`
 }
 
 type Daily struct {
@@ -132,6 +133,30 @@ func (m *MfMap) ParseMultiforecast(r io.Reader) error {
 		return err
 	}
 	m.Forecasts = fc.Features
+	return nil
+}
+
+// Unmarshall into a Forecast struct. Sets f.OnlyLT true
+// if incoming json fields T or wind_speed are null
+func (f *Forecast) UnmarshalJSON(data []byte) error {
+	// unmarshall into a temp var of diffent type to avoid infinite recursion
+	type RawForecast Forecast
+	rf := RawForecast{}
+	if err := json.Unmarshal(data, &rf); err != nil {
+		return err
+	}
+	*f = Forecast(rf)
+
+	// unmarshall sentinel fields as pointers to detect 'null' json values
+	testNull := struct {
+		Temp      *float64 `json:"T"`
+		WindSpeed *float64 `json:"wind_speed"`
+	}{}
+	if err := json.Unmarshal(data, &testNull); err != nil {
+		return err
+	}
+	// mark forecast as long-term only if basic data is mssing
+	f.LongTerme = (testNull.Temp == nil) || (testNull.WindSpeed == nil)
 	return nil
 }
 

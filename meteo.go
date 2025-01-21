@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	err := server.Start(":5151", 10)
+	err := server.StartSimple(":5151", 10)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)

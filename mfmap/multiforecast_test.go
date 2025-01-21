@@ -2,8 +2,8 @@ package mfmap_test
 
 import (
 	"fmt"
-	"gometeo/testutils"
 	"gometeo/mfmap"
+	"gometeo/testutils"
 	"regexp"
 	"slices"
 	"testing"
@@ -49,7 +49,8 @@ func TestForecastQuery(t *testing.T) {
 }
 
 func TestParseMultiforecast(t *testing.T) {
-	_ = testParseMultiforecast(t)
+	f := testParseMultiforecast(t)
+	checkLongTerme(t, f)
 }
 
 func testParseMultiforecast(t *testing.T) mfmap.MultiforecastData {
@@ -80,4 +81,17 @@ func TestPictoNames(t *testing.T) {
 	if slices.Contains[[]string, string](pics, "") {
 		t.Errorf("picto list contains an empty string : %v", pics)
 	}
+}
+
+// check long-term indicator on first and last element
+func checkLongTerme(t *testing.T, f mfmap.MultiforecastData) {
+
+	last := len(f[0].Properties.Forecasts) - 1
+	if f[0].Properties.Forecasts[last].LongTerme == false {
+		t.Error("long_terme has wrong value on last value")
+	}
+	if f[0].Properties.Forecasts[0].LongTerme == true {
+		t.Error("long_terme has wrong value on first element")
+	}
+
 }
