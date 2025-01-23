@@ -102,7 +102,7 @@ func TestFindDaily(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := mf.findDaily(id, NewDate(ech))
+	d := mf.findDaily(id, Echeance{Date:NewDate(ech)})
 	if d == nil {
 		t.Fatalf("FindDaily() did not found daily forecast for location '%s' at '%s'", id, ech)
 	}

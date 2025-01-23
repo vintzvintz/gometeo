@@ -62,7 +62,7 @@ type Forecast struct {
 	Hrel          int        `json:"relative_humidity"`
 	Pression      float64    `json:"P_sea"`
 	Confiance     int        `json:"weather_confidence_index"`
-	LongTerme     bool       `json:"long_term"`
+	LongTerme     bool       `json:"long_term"`  // calculated, not from upstream
 }
 
 type Daily struct {
@@ -76,7 +76,7 @@ type Daily struct {
 	WeatherDesc string    `json:"daily_weather_description"`
 }
 
-// custom types with runtime checks on unmarshalled values
+// custom types with runtime validation on unmarshalled data
 type (
 	FeatureCollectionType string
 	FeatureType           string
@@ -104,6 +104,7 @@ const (
 	afternoonStr = "après-midi"
 	eveningStr   = "soirée"
 	nightStr     = "nuit"
+	dailyStr     = "daily"
 )
 
 const (

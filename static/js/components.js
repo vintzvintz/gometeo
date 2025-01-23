@@ -264,7 +264,7 @@ export const MapGridComponent = {
     function displayedJours() {
       const ret = []
       if (typeof props.data.prevs !== 'undefined') {
-        for (var i = -1; i < 4; i++) {
+        for (var i = -50; i < 50; i++) {
           if (Object.hasOwn(props.data.prevs, i)) {
             ret.push(props.data.prevs[i])
           }
@@ -321,7 +321,7 @@ export const MapComponent = {
 
     // leaflet.Map object cannot be created before onMounted()
     // because DOM container element does not exist yet 
-    // keep references to leaflet objects for update/deletion upon user interaction
+    // keep references to leaflet objects for user interactions
     let lMap = null
     let lBounds = null
     let lMarkers = []

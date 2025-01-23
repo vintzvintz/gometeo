@@ -29,28 +29,23 @@ type (
 	// relative day from "today" (-1:yesterday, +1 tomorrow, ...)
 	PrevList map[int]PrevsAtDay
 
-	// data for a day, to be displayed as a row of 4 moments
-	// use pointers so unavailable entries can be nil
-	PrevsAtDay struct {
-		Matin     *PrevsAtMoment `json:"matin"`
-		AprèsMidi *PrevsAtMoment `json:"après-midi"`
-		Soiree    *PrevsAtMoment `json:"soirée"`
-		Nuit      *PrevsAtMoment `json:"nuit"`
-	}
+	// data for a day, to be displayed as a row of 4 moments or just a daily map
+	PrevsAtDay map[MomentName]PrevsAtMoment
 
 	// all available forecasts for a given point in time (moment + day)
 	PrevsAtMoment struct {
-		Time    time.Time   `json:"echeance"`
-		Updated time.Time   `json:"updated"`
-		Prevs   []PrevAtPoi `json:"prevs"`
+		Time    time.Time  `json:"echeance"`
+		Updated time.Time  `json:"updated"`
+		Prevs   PrevsAtPoi `json:"prevs"`
 	}
+
+	PrevsAtPoi map[codeInsee]PrevAtPoi
 
 	// forecast data for a single (poi, date) point
 	PrevAtPoi struct {
 		Title  string      `json:"titre"`
 		Coords Coordinates `json:"coords"`
-		Prev   *Forecast   `json:"prev"`
-		Daily  *Daily      `json:"daily"`
+		Prev   timeStamper `json:"prev"` //  *Forecast or *Daily
 	}
 
 	// Prevlist key is a composite type
@@ -90,11 +85,13 @@ type (
 	ValueTs interface {
 		json.Marshaler
 		Sub(time.Time) time.Duration
+		Echeance() Echeance
 	}
 
 	// timeStamper yields TsValues from a specified 'series' name'
 	timeStamper interface {
 		withTimestamp(series string) (ValueTs, error)
+		timestamp() time.Time
 	}
 
 	FloatTs struct {
@@ -132,8 +129,7 @@ func init() {
 }
 
 // series in Forecasts objects
-
-const chroniqueLimitHours = 8 * 24 * time.Hour
+const chroniqueMaxDays = 12
 
 const (
 	Temperature   = "T"
@@ -228,40 +224,6 @@ func (m *MfMap) BuildJson() (*JsonMap, error) {
 	return &j, nil
 }
 
-// momPtr simplifies and reduce duplication of the switch
-func (pad *PrevsAtDay) getMomentPtr(e Echeance, prevTime, updateTime time.Time) **PrevsAtMoment {
-	var momPtr **PrevsAtMoment
-	switch e.Moment {
-	case morningStr:
-		momPtr = &pad.Matin
-	case afternoonStr:
-		momPtr = &pad.AprèsMidi
-	case eveningStr:
-		momPtr = &pad.Soiree
-	case nightStr:
-		momPtr = &pad.Nuit
-	default:
-		log.Panicf("invalid moment %s ", e.Moment)
-	}
-
-	// create Prev@Moment struct / slice on first pass
-	if *momPtr == nil {
-		*momPtr = &PrevsAtMoment{
-			Time:    prevTime,
-			Updated: updateTime,
-			Prevs:   []PrevAtPoi{},
-		}
-	} else {
-		// warns if echeances are not unique for different POIs
-		// on a same day/moment key
-		if (*momPtr).Time != prevTime {
-			log.Default().Printf("Inconsistent times for [%s] '%s' != '%s'",
-				e, (*momPtr).Time, prevTime)
-		}
-	}
-	return momPtr
-}
-
 func (prev Forecast) Echeance() Echeance {
 	year, month, day := prev.Time.Date()
 	// "night" moment is equal or after midnight, but displayed with previous day
@@ -282,57 +244,89 @@ func (d Daily) Echeance() Echeance {
 	}
 }
 
+type featInfo struct {
+	coords     Coordinates
+	name       string
+	insee      codeInsee
+	updateTime time.Time
+}
+
 // byEcheance reshapes original data (poi->echeance) into a
 // jour->moment->poi structure
-// TODO: improve handling of incomplete/invalid mutliforecast ?
+// TODO: improve handling of incomplete/invalid mutliforecast
 func (mf MultiforecastData) byEcheance() (PrevList, error) {
 	pl := make(PrevList)
 
 	// iterate over POIs, known as "Features" in json data
 	for i := range mf {
-		prevs := &(mf[i].Properties.Forecasts)
-		coords := mf[i].Geometry.Coords
-		name := mf[i].Properties.Name
-		insee := mf[i].Properties.Insee
-		updateTime := mf[i].UpdateTime
+		forecasts := mf[i].Properties.Forecasts
+		fi := featInfo{
+			coords:     mf[i].Geometry.Coords,
+			name:       mf[i].Properties.Name,
+			insee:      mf[i].Properties.Insee,
+			updateTime: mf[i].UpdateTime,
+		}
 
 		// iterate over echeances
-		for j := range *prevs {
+		for j := range forecasts {
+			f := &(forecasts[j])
+			e := f.Echeance()
+			jour := e.Date.DaysFromNow() // relative number of days from today
 
-			prev := &((*prevs)[j])
-			e := prev.Echeance()
-			jour := e.Date.DaysFromNow()
-
-			// pl[j] not directly adressable, so we work on a temp copy
-			// pl[j] is updated (replaced) at the end of the loop
-			pad, ok := pl[jour]
-			if !ok {
+			// create PrevAtDay struct on first pass
+			pad := pl[jour]
+			if pad == nil {
 				pad = PrevsAtDay{}
+				// pad is a map , not a local copy
+				// mutations of pad are mirrored in pl[jour]
+				pl[jour] = pad
 			}
 
-			momPtr := pad.getMomentPtr(e, prev.Time, updateTime)
+			// inject daily prev into pad
+			pad.processPrev(dailyStr, fi, func() timeStamper {
+				d := mf.findDaily(fi.insee, e)
+				if d == nil {
+					log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
+				}
+				return d
+			})
 
-			// get daily prev for the day/poi
-			daily := mf.findDaily(insee, e.Date)
-			if daily == nil {
-				log.Default().Printf("Missing daily data for id=%s (%s) echeance %s",
-					insee, name, e)
-			}
-
-			// wrap forecast and daily together and append to the time-serie of current poi
-			pap := PrevAtPoi{
-				Title:  name,
-				Coords: coords,
-				Prev:   prev,
-				Daily:  daily,
-			}
-			(*momPtr).Prevs = append((*momPtr).Prevs, pap)
-
-			// update Prevs@Day in PrevList map
-			pl[jour] = pad
+			// inject Forecast into pad
+			pad.processPrev(e.Moment, fi, func() timeStamper {
+				return f
+			})
 		}
 	}
 	return pl, nil
+}
+
+func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, prevFn func() timeStamper) {
+
+	// create daily PrevAtMoment struct on first pass
+	pam, ok := pad[m]
+	if !ok {
+		pam = PrevsAtMoment{
+			// all (most) maps have less than 50 geofeatures
+			Prevs: make(map[codeInsee]PrevAtPoi, 50),
+		}
+	}
+	// append daily for current POI, if not already present
+	// would be overwritten 4 times without this check
+	if _, ok := pam.Prevs[fi.insee]; !ok {
+		if prev := prevFn(); prev != nil {
+			// TODO warn is d.Time is not unique among other pam.Prevs values
+			pam.Time = prev.timestamp()
+			pam.Updated = fi.updateTime
+			pam.Prevs[fi.insee] = PrevAtPoi{
+				Title:  fi.name,
+				Coords: fi.coords,
+				Prev:   prev,
+			}
+		}
+	}
+	// pam is a local value of a PrevsAtMoment struct
+	// we have to write a copy back into PrevsAtDay map
+	pad[m] = pam
 }
 
 func (e Echeance) String() string {
@@ -377,7 +371,12 @@ func (d Date) DaysFromNow() int {
 func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 	g := Graphdata{}
 
-	limit := time.Now().Add(chroniqueLimitHours)
+	//limit := time.Now().Add(chroniqueLimitHours)
+
+	// define an Echeance after which data is truncated
+	date := NewDate(time.Now())
+	date.Day += int(chroniqueMaxDays)
+	limit := Echeance{Date: date, Moment: nightStr}
 
 	for i := range mf {
 		//lieu := mf[i].Properties.Insee
@@ -405,18 +404,18 @@ func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 	return g, nil
 }
 
-func (c Chronique) truncateAfter(t time.Time) Chronique {
+func (c Chronique) truncateAfter(e Echeance) Chronique {
 	ret := make(Chronique, 0, len(c))
 	for i := range c {
-		if c[i].Sub(t) < 0 {
+		if c[i].Sub(e.Date.asTime()) < 0 {
 			ret = append(ret, c[i])
 		}
 	}
 	return ret
 }
 
-func (mf MultiforecastData) findDaily(id codeInsee, date Date) *Daily {
-	day := date.asTime()
+func (mf MultiforecastData) findDaily(id codeInsee, e Echeance) *Daily {
+	day := e.Date.asTime()
 	for _, feat := range mf {
 		if feat.Properties.Insee != id {
 			continue
@@ -436,7 +435,6 @@ func (mf MultiforecastData) findDaily(id codeInsee, date Date) *Daily {
 // * series: names of fields to extract from input forecast data
 func getChroniquesPoi[T timeStamper](forecasts []T, series []string) (map[string]Chronique, error) {
 	ret := map[string]Chronique{}
-
 seriesLoop:
 	// iterate over series names ( T, Tmax, etc... )
 	for _, nom := range series {
@@ -458,6 +456,10 @@ seriesLoop:
 		ret[nom] = chro
 	}
 	return ret, nil
+}
+
+func (f Forecast) timestamp() time.Time {
+	return f.Time
 }
 
 func (f Forecast) withTimestamp(data string) (ValueTs, error) {
@@ -484,6 +486,10 @@ func (f Forecast) withTimestamp(data string) (ValueTs, error) {
 	}
 }
 
+func (d Daily) timestamp() time.Time {
+	return d.Time
+}
+
 func (d Daily) withTimestamp(data string) (ValueTs, error) {
 	ts := d.Time
 	switch data {
@@ -506,13 +512,6 @@ func timeToJs(t time.Time) int64 {
 	return int64(t.Sub(jsEpoch) / time.Millisecond)
 }
 
-// 4 prevs of a day are marshalled into an array (ordered)
-// instead of object (unordered) to avoid client-side sorting/grouping
-func (pad PrevsAtDay) MarshalJSON() ([]byte, error) {
-	a := []*PrevsAtMoment{pad.Matin, pad.AprèsMidi, pad.Soiree, pad.Nuit}
-	return json.Marshal(a)
-}
-
 // MarshalJSON outputs a timestamped float as an array [ts, val]
 func (v FloatTs) MarshalJSON() ([]byte, error) {
 	s := fmt.Sprintf("[%d, %f]", timeToJs(v.ts), v.val)
@@ -531,4 +530,12 @@ func (v IntTs) Sub(t time.Time) time.Duration {
 
 func (v FloatTs) Sub(t time.Time) time.Duration {
 	return v.ts.Sub(t)
+}
+
+func (v IntTs) Echeance() Echeance {
+	return Echeance{}
+}
+
+func (v FloatTs) Echeance() Echeance {
+	return Echeance{}
 }
