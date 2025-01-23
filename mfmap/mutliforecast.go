@@ -47,6 +47,8 @@ type MfProperties struct {
 }
 
 type Forecast struct {
+
+	// fields directly unmarshalled from upstream forecast object
 	Moment        MomentName `json:"moment_day"`
 	Time          time.Time  `json:"time"`
 	T             float64    `json:"T"`
@@ -62,10 +64,23 @@ type Forecast struct {
 	Hrel          int        `json:"relative_humidity"`
 	Pression      float64    `json:"P_sea"`
 	Confiance     int        `json:"weather_confidence_index"`
-	LongTerme     bool       `json:"long_term"`  // calculated, not from upstream
+
+	// Calculated field
+	LongTerme bool `json:"long_terme"`
+
+	// Additional fields, filled from upstream daily in BuildJSON()
+	// bundling this data simplifies front-end logic by
+	// - not sending daily as as separate object
+	// - most logic for regular vs long-term stays server-side
+	Tmin float64 `json:"T_min"`
+	Tmax float64 `json:"T_max"`
+	Hmin int     `json:"relative_humidity_min"`
+	Hmax int     `json:"relative_humidity_max"`
+	Uv   int     `json:"uv_index"`
 }
 
 type Daily struct {
+	// upstream fields
 	Time        time.Time `json:"time"`
 	Tmin        float64   `json:"T_min"`
 	Tmax        float64   `json:"T_max"`
@@ -74,6 +89,9 @@ type Daily struct {
 	Uv          int       `json:"uv_index"`
 	WeatherIcon string    `json:"daily_weather_icon"`
 	WeatherDesc string    `json:"daily_weather_description"`
+
+	// calculated field sent to client
+	LongTerme bool `json:"long_terme"`
 }
 
 // custom types with runtime validation on unmarshalled data
@@ -106,6 +124,9 @@ const (
 	nightStr     = "nuit"
 	dailyStr     = "daily"
 )
+
+// momentsStr is an alias for the 4 moments, not including 'daily"
+var momentsStr = []MomentName{morningStr, afternoonStr, eveningStr, nightStr}
 
 const (
 	apiMultiforecast = "/multiforecast"
@@ -158,6 +179,21 @@ func (f *Forecast) UnmarshalJSON(data []byte) error {
 	}
 	// mark forecast as long-term only if basic data is mssing
 	f.LongTerme = (testNull.Temp == nil) || (testNull.WindSpeed == nil)
+	return nil
+}
+
+// Unmarshall into a Forecast struct. Sets f.OnlyLT true
+// if incoming json fields T or wind_speed are null
+func (d *Daily) UnmarshalJSON(data []byte) error {
+	// unmarshall into a temp var of diffent type to avoid infinite recursion
+	type RawDaily Daily
+	rd := RawDaily{}
+	if err := json.Unmarshal(data, &rd); err != nil {
+		return err
+	}
+	*d = Daily(rd)
+	// daily always displayed as "long-term"
+	d.LongTerme = true
 	return nil
 }
 

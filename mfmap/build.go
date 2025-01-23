@@ -36,10 +36,10 @@ type (
 	PrevsAtMoment struct {
 		Time    time.Time  `json:"echeance"`
 		Updated time.Time  `json:"updated"`
-		Prevs   PrevsAtPoi `json:"prevs"`
+		Prevs   PrevsAtPois `json:"prevs"`
 	}
 
-	PrevsAtPoi map[codeInsee]PrevAtPoi
+	PrevsAtPois map[codeInsee]PrevAtPoi
 
 	// forecast data for a single (poi, moment) point
 	PrevAtPoi struct {
@@ -282,25 +282,18 @@ func (mf MultiforecastData) byEcheance() (PrevList, error) {
 				pl[jour] = pad
 			}
 
-			// inject Daily prev into PrevAtDay
+			// accumulate Daily prev into PrevAtDay
 			d := mf.findDaily(fi.insee, e)
 			if d == nil {
 				log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
 			}
 			pad.processPrev(dailyStr, fi, d)
-			/* func() timeStamper {
-				d := mf.findDaily(fi.insee, e)
-				if d == nil {
-					log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
-				}
-				return d
-			})*/
 
-			// inject Forecast into PrevAtDay
+			// accumulate Forecast into PrevAtDay
 			pad.processPrev(e.Moment, fi, f)
 		}
 	}
-	return pl, nil
+	return prepareRows(pl), nil
 }
 
 func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, prev timeStamper) {
@@ -329,6 +322,110 @@ func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, prev timeStamper) {
 	// pam is a local value of a PrevsAtMoment struct
 	// we have to write a copy back into PrevsAtDay map
 	pad[m] = pam
+}
+
+// prepareRows reshapes PrevList for display
+// this should be done by frontend but javascript sucks
+func prepareRows(pl PrevList) (PrevList) {
+	ret := make(PrevList)
+
+	for j := range pl {
+
+		pad := make(PrevsAtDay)
+
+		// find dailies for relative day j
+		dailies, ok := pl[j][dailyStr]
+		if !ok {
+			log.Printf("données journalières manquantes jour %d", j)
+			continue
+		}
+next_moment:
+		for _, moment := range momentsStr {
+
+			pam, ok := pl[j][moment]
+			// skip missing moments
+			if !ok {
+				continue next_moment
+			}
+
+			// merge daily data into each moment/POI (inner join with dailies)
+			for insee, pap := range pam.Prevs {
+				f,ok := pap.Prev.(*Forecast)
+				if !ok {
+					log.Printf("timeStamper interface value has unexpected type, should be Forecast")
+					continue
+				}
+
+				// skip long term forecasts,
+				// instead, we will simply add the daily map at the end of "jour" loop
+				if f.LongTerme {
+					continue next_moment
+				}
+
+				// retrieve daily and convert in concrete type to access field
+				d, ok := dailies.Prevs[insee]
+				if !ok {
+					log.Printf("données journalières manquantes jour %d codeInsee %s", j, insee)
+					continue
+				}
+				daily, ok  := d.Prev.(*Daily)
+				if !ok {
+					log.Printf("timeStamper interface value has unexpected type, should be Daily")
+					continue
+				}
+
+				// add daily data into regular moment forecasts
+				f.Tmin = daily.Tmin
+				f.Tmax = daily.Tmax
+				f.Hmin = daily.Hmin
+				f.Hmax = daily.Hmax
+				f.Uv   = daily.Uv
+				if( f.LongTerme ) {
+					f.WeatherDesc = daily.WeatherDesc
+					f.WeatherIcon = daily.WeatherIcon
+				}
+				// replace forecast item in prevsAtMoment map
+				pap.Prev = f
+				pam.Prevs[insee] = pap
+			}
+			pad[moment] = pam
+		}
+		// [long term] just send daily map if no moments are available
+		if len(pad)==0 {
+			pad[dailyStr] = dailies
+		}
+		ret[j] = pad
+	}
+	return ret
+}
+
+// marshal map into a json array, missing moments are replaced by null
+func (prevs PrevsAtDay) MarshalJSON() ([]byte, error) {
+	tmp := []PrevsAtMoment{}
+	skipDaily := false
+	// missing moments in prevs are replaced by null in marshalled output
+	for _, m := range momentsStr {
+		pam, ok := prevs[m]
+		tmp  = append(tmp,  pam )
+		skipDaily = skipDaily || ok
+	}
+
+	// discard regular maps and send only daily data (long-term)
+	if !skipDaily {
+		pam := prevs[dailyStr]
+		// TODO handle missing value
+		tmp = []PrevsAtMoment{ pam }
+	}
+	return json.Marshal( tmp )
+}
+
+// marshal map into a json array, codeInsee is not used by frontend
+func (prevs PrevsAtPois) MarshalJSON() ([]byte, error) {
+	tmp := make( []PrevAtPoi, 0, len(prevs) )
+	for _, p := range prevs {
+		tmp = append( tmp, p )
+	}
+	return json.Marshal(tmp)
 }
 
 func (e Echeance) String() string {
