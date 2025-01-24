@@ -41,7 +41,7 @@ type (
 
 	PrevsAtPoi map[codeInsee]PrevAtPoi
 
-	// forecast data for a single (poi, date) point
+	// forecast data for a single (poi, moment) point
 	PrevAtPoi struct {
 		Title  string      `json:"titre"`
 		Coords Coordinates `json:"coords"`
@@ -282,25 +282,28 @@ func (mf MultiforecastData) byEcheance() (PrevList, error) {
 				pl[jour] = pad
 			}
 
-			// inject daily prev into pad
-			pad.processPrev(dailyStr, fi, func() timeStamper {
+			// inject Daily prev into PrevAtDay
+			d := mf.findDaily(fi.insee, e)
+			if d == nil {
+				log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
+			}
+			pad.processPrev(dailyStr, fi, d)
+			/* func() timeStamper {
 				d := mf.findDaily(fi.insee, e)
 				if d == nil {
 					log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
 				}
 				return d
-			})
+			})*/
 
-			// inject Forecast into pad
-			pad.processPrev(e.Moment, fi, func() timeStamper {
-				return f
-			})
+			// inject Forecast into PrevAtDay
+			pad.processPrev(e.Moment, fi, f)
 		}
 	}
 	return pl, nil
 }
 
-func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, prevFn func() timeStamper) {
+func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, prev timeStamper) {
 
 	// create daily PrevAtMoment struct on first pass
 	pam, ok := pad[m]
@@ -312,18 +315,17 @@ func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, prevFn func() timeS
 	}
 	// append daily for current POI, if not already present
 	// would be overwritten 4 times without this check
-	if _, ok := pam.Prevs[fi.insee]; !ok {
-		if prev := prevFn(); prev != nil {
-			// TODO warn is d.Time is not unique among other pam.Prevs values
-			pam.Time = prev.timestamp()
-			pam.Updated = fi.updateTime
-			pam.Prevs[fi.insee] = PrevAtPoi{
-				Title:  fi.name,
-				Coords: fi.coords,
-				Prev:   prev,
-			}
+	if _, ok := pam.Prevs[fi.insee]; !ok && prev != nil {
+		// TODO warn is d.Time is not unique among other pam.Prevs values
+		pam.Time = prev.timestamp()
+		pam.Updated = fi.updateTime
+		pam.Prevs[fi.insee] = PrevAtPoi{
+			Title:  fi.name,
+			Coords: fi.coords,
+			Prev:   prev,
 		}
 	}
+
 	// pam is a local value of a PrevsAtMoment struct
 	// we have to write a copy back into PrevsAtDay map
 	pad[m] = pam
