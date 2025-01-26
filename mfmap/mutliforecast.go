@@ -47,8 +47,6 @@ type MfProperties struct {
 }
 
 type Forecast struct {
-
-	// fields directly unmarshalled from upstream forecast object
 	Moment        MomentName `json:"moment_day"`
 	Time          time.Time  `json:"time"`
 	T             float64    `json:"T"`
@@ -64,23 +62,12 @@ type Forecast struct {
 	Hrel          int        `json:"relative_humidity"`
 	Pression      float64    `json:"P_sea"`
 	Confiance     int        `json:"weather_confidence_index"`
-
+	
 	// Calculated field
 	LongTerme bool `json:"long_terme"`
-
-	// Additional fields, filled from upstream daily in BuildJSON()
-	// bundling this data simplifies front-end logic by
-	// - not sending daily as as separate object
-	// - most logic for regular vs long-term stays server-side
-	Tmin float64 `json:"T_min"`
-	Tmax float64 `json:"T_max"`
-	Hmin int     `json:"relative_humidity_min"`
-	Hmax int     `json:"relative_humidity_max"`
-	Uv   int     `json:"uv_index"`
 }
 
 type Daily struct {
-	// upstream fields
 	Time        time.Time `json:"time"`
 	Tmin        float64   `json:"T_min"`
 	Tmax        float64   `json:"T_max"`
@@ -91,7 +78,7 @@ type Daily struct {
 	WeatherDesc string    `json:"daily_weather_description"`
 
 	// calculated field sent to client
-	LongTerme bool `json:"long_terme"`
+	//LongTerme bool `json:"long_terme"`
 }
 
 // custom types with runtime validation on unmarshalled data
@@ -184,7 +171,7 @@ func (f *Forecast) UnmarshalJSON(data []byte) error {
 
 // Unmarshall into a Forecast struct. Sets f.OnlyLT true
 // if incoming json fields T or wind_speed are null
-func (d *Daily) UnmarshalJSON(data []byte) error {
+/*func (d *Daily) UnmarshalJSON(data []byte) error {
 	// unmarshall into a temp var of diffent type to avoid infinite recursion
 	type RawDaily Daily
 	rd := RawDaily{}
@@ -195,7 +182,7 @@ func (d *Daily) UnmarshalJSON(data []byte) error {
 	// daily always displayed as "long-term"
 	d.LongTerme = true
 	return nil
-}
+}*/
 
 func unmarshalStringValidate(b []byte, want *regexp.Regexp, name string) (string, error) {
 	var s string

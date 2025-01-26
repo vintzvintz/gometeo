@@ -14,6 +14,8 @@ import (
 )
 
 type (
+	// TODO : try to make this type private and use only handler factories
+	// as output API of mfmap package
 	JsonMap struct {
 		Name       string      `json:"name"`
 		Path       string      `json:"path"`
@@ -29,13 +31,18 @@ type (
 	// relative day from "today" (-1:yesterday, +1 tomorrow, ...)
 	PrevList map[int]PrevsAtDay
 
+	ForecastBuild struct {
+		f *Forecast
+		d *Daily
+	}
+
 	// data for a day, to be displayed as a row of 4 moments or just a daily map
 	PrevsAtDay map[MomentName]PrevsAtMoment
 
 	// all available forecasts for a given point in time (moment + day)
 	PrevsAtMoment struct {
-		Time    time.Time  `json:"echeance"`
-		Updated time.Time  `json:"updated"`
+		Time    time.Time   `json:"echeance"`
+		Updated time.Time   `json:"updated"`
 		Prevs   PrevsAtPois `json:"prevs"`
 	}
 
@@ -43,9 +50,9 @@ type (
 
 	// forecast data for a single (poi, moment) point
 	PrevAtPoi struct {
-		Title  string      `json:"titre"`
-		Coords Coordinates `json:"coords"`
-		Prev   timeStamper `json:"prev"` //  *Forecast or *Daily
+		Title  string        `json:"titre"`
+		Coords Coordinates   `json:"coords"`
+		Prev   ForecastBuild `json:"prev"` //  *Forecast + *Daily
 	}
 
 	// Prevlist key is a composite type
@@ -91,7 +98,7 @@ type (
 	// timeStamper yields TsValues from a specified 'series' name'
 	timeStamper interface {
 		withTimestamp(series string) (ValueTs, error)
-		timestamp() time.Time
+		//timestamp() time.Time
 	}
 
 	FloatTs struct {
@@ -252,7 +259,7 @@ type featInfo struct {
 }
 
 // byEcheance reshapes original data (poi->echeance) into a
-// jour->moment->poi structure
+// reversed jour->moment->poi structure
 // TODO: improve handling of incomplete/invalid mutliforecast
 func (mf MultiforecastData) byEcheance() (PrevList, error) {
 	pl := make(PrevList)
@@ -287,36 +294,36 @@ func (mf MultiforecastData) byEcheance() (PrevList, error) {
 			if d == nil {
 				log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
 			}
-			pad.processPrev(dailyStr, fi, d)
+			pad.processPrev(dailyStr, fi, ForecastBuild{nil, d})
 
 			// accumulate Forecast into PrevAtDay
-			pad.processPrev(e.Moment, fi, f)
+			pad.processPrev(e.Moment, fi, ForecastBuild{f, d})
 		}
 	}
-	return prepareRows(pl), nil
+	return pl, nil
 }
 
-func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, prev timeStamper) {
+func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, fb ForecastBuild) {
 
 	// create daily PrevAtMoment struct on first pass
 	pam, ok := pad[m]
 	if !ok {
 		pam = PrevsAtMoment{
 			// all (most) maps have less than 50 geofeatures
-			Prevs: make(map[codeInsee]PrevAtPoi, 50),
+			Prevs: make(PrevsAtPois, 50),
 		}
 	}
-	// append daily for current POI, if not already present
-	// would be overwritten 4 times without this check
-	if _, ok := pam.Prevs[fi.insee]; !ok && prev != nil {
-		// TODO warn is d.Time is not unique among other pam.Prevs values
-		pam.Time = prev.timestamp()
-		pam.Updated = fi.updateTime
-		pam.Prevs[fi.insee] = PrevAtPoi{
-			Title:  fi.name,
-			Coords: fi.coords,
-			Prev:   prev,
-		}
+	// TODO warn is d.Time is not unique among other pam.Prevs
+	if fb.f != nil {
+		pam.Time = fb.f.Time
+	} else if fb.d != nil {
+		pam.Time = fb.d.Time
+	}
+	pam.Updated = fi.updateTime
+	pam.Prevs[fi.insee] = PrevAtPoi{
+		Title:  fi.name,
+		Coords: fi.coords,
+		Prev:   fb,
 	}
 
 	// pam is a local value of a PrevsAtMoment struct
@@ -324,106 +331,236 @@ func (pad PrevsAtDay) processPrev(m MomentName, fi featInfo, prev timeStamper) {
 	pad[m] = pam
 }
 
-// prepareRows reshapes PrevList for display
-// this should be done by frontend but javascript sucks
-func prepareRows(pl PrevList) (PrevList) {
-	ret := make(PrevList)
+/*
+// filterLongTErm keeps only daily maps if regular maps are not available
+// in 2024 long-terme means > J+10
+func (pl PrevList)filterLongTerm() {
+	isLt := map[int]bool
+}
+*/
 
-	for j := range pl {
+/*
+// prepareRows reshapes PrevList into a structure of ForecastBuild elements
 
-		pad := make(PrevsAtDay)
+	func prepareRows(pl PrevList) prevRows {
+		ret := make(prevRows)
 
-		// find dailies for relative day j
-		dailies, ok := pl[j][dailyStr]
-		if !ok {
-			log.Printf("données journalières manquantes jour %d", j)
-			continue
-		}
-next_moment:
-		for _, moment := range momentsStr {
+		for j := range pl {
 
-			pam, ok := pl[j][moment]
-			// skip missing moments
+			pr := make(prevRow, 4) // up to 4 items : matin/am/soir/nuit
+
+			// find dailies for relative day j
+			dailies, ok := pl[j][dailyStr]
 			if !ok {
-				continue next_moment
+				log.Printf("données journalières manquantes jour %d", j)
+				continue
 			}
+		next_moment:
+			for _, moment := range momentsStr {
 
-			// merge daily data into each moment/POI (inner join with dailies)
-			for insee, pap := range pam.Prevs {
-				f,ok := pap.Prev.(*Forecast)
+				pam, ok := pl[j][moment]
+				// skip missing moments
 				if !ok {
-					log.Printf("timeStamper interface value has unexpected type, should be Forecast")
-					continue
-				}
-
-				// skip long term forecasts,
-				// instead, we will simply add the daily map at the end of "jour" loop
-				if f.LongTerme {
 					continue next_moment
 				}
 
-				// retrieve daily and convert in concrete type to access field
-				d, ok := dailies.Prevs[insee]
-				if !ok {
-					log.Printf("données journalières manquantes jour %d codeInsee %s", j, insee)
-					continue
-				}
-				daily, ok  := d.Prev.(*Daily)
-				if !ok {
-					log.Printf("timeStamper interface value has unexpected type, should be Daily")
-					continue
-				}
+				// wrap every Forecast with its daily into a ForecastBuild
+				// and push into current prevRow
+				for insee, pap := range pam.Prevs {
+					f, ok := pap.Prev.(*Forecast)
+					if !ok {
+						log.Printf("timeStamper interface value has unexpected type, should be Forecast")
+						continue
+					}
 
-				// add daily data into regular moment forecasts
-				f.Tmin = daily.Tmin
-				f.Tmax = daily.Tmax
-				f.Hmin = daily.Hmin
-				f.Hmax = daily.Hmax
-				f.Uv   = daily.Uv
-				if( f.LongTerme ) {
-					f.WeatherDesc = daily.WeatherDesc
-					f.WeatherIcon = daily.WeatherIcon
+					// skip long term forecasts,
+					// instead, we will simply add the daily map at the end of "jour" loop
+					if f.LongTerme {
+						continue next_moment
+					}
+
+					// retrieve daily and convert in concrete type to access field
+					d, ok := dailies.Prevs[insee]
+					if !ok {
+						log.Printf("données journalières manquantes jour %d codeInsee %s", j, insee)
+						continue
+					}
+					daily, ok := d.Prev.(*Daily)
+					if !ok {
+						log.Printf("timeStamper interface value has unexpected type, should be Daily")
+						continue
+					}
+
+					fb := ForecastBuild{
+						f: f,
+						d: daily,
+					}
+					pr = append(pr, fb)
+
 				}
-				// replace forecast item in prevsAtMoment map
-				pap.Prev = f
-				pam.Prevs[insee] = pap
+				pad[moment] = pam
 			}
-			pad[moment] = pam
+			// [long term] just send daily map if no moments are available
+			if len(pad) == 0 {
+				pad[dailyStr] = dailies
+			}
+			ret[j] = pr
 		}
-		// [long term] just send daily map if no moments are available
-		if len(pad)==0 {
-			pad[dailyStr] = dailies
-		}
-		ret[j] = pad
+		return ret
 	}
-	return ret
+*/
+func (fb ForecastBuild) MarshalJSON() ([]byte, error) {
+
+	type marshallPrev struct {
+		// from Forecast
+		// TODO : omitempty and pointer types
+		Moment        MomentName `json:"moment_day"`
+		Time          time.Time  `json:"time"`
+		T             float64    `json:"T"`
+		TWindchill    float64    `json:"T_windchill"`
+		WindSpeed     int        `json:"wind_speed"`
+		WindSpeedGust int        `json:"wind_speed_gust"`
+		WindDirection int        `json:"wind_direction"`
+		WindIcon      string     `json:"wind_icon"`
+		//Iso0          int        `json:"iso0"`
+		CloudCover  int     `json:"total_cloud_cover"`
+		WeatherIcon string  `json:"weather_icon"`
+		WeatherDesc string  `json:"weather_description"`
+		Hrel        int     `json:"relative_humidity"`
+		Pression    float64 `json:"P_sea"`
+		Confiance   int     `json:"weather_confidence_index"`
+
+		// from Daily
+		//Time   time.Time `json:"time"`
+		Tmin float64 `json:"T_min"`
+		Tmax float64 `json:"T_max"`
+		Hmin int     `json:"relative_humidity_min"`
+		Hmax int     `json:"relative_humidity_max"`
+		Uv   int     `json:"uv_index"`
+		//WeatherIcon string    `json:"daily_weather_icon"`
+		//WeatherDesc string    `json:"daily_weather_description"`
+
+		LongTerme bool `json:"long_terme"`
+	}
+
+	// alias
+	f, d := fb.f, fb.d
+
+	// basic init with fields for the Daily version (long-term)
+	obj := marshallPrev{
+		Time:        d.Time,
+		Tmin:        d.Tmin,
+		Tmax:        d.Tmax,
+		Hmin:        d.Hmin,
+		Hmax:        d.Hmax,
+		Uv:          d.Uv,
+		WeatherIcon: d.WeatherIcon,
+		WeatherDesc: d.WeatherDesc,
+		LongTerme:   true,
+	}
+	// updates for the reguar version
+	if f != nil && !f.LongTerme {
+		obj.LongTerme = false
+		obj.Moment = f.Moment
+		obj.Time = f.Time /// overwrites long term
+		obj.T = f.T
+		obj.TWindchill = f.TWindchill
+		obj.WindSpeed = f.WindSpeed
+		obj.WindSpeedGust = f.WindSpeedGust
+		obj.WindDirection = f.WindDirection
+		obj.WindIcon = f.WindIcon
+		obj.CloudCover = f.CloudCover
+		obj.WeatherIcon = f.WeatherIcon // overwrites long term
+		obj.WeatherDesc = f.WeatherDesc // overwrites long term
+		obj.Hrel = f.Hrel
+		obj.Pression = f.Pression
+		obj.Confiance = f.Confiance
+	}
+	return json.Marshal(obj)
 }
 
-// marshal map into a json array, missing moments are replaced by null
+// marshal maps for a day into a json array
+// either 1 single daily map, or 4 matin/am/soir/nuit maps
+// missing maps (for example missing history) are filled by a JSON null value
 func (prevs PrevsAtDay) MarshalJSON() ([]byte, error) {
 	tmp := []PrevsAtMoment{}
-	skipDaily := false
-	// missing moments in prevs are replaced by null in marshalled output
+
+	var momCourt, momLong int
+	//var nbMissing, nbOther int
+
 	for _, m := range momentsStr {
 		pam, ok := prevs[m]
-		tmp  = append(tmp,  pam )
-		skipDaily = skipDaily || ok
+		// ignore ok to replace missing moments by nulls in json output
+		tmp = append(tmp, pam)
+
+		if ok {
+			switch pam.terme() {
+			case termeCourt:
+				momCourt++
+			case termeTendance:
+				momLong++
+			//default:
+			//	nbOther++
+			}
+		//} else {
+		//	nbMissing++
+		}
 	}
 
-	// discard regular maps and send only daily data (long-term)
-	if !skipDaily {
+	// discard regular maps for the day if at least one map is long-term
+	if momLong > 0 {
 		pam := prevs[dailyStr]
-		// TODO handle missing value
-		tmp = []PrevsAtMoment{ pam }
+		// TODO handle missing daily value
+		tmp = []PrevsAtMoment{pam}
 	}
-	return json.Marshal( tmp )
+	return json.Marshal(tmp)
+}
+
+type prevTerme int
+
+const (
+	termeUnknown prevTerme = iota
+	termeTendance
+	termeCourt
+	//termeHistory
+)
+
+// determines if a moment is normal, long-term, or unknown
+func (pam PrevsAtMoment) terme() prevTerme {
+	var poiLong, poiCourt int
+	for _, p := range pam.Prevs {
+		if p.Prev.f == nil {
+			continue
+		}
+		if p.Prev.f.LongTerme {
+			poiLong++
+		} else {
+			poiCourt++
+		}
+	}
+	// normal situations
+	if (poiCourt == 0) && (poiLong > 0) {
+		return termeTendance
+	}
+	if (poiCourt > 0) && (poiLong == 0) {
+		return termeCourt
+	}
+
+	// unexpected situations
+	if (poiCourt > 0) && (poiLong > 0) {
+		log.Printf("mélange court/long terme entre différents POI au moment %v", pam.Time)
+	}
+	if (poiCourt == 0) && (poiLong == 0) {
+		log.Printf("aucune donnée disponible au moment %v", pam.Time)
+	}
+	return termeUnknown
 }
 
 // marshal map into a json array, codeInsee is not used by frontend
 func (prevs PrevsAtPois) MarshalJSON() ([]byte, error) {
-	tmp := make( []PrevAtPoi, 0, len(prevs) )
+	tmp := make([]PrevAtPoi, 0, len(prevs))
 	for _, p := range prevs {
-		tmp = append( tmp, p )
+		tmp = append(tmp, p)
 	}
 	return json.Marshal(tmp)
 }
@@ -556,11 +693,11 @@ seriesLoop:
 	}
 	return ret, nil
 }
-
+/*
 func (f Forecast) timestamp() time.Time {
 	return f.Time
 }
-
+*/
 func (f Forecast) withTimestamp(data string) (ValueTs, error) {
 	ts := f.Time
 	switch data {
@@ -584,11 +721,11 @@ func (f Forecast) withTimestamp(data string) (ValueTs, error) {
 		return nil, ErrNoSuchData
 	}
 }
-
+/*
 func (d Daily) timestamp() time.Time {
 	return d.Time
 }
-
+*/
 func (d Daily) withTimestamp(data string) (ValueTs, error) {
 	ts := d.Time
 	switch data {
