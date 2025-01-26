@@ -170,7 +170,7 @@ func (ms *mapStore) buildBreadcrumbs(path string) {
 	}
 
 	// max depth is 3 France/Region/Dept
-	bc := make(mfmap.Breadcrumb, 0, 3)
+	bc := make(mfmap.Breadcrumbs, 0, 3)
 	cur := m
 	for {
 		bc = append(bc, mfmap.BreadcrumbItem{

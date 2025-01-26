@@ -169,20 +169,6 @@ func (f *Forecast) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Unmarshall into a Forecast struct. Sets f.OnlyLT true
-// if incoming json fields T or wind_speed are null
-/*func (d *Daily) UnmarshalJSON(data []byte) error {
-	// unmarshall into a temp var of diffent type to avoid infinite recursion
-	type RawDaily Daily
-	rd := RawDaily{}
-	if err := json.Unmarshal(data, &rd); err != nil {
-		return err
-	}
-	*d = Daily(rd)
-	// daily always displayed as "long-term"
-	d.LongTerme = true
-	return nil
-}*/
 
 func unmarshalStringValidate(b []byte, want *regexp.Regexp, name string) (string, error) {
 	var s string

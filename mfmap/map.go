@@ -29,11 +29,20 @@ type MfMap struct {
 
 	// breadcrumb is built by recursive parent lookup in MapCollection
 	Parent     string
-	Breadcrumb Breadcrumb
+	Breadcrumb Breadcrumbs
 
 	// unexported - use concurrence-safe accessors instead
 	stats atomicStats
 }
+
+type (
+	BreadcrumbItem struct {
+		Nom  string `json:"nom"`
+		Path string `json:"path"`
+	}
+
+	Breadcrumbs []BreadcrumbItem
+)
 
 func (m *MfMap) ParseHtml(html io.Reader) error {
 	j, err := htmlFilter(html)
