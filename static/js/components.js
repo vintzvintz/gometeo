@@ -17,24 +17,31 @@ let dateFormatOpts = Intl.DateTimeFormat("fr-FR", {
 const weatherList = {
   "default": {
     text: "default",
+    maxDaysMap: 14,
   },
   "prev": {
     text: "Prévisions",
+    maxDaysMap: 14,
   },
   "vent": {
     text: "Vent",
+    maxDaysMap: 10,
   },
   "ress": {
     text: "Ressenti",
+    maxDaysMap: 10,
   },
   "humi": {
     text: "Humidité",
+    maxDaysMap: 10,
   },
   "psea": {
     text: "Pression",
+    maxDaysMap: 10,
   },
   "uv": {
     text: "UV",
+    maxDaysMap: 10,
   }
 }
 
@@ -50,11 +57,6 @@ export const RootComponent = {
   },
 
   setup(props) {
-
-    onMounted(() => {
-      fetchMapdata()
-      observeBodyWidth()
-    })
 
     // map data properties must be declared at component creation 
     // filled asynchronously by fetchMapdata() later
@@ -73,12 +75,12 @@ export const RootComponent = {
     const selections = reactive({
       tooltipsEnabled: true,
       activeWeather: "prev"
-      //activeTimespan: String("")
     })
 
-/*    watch(() => selections.tooltipsEnabled, () => {
-      console.log("tooltipsEnabled=" + selections.tooltipsEnabled)
-    })*/
+    onMounted(() => {
+      fetchMapdata()
+      observeBodyWidth()
+    })
 
     async function fetchMapdata() {
       console.log(`fetchMapdata() path=${props.path}`)
@@ -113,12 +115,11 @@ export const RootComponent = {
       selections.tooltipsEnabled = !selections.tooltipsEnabled   // reactive
     }
     function setTooltipsState(width) {
-      console.log("setTooltipsState() width", width)
       selections.tooltipsEnabled = tooltipsMinWidth < width // reactive
     }
 
-      // react to body.resize events
-      function observeBodyWidth() {
+    // react to body.resize events
+    function observeBodyWidth() {
       const obs = new ResizeObserver((entries) => {
         for (let entry of entries) {
           if (entry.contentBoxSize) {
@@ -152,10 +153,6 @@ export const RootComponent = {
     :activeWeather="selections.activeWeather"
     @weatherSelected="onWeatherSelected" />
 
-<!--    <TooltipsToggler
-    :tooltipsEnabled="selections.tooltipsEnabled"
-    @toggleTooltips="onToggleTooltips"/> -->
-
     <HighchartComponent 
     v-if="mapData.chroniques != null "
     :activeWeather="selections.activeWeather"
@@ -165,7 +162,7 @@ export const RootComponent = {
 </header>
 <!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
 
-<!--   v-if="mapData.path!=null" -->
+
 <main class="content">
   <MapGridComponent
   :selections="selections"
@@ -222,33 +219,7 @@ export const WeatherPicker = {
   </a> 
 </div>`
 }
-/*
-export const TooltipsToggler = {
 
-  emits: ['toggleTooltips'],
-
-  props: {
-    tooltipsEnabled: Boolean,
-  },
-
-  setup(props) {
-  },
-
-  template: `
-<div id="tooltip_toggler"@click="$emit('toggleTooltips')">
-  <a :class="{active:tooltipsEnabled}" href="#">
-  Tooltips : {{tooltipsEnabled ? "Oui" : "Non"}}
-  </a>
-</div>`
-}
-*/
-/*
-export const TimespanPicker = {
-
-  template: `
-  <p>TimespanPicker component</p>`
-}
-*/
 
 export const MapGridComponent = {
 
@@ -261,27 +232,31 @@ export const MapGridComponent = {
 
   setup(props, ctx) {
 
-    function displayedJours() {
+    function displayedRows() {
+      let minDays = -1
+      let maxDays = weatherList[props.selections.activeWeather].maxDaysMap
       const ret = []
       if (typeof props.data.prevs !== 'undefined') {
-        for (var i = -50; i < 50; i++) {
+        for (var i = minDays; i < maxDays; i++) {
           if (Object.hasOwn(props.data.prevs, i)) {
-            ret.push(props.data.prevs[i])
+            let row = props.data.prevs[i]
+            row["jour"] = i
+            ret.push(row)
           }
         }
       }
       return ret
     }
 
-    return { displayedJours }
+    return { displayedRows }
   },
 
   template: /*html*/`
 <div class="maps-grid">
     <MapRowComponent
-    v-for="(jour, idx) in displayedJours()"
+    v-for="(row, idx) in displayedRows()"
     :key="idx"
-    :prevsDuJour="jour"
+    :row="row"
     :data="data"
     :selections="selections"/>
 </div>`
@@ -291,17 +266,28 @@ export const MapGridComponent = {
 export const MapRowComponent = {
 
   props: {
-    prevsDuJour: Array,
+    row: Object,
     data: Object,
     selections: Object,
   },
 
   setup(props) {
+
+    function rowTitle() {
+      if (!props.row.long_terme) {
+        return "J+" + props.row.jour
+      } else {
+        return "Tendance J+" + props.row.jour
+      }
+    }
+
+    return { rowTitle }
   },
 
   template: /*html*/`
+<div> {{ rowTitle() }} </div>
  <div class="maps-row">
-  <MapComponent v-for="(prev, idx) in prevsDuJour"
+  <MapComponent v-for="(prev, idx) in row.maps"
   :key="idx"
   :prev="prev"
   :data="data"
@@ -450,11 +436,8 @@ export const MapComponent = {
     }
 
 
-    function createMarker(poi, idx, all_prevs) {
-
-      // local aliases
-      const prev = poi.prev
-      const daily = poi.daily
+    function createMarker(poi, idx, all_pois) {
+      const prev = poi.prev        // alias
 
       // accumulate marker data for current poi
       const m = {
@@ -467,27 +450,17 @@ export const MapComponent = {
         //disabled: false,
         icon: prev.weather_icon,
         desc: prev.weather_description,
-        Tmin: Math.round(daily.T_min),
-        Tmax: Math.round(daily.T_max),
+        Tmin: Math.round(prev.T_min),
+        Tmax: Math.round(prev.T_max),
       }
 
-      // TODO: fallback on daily_weather_desc if weather_desc == null
-      // TODO: fallback on daily_weather_icon if prev.weather_icon == null
-
-      // 3 représentations possibles pour la temperature :
-      // - prev.T si disponible
-      // - sinon daily.tmin/tmax
-      // - sinon pas de marker
-      if (prev.T !== null) {
+      // représentation variable de la temperature selon prev.long_terme
+      if (!prev.long_terme) {
         // donnée court-terme en priorité si disponibles
         m.txt = Math.round(prev.T) + '°'
-      } else if (daily.T_min !== null && daily.T_max !== null) {
-        // donnée long-terme (dailies) 
+      } else {
         m.txt = ` <span class="tmin">${m.Tmin}°</span>/<span class="tmax">${m.Tmax}°</span>`
         m.icon_text_style = 'font-size: 12px;'
-      } else {
-        // pas de marker si temperature indisponible
-        return
       }
 
       // tooltip position
@@ -527,11 +500,8 @@ export const MapComponent = {
 
         // customisations pour les UV  
       } else if (w == "uv") {
-        if (daily.uv_index == null) {
-          return
-        }
         m.icon = "UV_" + prev.uv_index
-        m.txt = ""
+        m.txt = "index uv " + prev.uv_index
 
         // customisations pour la temp ressentie
       } else if (w == "ress") {
@@ -555,15 +525,13 @@ export const MapComponent = {
         }
         m.txt = prev.total_cloud_cover + "%"
 
-        // add an icon_text_style "font-size: 12px;" on min/max values
+        // customisation pour l'humidité relative
       } else if (w == "humi") {
-
         let hr_unit = "%";
-        if (prev.relative_humidity !== null) {
-          // court terme
+        // représentation variable court-terme / long-terme
+        if (!prev.long_terme) {
           m.txt = Math.round(prev.relative_humidity) + hr_unit
-        } else if (prev.relative_humidity_min !== null) {
-          // a long terme
+        } else {
           m.txt = `
           <span class="hr_min">
             ${Math.round(prev.relative_humidity_min)}${hr_unit}
@@ -571,8 +539,6 @@ export const MapComponent = {
             ${Math.round(prev.relative_humidity_max)}${hr_unit}
           </span>`
           m.icon_text_style = "font-size: 12px;"
-        } else {
-          return
         }
 
       } else if (w == "prev") {
@@ -765,7 +731,7 @@ export const HighchartComponent = {
         chart: {
           type: 'spline',
         },
-        accessibility:{
+        accessibility: {
           enabled: false,
         },
         plotOptions: {
