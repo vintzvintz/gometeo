@@ -77,15 +77,6 @@ section,
 summary,
 time,
 mark,
-audio,
-video {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font-size: 100%;
-  vertical-align: baseline;
-}
-
 article,
 aside,
 details,
@@ -199,7 +190,7 @@ ul {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  justify-content: space-around;
+  justify-content: start;
 }
 
 .titre_carte {

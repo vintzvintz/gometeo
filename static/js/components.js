@@ -6,14 +6,6 @@ function nextMapId() {
   return ++mapCount
 }
 
-let dateFormatOpts = Intl.DateTimeFormat("fr-FR", {
-  day: "numeric",
-  month: "long",
-  hour: 'numeric',
-  timeZone: "Europe/Paris"
-}).resolvedOptions()
-
-
 const weatherList = {
   "default": {
     text: "default",
@@ -233,7 +225,7 @@ export const MapGridComponent = {
   setup(props, ctx) {
 
     function displayedRows() {
-      let minDays = -1
+      let minDays = 0
       let maxDays = weatherList[props.selections.activeWeather].maxDaysMap
       const ret = []
       if (typeof props.data.prevs !== 'undefined') {
@@ -274,10 +266,12 @@ export const MapRowComponent = {
   setup(props) {
 
     function rowTitle() {
+      let weather = (typeof props.selections != null) ?
+         weatherList[props.selections.activeWeather].text : ""
       if (!props.row.long_terme) {
-        return "J+" + props.row.jour
+        return `${weather} J+${props.row.jour}`
       } else {
-        return "Tendance J+" + props.row.jour
+        return `Tendance J+${props.row.jour}`
       }
     }
 
@@ -612,26 +606,39 @@ export const MapComponent = {
 </div>`
     }
 
+
+    const updateDateOpts = Intl.DateTimeFormat("fr-FR", {
+      day: "numeric",
+      month: "short",
+      hour: 'numeric',
+      timeZone: "Europe/Paris"
+    }).resolvedOptions()
+
     // display update time in "attribution" leaflet pre-defined control
     function showUpdateDate() {
       //let updated = new Date(props.prev.updated)
       let txt = "Màj : " +
-        Intl.DateTimeFormat("fr-FR", dateFormatOpts)
+        Intl.DateTimeFormat("fr-FR", updateDateOpts)
           .format(new Date(props.prev.updated))
       lAttributionControl.setPrefix(txt)
     }
+
+
+    const titleDateOpts = Intl.DateTimeFormat("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: 'numeric',
+      timeZone: "Europe/Paris"
+    }).resolvedOptions()
 
     function mapTitle() {
       if (!props.prev) {
         return "indisponible"
       }
-      let moment = Intl.DateTimeFormat("fr-FR", dateFormatOpts)
+      return Intl.DateTimeFormat("fr-FR", titleDateOpts)
         .format(new Date(props.prev.echeance))
-      let weather = (typeof props.selections != null) ?
-        weatherList[props.selections.activeWeather].text : ""
-      return `${weather} ${moment}`
     }
-
 
     function updateTooltipsVisibility() {
       lMap && lMap.getPane('markerPane') &&

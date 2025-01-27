@@ -277,20 +277,23 @@ func (pad prevsAtDay) MarshalJSON() ([]byte, error) {
 
 	// local type for customizing PrevAtDay marshalling
 	type marshallRow struct {
-		LongTerme bool            `json:"long_terme"`
-		Maps      []prevsAtMoment `json:"maps"`
+		LongTerme bool             `json:"long_terme"`
+		Maps      []*prevsAtMoment `json:"maps"` // pointer is nil for missing moments
 	}
 	row := marshallRow{
 		// LongTerme: false
-		Maps: make([]prevsAtMoment, 0, 4),
+		Maps: make([]*prevsAtMoment, 0, 4),
 	}
 
 	//insert maps in a fixed order
 	var tendance bool
 	for _, m := range momentsStr {
 		pam, ok := pad[m]
-		// ignore ok to replace missing moments by nulls in json output
-		row.Maps = append(row.Maps, pam)
+		if !ok {
+			row.Maps = append(row.Maps, nil)
+			continue
+		}
+		row.Maps = append(row.Maps, &pam)
 		// skip remaining moments if at least one map is long terme
 		if ok && (pam.terme() == termeTendance) {
 			tendance = true
@@ -301,7 +304,7 @@ func (pad prevsAtDay) MarshalJSON() ([]byte, error) {
 	if tendance {
 		pam := pad[dailyStr]
 		row.LongTerme = true
-		row.Maps = []prevsAtMoment{pam}
+		row.Maps = []*prevsAtMoment{&pam}
 	}
 	return json.Marshal(row)
 }

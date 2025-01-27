@@ -34,22 +34,18 @@ func getOpts(args []string) CliOpts {
 
 func main() {
 	opts := getOpts(os.Args[1:])
-
 	entryPoint := server.Start
 	if opts.SimpleMode {
 		entryPoint = server.StartSimple
 	}
-
 	addr := DEFAULT_ADDR
 	if opts.Addr != "" {
 		addr = opts.Addr
 	}
-
 	limit := 0
 	if opts.Limit > 0 {
 		limit = opts.Limit
 	}
-
 	err := entryPoint(addr, limit)
 	if err != nil {
 		log.Println(err)
