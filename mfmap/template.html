@@ -12,18 +12,20 @@
     }
   </script>
 
-  <link rel="stylesheet" href="css/meteo.css" />
-  <link rel="stylesheet" href="/css/leaflet.css" />
 
   <!-- TODO: add gzip compression on static files -->
   <meta name="description" content="{{.HeadDescription}}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title> {{.HeadTitle}} </title>
 
-  <!-- TODO: import as modules instead of global objects, when available upstream -->
+  <!-- import leaflet.css before leaflet.js-->
+  <link rel="stylesheet" href="/css/leaflet.css" />
+
+  <!-- TODO: import as modules instead of global objects -->
   <script src="/js/leaflet.js"></script>
   <script src="/js/highcharts.js"></script>
 
+  <link rel="stylesheet" href="/css/meteo.css" />
 
   <!-- Favicon stuff
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">

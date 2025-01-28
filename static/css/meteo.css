@@ -1,7 +1,6 @@
 html,
 body,
 div,
-span,
 applet,
 object,
 iframe,
@@ -243,17 +242,17 @@ ul {
   /*line-height: 18px;*/
 }
 
-.map_component .icon-text .tmin {
+.map_component .tmin {
   color: #1c9bd4;
   font-weight: bold;
 }
 
-.map_component .icon-text .tmax {
+.map_component .tmax {
   color: #f26522;
   font-weight: bold;
 }
 
-.map_component .div-icon {
+.map_component .divIcon {
   text-align: center;
   width: 40px;
   display: flex;
@@ -270,82 +269,50 @@ ul {
 
 /******************* Tooltips ********************************/
 
-.map_component .map_tooltip {
+.leaflet-tooltip {
+  padding: 5px;
+}
+
+.map_tooltip {
   text-align: center;
-  background: #ffffff;
-  padding: 2px 5px;
-  border-radius: 5px;
-  width: 150px;
+  /*background: #c7e180;*/
+  /*padding: 20px 5px;*/
+  /*border-radius: 15px;*/
+  /*width: 150px;*/
 }
 
-.map_component .map_tooltip .top {
-  position: absolute;
-  top: 17px;
-  left: 39px;
-  font-size: 1rem;
-}
-
-.map_component .map_tooltip .middle {
-  position: absolute;
-  top: 30px;
-  left: 39px;
-  font-size: 1rem;
-}
-
-.map_component .map_tooltip .bottom {
-  position: absolute;
-  top: 46px;
-  left: 39px;
-  font-size: 1rem;
-}
-
-.map_component .map_tooltip .map_tooltip_location {
+.map_tooltip .tt_location {
   font-size: 14px;
   color: #145e9a;
   font-weight: 700;
   text-align: center;
 }
 
-.map_component .map_tooltip .map_tooltip_description {
+.map_tooltip .tt_description {
   font-size: 12px;
   font-weight: 700;
   margin-bottom: 5px;
 }
 
-.map_component .map_tooltip .map_tooltip_icon {
+.map_tooltip img {
   width: 40px;
   height: auto;
   display: inline-block;
   vertical-align: middle;
 }
 
-.map_component .map_tooltip .map_tooltip_temp {
+.map_tooltip .tt_temp {
   display: inline-block;
   vertical-align: middle;
-  font-size: 13 px;
+  font-size: 13px;
   font-weight: 700;
 }
 
-.map_component .map_tooltip .temp-min {
-  color: #1c9bd4;
-  font-weight: bold;
+.map_tooltip .minmax {
+  vertical-align: middle;
+  font-size: 12px;
 }
 
-.map_component .map_tooltip .temp-max {
-  color: #f26522;
-  font-weight: bold;
-}
-
-.leaflet-tooltip.leaflet-zoom-animated.leaflet-tooltip-left {
-  border-radius: 5px;
-}
-/*
-@media screen and (max-width:600px) {
-  .leaflet-tooltip-pane {
-    display: none;
-  }
-}
-*/
 .leaflet-tooltip-top:before,
 .leaflet-tooltip-bottom:before,
 .leaflet-tooltip-left:before,

@@ -9,31 +9,31 @@ function nextMapId() {
 const weatherList = {
   "default": {
     text: "default",
-    maxDaysMap: 14,
+    showTendance: false,
   },
   "prev": {
     text: "Prévisions",
-    maxDaysMap: 14,
+    showTendance: true,
   },
   "vent": {
     text: "Vent",
-    maxDaysMap: 10,
+    showTendance: false,
   },
   "ress": {
     text: "Ressenti",
-    maxDaysMap: 10,
+    showTendance: false,
   },
   "humi": {
     text: "Humidité",
-    maxDaysMap: 10,
+    showTendance: true,
   },
   "psea": {
     text: "Pression",
-    maxDaysMap: 10,
+    showTendance: false,
   },
   "uv": {
     text: "UV",
-    maxDaysMap: 10,
+    showTendance: true,
   }
 }
 
@@ -225,16 +225,20 @@ export const MapGridComponent = {
   setup(props, ctx) {
 
     function displayedRows() {
-      let minDays = 0
-      let maxDays = weatherList[props.selections.activeWeather].maxDaysMap
+      const firstDay = 0
+      let showTendance = weatherList[props.selections.activeWeather].showTendance
       const ret = []
       if (typeof props.data.prevs !== 'undefined') {
-        for (var i = minDays; i < maxDays; i++) {
-          if (Object.hasOwn(props.data.prevs, i)) {
-            let row = props.data.prevs[i]
-            row["jour"] = i
-            ret.push(row)
+        for (var i = firstDay; i < 14; i++) {
+          if (!Object.hasOwn(props.data.prevs, i)) {
+            continue
           }
+          let row = props.data.prevs[i]
+          if (row.long_terme && !showTendance) {
+            continue
+          }
+          row["jour"] = i
+          ret.push(row)
         }
       }
       return ret
@@ -267,7 +271,7 @@ export const MapRowComponent = {
 
     function rowTitle() {
       let weather = (typeof props.selections != null) ?
-         weatherList[props.selections.activeWeather].text : ""
+        weatherList[props.selections.activeWeather].text : ""
       if (!props.row.long_terme) {
         return `${weather} J+${props.row.jour}`
       } else {
@@ -306,11 +310,11 @@ export const MapComponent = {
     let lBounds = null
     let lMarkers = []
     let lAttributionControl = null
+
     onMounted(() => {
       initMap()
-
-      // update maps on selectors change
-      // use a getter ()=> to keep reactivity  
+      // update maps on selectors events
+      // use a getter ()=> to keep reactivity
       // cf. https://vuejs.org/guide/essentials/watchers.html#watch-source-types
       watch(() => props.selections.activeWeather, updateMarkers)
       watch(() => props.selections.tooltipsEnabled, updateTooltipsVisibility)
@@ -433,7 +437,7 @@ export const MapComponent = {
     function createMarker(poi, idx, all_pois) {
       const prev = poi.prev        // alias
 
-      // accumulate marker data for current poi
+      // prepare marker data for current poi
       const m = {
         title: poi.titre,
         coords: poi.coords,
@@ -441,7 +445,6 @@ export const MapComponent = {
         icon_width: 40,
         icon_text_style: "",   // avoid null checks in template
         txt: "",
-        //disabled: false,
         icon: prev.weather_icon,
         desc: prev.weather_description,
         Tmin: Math.round(prev.T_min),
@@ -470,7 +473,7 @@ export const MapComponent = {
       m.tt_offset = (poi.coords[0] < (props.data.bbox.w + props.data.bbox.e) / 2) ?
         L.point(100, yOffset) : L.point(-100, yOffset)
 
-      const msToKmh = (mPerSecond) => (5 * Math.ceil(3.6 * mPerSecond / 5))
+      const kmPerHour = (mPerSecond) => (5 * Math.ceil(3.6 * mPerSecond / 5))
 
       // other customizations depending on activeWeather
       let w = props.selections.activeWeather
@@ -487,9 +490,9 @@ export const MapComponent = {
         }
         m.icon_width = 25
 
-        m.txt = '<span>' + msToKmh(prev.wind_speed) + '</span>'
+        m.txt = '<span>' + kmPerHour(prev.wind_speed) + '</span>'
         if (prev.wind_speed_gust >= 10) {
-          m.txt += '<span style="color:red;">|' + msToKmh(prev.wind_speed_gust) + '</span>'
+          m.txt += '<span style="color:red;">|' + kmPerHour(prev.wind_speed_gust) + '</span>'
         }
 
         // customisations pour les UV  
@@ -564,7 +567,7 @@ export const MapComponent = {
 
     function markerTemplate(m) {
       let elt_a = /*html*/`
-<div class="div-icon">
+<div>
   <img src="/pictos/${m.icon}" 
        alt="${m.desc}"
        title="${m.title}"
@@ -592,17 +595,14 @@ export const MapComponent = {
     function tooltipTemplate(m) {
       return /*html*/`
 <div class="map_tooltip">
-  <h3 class="map_tooltip_location">${m.title}</h3>
-  <img src="/pictos/${m.icon}" 
-        alt="${m.desc}"
-        title="${m.desc}"
-        style="width: ${m.icon_width}px"/>
-  <div class='map_tooltip_temp'>${m.txt}</div>
-  <p class='map_tooltip_description'>${m.desc}</p>
-  <p>
-    Min : <span class='temp-min'>${m.Tmin}°</span>
-    Max : <span class='temp-max'>${m.Tmax}°</span>
-  </p>
+  <div class="tt_location">${m.title}</div>
+  <img src="/pictos/${m.icon}" alt="${m.desc}" title="${m.desc}"/>
+  <div class='tt_temp'>${m.txt}</div>
+  <div class='tt_description'>${m.desc}</p>
+  <div>
+    Min : <span class='tmin'>${m.Tmin}°</span>
+    Max : <span class='tmax'>${m.Tmax}°</span>
+  </div>
 </div>`
     }
 
