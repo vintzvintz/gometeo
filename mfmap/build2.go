@@ -86,11 +86,11 @@ const (
 
 var dailiesChroniques = []string{
 	Trange,
-	Tmin,
-	Tmax,
+//	Tmin,
+//	Tmax,
 	Hrange,
-	Hmin,
-	Hmax,
+//	Hmin,
+//	Hmax,
 	Uv,
 }
 
