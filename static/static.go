@@ -2,6 +2,9 @@ package static
 
 import (
 	"embed"
+	"io"
+	"io/fs"
+	"log"
 	"net/http"
 )
 
@@ -20,8 +23,54 @@ var embedCSS embed.FS
 //go:embed fonts
 var embedFonts embed.FS
 
+//go:embed favicon
+var embedFavicon embed.FS
+
 func Register(mux *http.ServeMux) {
 	mux.Handle(Js, http.FileServerFS(embedJS))
 	mux.Handle(Css, http.FileServerFS(embedCSS))
 	mux.Handle(Fonts, http.FileServerFS(embedFonts))
+	registerFavicon(mux)
+}
+
+var faviconContentTypes = map[string]string{
+	"favicon.ico":                  "image/x-icon",
+	"favicon.svg":                  "image/svg+xml",
+	"apple-touch-icon.png":         "image/png",
+	"favicon-96x96.png":            "image/png",
+	"web-app-manifest-192x192.png": "image/png",
+	"web-app-manifest-512x512.png": "image/png",
+	"site.webmanifest":             "application/manifest+json",
+}
+
+func registerFavicon(mux *http.ServeMux) {
+	fs.WalkDir(embedFavicon, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			log.Fatal(err)
+		}
+		if d.IsDir() {
+			return nil // ignore non-file entries
+		}
+		// register each file on root path
+		mux.HandleFunc("/"+d.Name(), faviconHandlerFunc(path, d))
+		return nil
+	})
+}
+
+func faviconHandlerFunc(path string, d fs.DirEntry) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		f, err := embed.FS.Open(embedFavicon, path)
+		if err != nil {
+			log.Printf("error opening embeded file %s", path)
+			return
+		}
+		mime, ok := faviconContentTypes[d.Name()]
+		if !ok {
+			log.Printf("Content-Type unknown for %s", d.Name())
+		} else {
+			w.Header().Add("Content-Type", mime)
+		}
+		w.WriteHeader(http.StatusOK)
+		io.Copy(w, f)
+	}
 }

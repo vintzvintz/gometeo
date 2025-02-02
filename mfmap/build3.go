@@ -24,8 +24,8 @@ var htmlTemplate = template.Must(template.New("").Parse(templateFile))
 // main html file
 func (m *MfMap) WriteHtml(wr io.Writer) error {
 	return htmlTemplate.Execute(wr, &TemplateData{
-		HeadDescription: fmt.Sprintf("Description de %s", m.Data.Info.Name),
-		HeadTitle:       fmt.Sprintf("Titre de %s", m.Data.Info.Name),
+		HeadDescription: fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name),
+		HeadTitle:       fmt.Sprintf("Météo %s", m.Data.Info.Name),
 		Path:            m.Path(),
 	})
 }

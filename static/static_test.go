@@ -59,6 +59,15 @@ var testStaticPaths = map[string][]string{
 	"fonts": {
 		"/fonts/fa.woff2",
 	},
+	"/favicon": {
+	"/favicon.ico",
+	"/favicon.svg",
+	"/apple-touch-icon.png",
+	"/favicon-96x96.png",
+	"/web-app-manifest-192x192.png",
+	"/web-app-manifest-512x512.png",
+	"/site.webmanifest",
+	},
 }
 
 func TestStaticHandler(t *testing.T) {
