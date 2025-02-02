@@ -34,9 +34,25 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="manifest" href="/site.webmanifest"> -->
 
+
+  <style>
+    #announcement {
+      width:100%;
+      color: rgb(128, 0, 0);
+      padding: 1em;
+      background-color: #ebc6ba;
+    }
+  </style>
+
 </head>
 
 <body>
+  <div id="announcement"> 
+    <h2>Nouveau site en version BETA !</h2>
+    <p>Frontend redimensionnable compatible smartphone. Backend entièrement ré-écrit en golang.</p>
+    <p>Tests et developpements en cours, merci pour votre compréhension ...</p>
+    <p>Avis et suggestions => par mail svp</p>
+  </div>
   <div id="vuejs_root"></div>
   <script type="module">
     import {createMeteoApp} from 'main'
