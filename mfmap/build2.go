@@ -35,6 +35,7 @@ type (
 		ts  time.Time
 		min float64
 		max float64
+		offsetHours int 
 	}
 
 	IntTs struct {
@@ -46,6 +47,7 @@ type (
 		ts  time.Time
 		min int
 		max int
+		offsetHours int 
 	}
 )
 
@@ -205,13 +207,13 @@ func (d Daily) withTimestamp(data string) (ValueTs, error) {
 	case Tmax:
 		return FloatTs{ts, d.Tmax}, nil
 	case Trange:
-		return FloatRangeTs{ts, d.Tmin, d.Tmax}, nil
+		return FloatRangeTs{ts, d.Tmin, d.Tmax, 8}, nil
 	case Hmin:
 		return IntTs{ts, d.Hmin}, nil
 	case Hmax:
 		return IntTs{ts, d.Hmax}, nil
 	case Hrange:
-		return IntRangeTs{ts, d.Hmin, d.Hmax}, nil
+		return IntRangeTs{ts, d.Hmin, d.Hmax, 8}, nil
 	case Uv:
 		return IntTs{ts, d.Uv}, nil
 	default:
@@ -231,7 +233,8 @@ func (v FloatTs) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON outputs a timestamped float as an array [ts, min, max]
 func (v FloatRangeTs) MarshalJSON() ([]byte, error) {
-	s := fmt.Sprintf("[%d, %f, %f]", timeToJs(v.ts), v.min, v.max)
+	t :=  timeToJs(v.ts.Add( time.Duration(v.offsetHours) * time.Hour))
+	s := fmt.Sprintf("[%d, %f, %f]", t, v.min, v.max)
 	return []byte(s), nil
 }
 
@@ -243,7 +246,8 @@ func (v IntTs) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON outputs a timestamped float as an array [ts, min, max]
 func (v IntRangeTs) MarshalJSON() ([]byte, error) {
-	s := fmt.Sprintf("[%d, %d, %d]", timeToJs(v.ts), v.min, v.max)
+	t :=  timeToJs(v.ts.Add( time.Duration(v.offsetHours) * time.Hour))
+	s := fmt.Sprintf("[%d, %d, %d]", t, v.min, v.max)
 	return []byte(s), nil
 }
 

@@ -38,7 +38,7 @@ const weatherList = {
 }
 
 const weatherDisplayOrder = [
-  "prev", "vent", "ress", "humi", "psea", "uv",
+  "prev", "vent", "ress", "humi", "psea", /*"uv",*/
 ]
 
 
@@ -677,52 +677,91 @@ export const HighchartComponent = {
 
     let hcObj = null   // highchart object created in initGraph()
 
+
+    function optsTemperature() {
+      return {
+        title: 'Temperature',
+        axeY1: '°C',
+        series: {
+          'T': { lineWidth: 1, color: '#0f1f0f', index:50 },
+          'Trange': {
+            type: 'arearange',
+            opacity: 0.1,
+            index:40,
+            color: {
+              linearGradient: {
+                x1: 0,
+                x2: 0,
+                y1: 0,
+                y2: 1
+              },
+              stops: [
+                [0, '#FF5010'],
+                [1, '#1060FF']
+              ]
+            }
+          },
+          // min-max range
+          //'Tmax': { lineWidth: 1, color: '#D11' },
+          //'Tmin': { type:"line", step:"right", lineWidth: 1, color: '#22D' },
+        }
+      }
+    }
+
+    function optsRessenti() {
+      return {
+        title: 'Température ressentie',
+        axeY1: 'indice de refroidissement',
+        series: {
+          'Ress': { lineWidth: 1, color: '#444' },
+        },
+      }
+    }
+
+    function optsHumide() {
+      return {
+        title: 'Humidité relative',
+        axeY1: '%',
+        series: {
+          'Hrel': { lineWidth: 1, color: '#BBB' },
+          'Hmax': { lineWidth: 1, color: '#1D1' },
+          'Hmin': { lineWidth: 1, color: '#DD1' },
+        },
+      }
+    }
+    function optsPression() {
+      return {
+        title: 'Pression au niveau de la mer',
+        axeY1: 'hPa',
+        series: {
+          'Psea': { lineWidth: 1, color: '#222' },
+        },
+      }
+    }
+
+    function optsCloudCover() {
+      return {
+        title: 'Couverture nuageuse',
+        axeY1: '%',
+        series: {
+          'Cloud': { lineWidth: 1, color: '#222' },
+        },
+      }
+    }
+
+
     const hcConf = computed(() => {
       let w = props.activeWeather
       if (w == "prev" || w == "vent" || w == "uv") {
-        return {
-          title: 'Temperature',
-          axeY1: '°C',
-          series: {
-            'T': { lineWidth: 1, color: '#BBB' },
-            'Tmax': { lineWidth: 1, color: '#D11' },
-            'Tmin': { lineWidth: 1, color: '#22D' },
-          },
-        }
+        return optsTemperature()
       } else if (w == "ress") {
-        return {
-          title: 'Température ressentie',
-          axeY1: 'indice de refroidissement',
-          series: {
-            'Ress': { lineWidth: 1, color: '#444' },
-          },
-        }
+        return optsRessenti()
       } else if (w == "humi") {
-        return {
-          title: 'Humidité relative',
-          axeY1: '%',
-          series: {
-            'Hrel': { lineWidth: 1, color: '#BBB' },
-            'Hmax': { lineWidth: 1, color: '#1D1' },
-            'Hmin': { lineWidth: 1, color: '#DD1' },
-          },
-        }
+        return optsHumide()
       } else if (w == "psea") {
-        return {
-          title: 'Pression au niveau de la mer',
-          axeY1: 'hPa',
-          series: {
-            'Psea': { lineWidth: 1, color: '#222' },
-          },
-        }
+        return optsPression()
       } else if (w == "cloud") {
-        return {
-          title: 'Couverture nuageuse',
-          axeY1: '%',
-          series: {
-            'Cloud': { lineWidth: 1, color: '#222' },
-          },
-        }
+        return optsCloudCover()
       } else {  // default
         return {
           title: '',
@@ -751,7 +790,7 @@ export const HighchartComponent = {
           },
           spline: { lineWidth: 1, turboThresold: 3 }
         },
-        tootip: { enabled: false },
+        tootip: { enabled: true },
         xAxis: {
           id: 'axeX',
           type: 'datetime',
@@ -767,26 +806,31 @@ export const HighchartComponent = {
       })
     }
 
-    function updateGraph() {
-      let conf = hcConf.value   // computed property
+    function hcReset(hc, graphTitle, yTitle) {
       // remove all previous series and Y-axis
-      while (hcObj.series.length) {
-        hcObj.series[0].remove(false)
+      while (hc.series.length) {
+        hc.series[0].remove(false)
       }
-      hcObj.axes.forEach((axe) => {
+      hc.axes.forEach((axe) => {
         axe.isXAxis || axe.remove(false)
       })
 
-      hcObj.setTitle(
-        { text: conf.title },
+      hc.setTitle(
+        { text: graphTitle },
         {},   // no subtitle
         false // no redraw
       )
-      hcObj.addAxis(
-        { id: 'axeY1', title: { text: conf.axeY1 } },
+      hc.addAxis(
+        { id: 'axeY1', title: { yTitle } },
         false, // no Xaxis
         false // no redraw
       )
+    }
+
+    function updateGraph() {
+      let conf = hcConf.value   // computed property
+
+      hcReset(hcObj, conf.title, conf.axeY1)
 
       // iterate over configured series for current activeWeather
       for (let sName in conf.series) {
@@ -794,7 +838,7 @@ export const HighchartComponent = {
         // a chronique is an array of [ ts, val ] pairs ( one per POI)
         let chroniques = props.chroniques[sName]
         for (let chronique of chroniques) {
-          // deepcopy intended - draw options are not shared anmong each individual serie
+          // deepcopy intended - graph options are not shared between each individual serie
           let opts = Object.assign({}, conf.series[sName]);
           opts.data = chronique
           hcObj.addSeries(
