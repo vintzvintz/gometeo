@@ -12,7 +12,7 @@ import (
 	"gometeo/mfmap"
 )
 
-// MeteoContent is a http.Handler holding and serving live maps and pictos
+// Meteo is a http.Handler holding and serving live maps and pictos
 type Meteo struct {
 	maps   mapStore
 	pictos pictoStore
@@ -49,12 +49,11 @@ type pictoStore struct {
 
 const KEEP_PAST_DAYS = 2
 
-// NewContent() returns an empty MeteoContent
+// New() returns an empty Meteo struct
 func New() *Meteo {
 	return &Meteo{
 		maps:   mapStore{store: make(map[string]*mfmap.MfMap)},
 		pictos: pictoStore{store: make(map[string][]byte)},
-		// mux:    meteoMux{serveMux: &http.ServeMux{}},
 	}
 }
 
@@ -73,10 +72,10 @@ func (mc *Meteo) Receive(
 	go func() {
 		defer func() {
 			close(done)
-			//log.Println("MeteoContent.receive() exit")
+			//log.Println("Meteo.receive() exit")
 		}()
 
-		//log.Println("MeteoContent.receive() start")
+		//log.Println("Meteo.receive() start")
 
 		// consume maps and pictos
 		wg := sync.WaitGroup{}
@@ -139,10 +138,8 @@ func (mc *Meteo) rebuildMux() {
 }
 
 // update()  adds or replace a map in the store.
-// Updates breadcrumbs from other maps in the store.
-// Takes ownership of m
+// rebuilds all breadcrumbs in all maps in the store.
 func (ms *mapStore) update(m *mfmap.MfMap, pastDays int) {
-	// TODO: keep few days of past forecasts
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 
@@ -156,7 +153,6 @@ func (ms *mapStore) update(m *mfmap.MfMap, pastDays int) {
 	for name := range ms.store {
 		ms.buildBreadcrumbs(name)
 	}
-	//log.Printf("   mapStore.receive(%s)",m.Name())
 }
 
 // Computes Breadcrumb chain for 'path' from other maps in the store
