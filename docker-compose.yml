@@ -14,7 +14,7 @@ services:
       - "traefik.http.routers.to-gometeo.rule=Host(`gometeo.vintz.fr`)"
       - "traefik.http.routers.to-gometeo.tls.certresolver=vintz-wildcard"
       - "traefik.http.routers.to-gometeo.tls.domains[0].main=*.vintz.fr"  
-      - "traefik.http.services.gometeo.loadbalancer.server.port=80"
+      - "traefik.http.services.gometeo.loadbalancer.server.port=1051"
 
 networks:
   traefik:
