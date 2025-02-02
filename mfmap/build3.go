@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"text/template"
+	"gometeo/appconf"
 )
 
 //go:embed template.html
@@ -12,8 +13,8 @@ var templateFile string
 
 // TemplateData contains data for htmlTemplate.Execute()
 type TemplateData struct {
-	HeadDescription string
-	HeadTitle       string
+	Description string
+	Title       string
 	Path            string
 	VueJs           string
 }
@@ -24,10 +25,19 @@ var htmlTemplate = template.Must(template.New("").Parse(templateFile))
 
 // main html file
 func (m *MfMap) WriteHtml(wr io.Writer) error {
+
+	title := fmt.Sprintf("Météo %s", m.Data.Info.Name)
+	desc := fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name)
+	path := m.Path()
+	vue := "vue.esm-browser.3.5.15.dev.js"
+	if appconf.VueProd() {
+		vue = "vue.esm-browser.3.5.15.prod.js"
+	}
+
 	return htmlTemplate.Execute(wr, &TemplateData{
-		HeadDescription: fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name),
-		HeadTitle:       fmt.Sprintf("Météo %s", m.Data.Info.Name),
-		Path:            m.Path(),
-		VueJs:           "vue.esm-browser.js",
+		Description: desc,
+		Title:       title,
+		Path:         path,
+		VueJs:        vue,
 	})
 }

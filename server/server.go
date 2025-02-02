@@ -7,6 +7,7 @@ import (
 	"gometeo/content"
 	"gometeo/crawl"
 	"gometeo/static"
+	"gometeo/appconf"
 )
 
 // for dev/tests/debug
@@ -16,9 +17,24 @@ const (
 	cacheFile   = "./content_cache.gob"
 )
 
+func Start( ) error {
+	addr := appconf.Addr() 
+	limit := appconf.Limit()
+
+	entryPoint := startNormal
+	if appconf.OneShot() {
+		entryPoint = startOneShot
+	}
+
+	log.Printf(`Starting gometeo : Addr='%s' Limit=%d OneShot=%v `,
+		addr, limit, appconf.OneShot())
+
+	return entryPoint(addr, limit)
+}
+
 // StartSimple fetches data once (no updates) 
 // and serve it forever when done
-func StartSimple(addr string, limit int) error {
+func startOneShot(addr string, limit int) error {
 	var c *content.Meteo
 
 	// for dev/debug/test
@@ -42,7 +58,7 @@ func StartSimple(addr string, limit int) error {
 }
 
 // TODO add more crawl/serve/config options, maybe in a struct
-func Start(addr string, limit int) error {
+func startNormal(addr string, limit int) error {
 
 	c, crawlerDone := crawl.Start("/", limit, crawl.ModeForever)
 	defer c.Close()

@@ -2,21 +2,20 @@
 <html lang="fr-FR">
 <head>
   <meta charset="utf-8">
+  <title> {{.Title}} </title>
   <script type="importmap">
     {
       "imports": {
-        "vue": "/js/vue.esm-browser.js",
+        "vue": "/js/{{.VueJs}}",
         "components": "/js/components.js",
         "main": "/js/main.js"
       }
     }
   </script>
 
-
   <!-- TODO: add gzip compression on static files -->
-  <meta name="description" content="{{.HeadDescription}}">
+  <meta name="description" content="{{.Description}}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> {{.HeadTitle}} </title>
 
   <!-- import leaflet.css before leaflet.js-->
   <link rel="stylesheet" href="/css/leaflet.css" />
@@ -36,7 +35,7 @@
   <link rel="manifest" href="/site.webmanifest" />
 
   <style>
-    #announcement {
+    #message {
       width:100%;
       color: rgb(128, 0, 0);
       padding: 1em;
@@ -47,11 +46,10 @@
 </head>
 
 <body>
-  <div id="announcement"> 
-    <h2>Nouveau site en version BETA !</h2>
-    <p>Tests et developpements en cours, merci pour votre compréhension.</p>
-    <p>Design redimensionnable compatible smartphone. Nouveau back-end golang.</p>
-    <p>Bug reports par mail bienvenus.</p>
+  <div id="message"> 
+    <h2>Nouveau site version BETA !</h2>  
+    <p>Redimensionnable. Vaguement compatible smartphone.Nouveau back-end golang.
+    <p>Tests et developpement en cours....</p>
   </div>
   <div id="vuejs_root"></div>
   <script type="module">
