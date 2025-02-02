@@ -15,6 +15,7 @@ type TemplateData struct {
 	HeadDescription string
 	HeadTitle       string
 	Path            string
+	VueJs           string
 }
 
 // htmlTemplate is a global html/template for html rendering
@@ -27,5 +28,6 @@ func (m *MfMap) WriteHtml(wr io.Writer) error {
 		HeadDescription: fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name),
 		HeadTitle:       fmt.Sprintf("Météo %s", m.Data.Info.Name),
 		Path:            m.Path(),
+		VueJs:           "vue.esm-browser.js",
 	})
 }
