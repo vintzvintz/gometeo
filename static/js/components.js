@@ -101,7 +101,7 @@ export const RootComponent = {
     }
 
     // tooltips visibility
-    const tooltipsMinWidth = 600
+    const tooltipsMinWidth = 800
 
     function onToggleTooltips() {
       selections.tooltipsEnabled = !selections.tooltipsEnabled   // reactive
@@ -181,7 +181,7 @@ export const TopNav = {
 <nav class="topnav">
   <a v-for="item in breadcrumb" :href="item.path">{{item.nom}}</a>
   <div class="spacer"></div>
-  <a class="no-mobile" href="/about">A propos</a>
+ <!-- <a class="no-mobile" href="/about">A propos</a> -->
   <a class="no-mobile" @click="$emit('toggleTooltips')" > 
      Tooltips : {{tooltipsEnabled ? "Oui" : "Non"}}
   </a>
