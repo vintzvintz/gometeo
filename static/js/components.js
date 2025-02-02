@@ -680,14 +680,14 @@ export const HighchartComponent = {
 
     function optsTemperature() {
       return {
-        title: 'Temperature',
+        title: 'Température',
         axeY1: '°C',
         series: {
-          'T': { lineWidth: 1, color: '#0f1f0f', index:50 },
+          'T': { lineWidth: 1, color: '#0f1f0f', index: 50 },
           'Trange': {
             type: 'arearange',
             opacity: 0.1,
-            index:40,
+            index: 40,
             color: {
               linearGradient: {
                 x1: 0,
@@ -821,9 +821,18 @@ export const HighchartComponent = {
         false // no redraw
       )
       hc.addAxis(
-        { id: 'axeY1', title: { yTitle } },
-        false, // no Xaxis
-        false // no redraw
+        {
+          id: 'axeY1',
+          title: {
+            text: yTitle,
+            align: 'high',
+            offset: 0,
+            rotation: 0,
+            y: -20,
+          },
+        },
+        false, // not an Xaxis
+        false, // no redraw
       )
     }
 
