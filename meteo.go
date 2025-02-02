@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	DEFAULT_ADDR = ":5151"
+	DEFAULT_ADDR = ":1051"
 )
 
 type CliOpts struct {
@@ -46,6 +46,10 @@ func main() {
 	if opts.Limit > 0 {
 		limit = opts.Limit
 	}
+	
+	log.Printf(`Starting gometeo : Addr='%s' SimpleMode=%v Limit=%d`,
+	addr, opts.SimpleMode, limit)
+
 	err := entryPoint(addr, limit)
 	if err != nil {
 		log.Println(err)
