@@ -711,7 +711,7 @@ export const HighchartComponent = {
     function optsRessenti() {
       return {
         title: 'Température ressentie',
-        axeY1: 'indice de refroidissement',
+        axeY1: '°chill',
         series: {
           'Ress': { lineWidth: 1, color: '#444' },
         },
@@ -723,9 +723,27 @@ export const HighchartComponent = {
         title: 'Humidité relative',
         axeY1: '%',
         series: {
-          'Hrel': { lineWidth: 1, color: '#BBB' },
-          'Hmax': { lineWidth: 1, color: '#1D1' },
-          'Hmin': { lineWidth: 1, color: '#DD1' },
+          //          'Hrel': { lineWidth: 1, color: '#BBB' },
+          //          'Hmax': { lineWidth: 1, color: '#1D1' },
+          //          'Hmin': { lineWidth: 1, color: '#DD1' },
+          'Hrel': { lineWidth: 1, color: '#0f1f0f', index: 50 },
+          'Hrange': {
+            type: 'arearange',
+            opacity: 0.1,
+            index: 40,
+            color: {
+              linearGradient: {
+                x1: 0,
+                x2: 0,
+                y1: 0,
+                y2: 1
+              },
+              stops: [
+                [0, '#1D1'],
+                [1, '#FD3']
+              ]
+            }
+          },
         },
       }
     }
