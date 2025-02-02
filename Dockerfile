@@ -20,4 +20,4 @@ RUN go build -o gometeo
 EXPOSE 1051
 
 # Start the application
-CMD ["/build/gometeo", "-addr", ":1051", "-limit", "15"]
+CMD ["/build/gometeo"]
