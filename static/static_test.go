@@ -15,7 +15,7 @@ var expectedFiles = map[string]struct {
 }{
 	"js": {
 		embedJS,
-		[]string{"highcharts.js", "meteo.js"},
+		[]string{"highcharts.js", "highcharts-more.js", "meteo.js"},
 	},
 	"css": {
 		embedCSS,
