@@ -15,7 +15,8 @@ type (
 	Chronique []ValueTs
 
 	// ValueTs is a (float/integer + timestamp) pair.
-	// FloatTs and IntTs have custom JSON marshalling suitable for Highchart
+	// concrete types FloatTs, IntTs, FloatRangeTs, IntRangeTs
+	// have custom JSON marshalling methods suitable for Highchart
 	ValueTs interface {
 		json.Marshaler
 		Sub(time.Time) time.Duration
@@ -99,17 +100,12 @@ var jsEpoch = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
 var ErrNoSuchData = fmt.Errorf("no such data")
 
-const chroniqueMaxDays = 12
+const chroniqueMaxDays = 11
 
 // toChroniques() formats Multiforecastdata into Graphdata
 // for client-side charts
 func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 	g := Graphdata{}
-
-	// define an Echeance after which data is truncated
-	date := NewDate(time.Now())
-	date.Day += int(chroniqueMaxDays)
-	limit := Echeance{Date: date, Moment: nightStr}
 
 	for i := range mf {
 		//lieu := mf[i].Properties.Insee
@@ -120,7 +116,6 @@ func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 			return nil, err
 		}
 		for name, chro := range g1 {
-			chro = chro.truncateAfter(limit)
 			g[name] = append(g[name], chro)
 		}
 
@@ -130,21 +125,10 @@ func (mf MultiforecastData) toChroniques() (Graphdata, error) {
 			return nil, err
 		}
 		for name, chro := range g2 {
-			chro = chro.truncateAfter(limit)
 			g[name] = append(g[name], chro)
 		}
 	}
 	return g, nil
-}
-
-func (c Chronique) truncateAfter(e Echeance) Chronique {
-	ret := make(Chronique, 0, len(c))
-	for i := range c {
-		if c[i].Sub(e.Date.asTime()) < 0 {
-			ret = append(ret, c[i])
-		}
-	}
-	return ret
 }
 
 // getChroniques POI reshapes data for client-side highchart
@@ -155,7 +139,7 @@ func getChroniquesPoi[T timeStamper](forecasts []T, series []string) (map[string
 seriesLoop:
 	// iterate over series names ( T, Tmax, etc... )
 	for _, nom := range series {
-		var chro = make(Chronique, len(forecasts))
+		var chro = make(Chronique, 0, len(forecasts))
 		//iterate over forecasts of the POI at all available echeances
 		for i := range forecasts {
 			f := forecasts[i]
@@ -168,7 +152,15 @@ seriesLoop:
 			if err != nil {
 				return nil, fmt.Errorf("getChroniques(%s) error: %w", nom, err)
 			}
-			chro[i] = v
+			// ignore missing values
+			if v == nil {
+				continue
+			}
+			// ignore data after configured limit
+			if v.Sub( time.Now() ) > chroniqueMaxDays * 24 * time.Hour {
+				continue
+			}
+			chro = append(chro, v)
 		}
 		ret[nom] = chro
 	}
@@ -176,6 +168,9 @@ seriesLoop:
 }
 
 func (f Forecast) withTimestamp(data string) (ValueTs, error) {
+	if f.LongTerme {
+		return nil,nil
+	}
 	ts := f.Time
 	switch data {
 	case Temperature:
