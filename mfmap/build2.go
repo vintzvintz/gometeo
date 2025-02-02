@@ -15,11 +15,10 @@ type (
 	Chronique []ValueTs
 
 	// ValueTs is a (float/integer + timestamp) pair.
-	// FloatTS and IntTs have custom JSON marshalling suitable for Highchart
+	// FloatTs and IntTs have custom JSON marshalling suitable for Highchart
 	ValueTs interface {
 		json.Marshaler
 		Sub(time.Time) time.Duration
-		Echeance() Echeance
 	}
 
 	// timeStamper yields TsValues from a specified 'series' name'
@@ -32,9 +31,21 @@ type (
 		val float64
 	}
 
+	FloatRangeTs struct {
+		ts  time.Time
+		min float64
+		max float64
+	}
+
 	IntTs struct {
 		ts  time.Time
 		val int
+	}
+
+	IntRangeTs struct {
+		ts  time.Time
+		min int
+		max int
 	}
 )
 
@@ -62,16 +73,20 @@ var forecastsChroniques = []string{
 
 // series in Dailies objects
 const (
-	Tmin = "Tmin"
-	Tmax = "Tmax"
-	Hmin = "Hmin"
-	Hmax = "Hmax"
-	Uv   = "Uv"
+	Tmin   = "Tmin"
+	Tmax   = "Tmax"
+	Hmin   = "Hmin"
+	Hmax   = "Hmax"
+	Uv     = "Uv"
+	Trange = "Trange"
+	Hrange = "Hrange"
 )
 
 var dailiesChroniques = []string{
+	Trange,
 	Tmin,
 	Tmax,
+	Hrange,
 	Hmin,
 	Hmax,
 	Uv,
@@ -189,10 +204,14 @@ func (d Daily) withTimestamp(data string) (ValueTs, error) {
 		return FloatTs{ts, d.Tmin}, nil
 	case Tmax:
 		return FloatTs{ts, d.Tmax}, nil
+	case Trange:
+		return FloatRangeTs{ts, d.Tmin, d.Tmax}, nil
 	case Hmin:
 		return IntTs{ts, d.Hmin}, nil
 	case Hmax:
 		return IntTs{ts, d.Hmax}, nil
+	case Hrange:
+		return IntRangeTs{ts, d.Hmin, d.Hmax}, nil
 	case Uv:
 		return IntTs{ts, d.Uv}, nil
 	default:
@@ -210,9 +229,21 @@ func (v FloatTs) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
+// MarshalJSON outputs a timestamped float as an array [ts, min, max]
+func (v FloatRangeTs) MarshalJSON() ([]byte, error) {
+	s := fmt.Sprintf("[%d, %f, %f]", timeToJs(v.ts), v.min, v.max)
+	return []byte(s), nil
+}
+
 // MarshalJSON outputs a timestamped int as an array [ts, val]
 func (v IntTs) MarshalJSON() ([]byte, error) {
 	s := fmt.Sprintf("[%d, %d]", timeToJs(v.ts), v.val)
+	return []byte(s), nil
+}
+
+// MarshalJSON outputs a timestamped float as an array [ts, min, max]
+func (v IntRangeTs) MarshalJSON() ([]byte, error) {
+	s := fmt.Sprintf("[%d, %d, %d]", timeToJs(v.ts), v.min, v.max)
 	return []byte(s), nil
 }
 
@@ -224,10 +255,10 @@ func (v FloatTs) Sub(t time.Time) time.Duration {
 	return v.ts.Sub(t)
 }
 
-func (v IntTs) Echeance() Echeance {
-	return Echeance{}
+func (v IntRangeTs) Sub(t time.Time) time.Duration {
+	return v.ts.Sub(t)
 }
 
-func (v FloatTs) Echeance() Echeance {
-	return Echeance{}
+func (v FloatRangeTs) Sub(t time.Time) time.Duration {
+	return v.ts.Sub(t)
 }
