@@ -256,7 +256,7 @@ func pictoURL(name string) (*url.URL, error) {
 		"weather",
 		fmt.Sprintf("%s.svg", name),
 	}
-	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	u, err := url.Parse(httpsMeteofranceCom + strings.Join(elems, "/"))
 	if err != nil {
 		return nil, fmt.Errorf("pictoURL() error: %w", err)
 	}

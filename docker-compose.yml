@@ -3,6 +3,7 @@ services:
   app:
     build: .
     #image: gometeo:latest
+    command: ["/build/gometeo", "-limit", "40"]
     restart: always
     networks:
       - traefik
