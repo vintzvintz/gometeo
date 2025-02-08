@@ -23,7 +23,20 @@ type (
 	Echeancer interface {
 		Echeance() Echeance
 	}
+
+	Echeances []Echeance
 )
+
+const (
+	Matin      = "matin"
+	Apresmidi  = "après-midi"
+	Soir       = "soirée"
+	Nuit       = "nuit"
+	Journalier = "daily"
+)
+
+// momentsStr is an alias for the 4 moments, not including 'daily'
+var momentsStr = []MomentName{Matin, Apresmidi, Soir, Nuit}
 
 // determines Echeance of a Daily
 func (d Daily) Echeance() Echeance {
@@ -38,7 +51,7 @@ func (d Daily) Echeance() Echeance {
 // "night" is after midnight, but displayed with previous day
 func (f Forecast) Echeance() Echeance {
 	year, month, day := f.Time.Date()
-	if f.Moment == nightStr {
+	if f.Moment == Nuit {
 		day -= 1
 	}
 	return Echeance{

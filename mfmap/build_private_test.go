@@ -58,7 +58,7 @@ func TestToChronique(t *testing.T) {
 }
 
 func TestEcheanceString(t *testing.T) {
-	m := morningStr
+	m := Matin
 	d, _ := time.Parse(time.RFC3339, "2024-12-02T15:51:12.000Z")
 	e := Echeance{Date: NewDate(d), Moment: MomentName(m)}
 

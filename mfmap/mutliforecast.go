@@ -62,7 +62,7 @@ type Forecast struct {
 	Hrel          int        `json:"relative_humidity"`
 	Pression      float64    `json:"P_sea"`
 	Confiance     int        `json:"weather_confidence_index"`
-	
+
 	// Calculated field
 	LongTerme bool `json:"long_terme"`
 }
@@ -103,17 +103,6 @@ var (
 const (
 	codeInseeMinLen = 6
 )
-
-const (
-	morningStr   = "matin"
-	afternoonStr = "après-midi"
-	eveningStr   = "soirée"
-	nightStr     = "nuit"
-	dailyStr     = "daily"
-)
-
-// momentsStr is an alias for the 4 moments, not including 'daily"
-var momentsStr = []MomentName{morningStr, afternoonStr, eveningStr, nightStr}
 
 const (
 	apiMultiforecast = "/multiforecast"
@@ -168,7 +157,6 @@ func (f *Forecast) UnmarshalJSON(data []byte) error {
 	f.LongTerme = (testNull.Temp == nil) || (testNull.WindSpeed == nil)
 	return nil
 }
-
 
 func unmarshalStringValidate(b []byte, want *regexp.Regexp, name string) (string, error) {
 	var s string
@@ -266,7 +254,7 @@ func (m *MomentName) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return fmt.Errorf("moment unmarshal error: %w", err)
 	}
-	allowedNames := []string{morningStr, afternoonStr, eveningStr, nightStr}
+	allowedNames := []string{Matin, Apresmidi, Soir, Nuit}
 	for _, name := range allowedNames {
 		if s == name {
 			*m = MomentName(s)

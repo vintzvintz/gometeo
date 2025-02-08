@@ -146,7 +146,7 @@ func (mf MultiforecastData) byEcheance() (prevList, error) {
 			if d == nil {
 				log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
 			}
-			pad.processPrev(dailyStr, fi, forecastBuild{nil, d})
+			pad.processPrev(Journalier, fi, forecastBuild{nil, d})
 
 			// accumulate Forecast into PrevAtDay
 			pad.processPrev(e.Moment, fi, forecastBuild{f, d})
@@ -302,7 +302,7 @@ func (pad prevsAtDay) MarshalJSON() ([]byte, error) {
 	}
 	// just send a single daily map in 'tendance" mode
 	if tendance {
-		pam := pad[dailyStr]
+		pam := pad[Journalier]
 		row.LongTerme = true
 		row.Maps = []*prevsAtMoment{&pam}
 	}
