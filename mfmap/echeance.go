@@ -60,6 +60,35 @@ func (f Forecast) Echeance() Echeance {
 	}
 }
 
+// compare two moments
+func CompareMoments(a, b MomentName)  int {
+	var ia, ib int
+	for i := range momentsStr {
+		if a == momentsStr[i] {
+			ia = i
+		}
+		if b == momentsStr[i] {
+			ib = i
+		}
+	}
+	return ia - ib
+}
+
+// Compare compares two Echeance structs
+// sort a []Echeance in ascending order with slice.SortFunc()
+func CompareEcheances(a, b Echeance) int {
+	if a.Date.Year != b.Date.Year {
+		return a.Date.Year - b.Date.Year
+	}
+	if a.Date.Month != b.Date.Month {
+		return int(a.Date.Month - b.Date.Month)
+	}
+	if a.Date.Day != b.Date.Day {
+		return a.Date.Day - b.Date.Day
+	}
+	return CompareMoments(a.Moment, b.Moment)
+}
+
 func (e Echeance) String() string {
 	return fmt.Sprintf("%s %s", e.Date, e.Moment)
 }
