@@ -249,6 +249,7 @@ func (cr *Crawler) getPicto(name string) ([]byte, error) {
 // exemple https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/p3j.svg
 func pictoURL(name string) (*url.URL, error) {
 	elems := []string{
+		httpsMeteofranceCom,
 		"modules",
 		"custom",
 		"mf_tools_common_theme_public",
@@ -256,7 +257,7 @@ func pictoURL(name string) (*url.URL, error) {
 		"weather",
 		fmt.Sprintf("%s.svg", name),
 	}
-	u, err := url.Parse(httpsMeteofranceCom + strings.Join(elems, "/"))
+	u, err := url.Parse(strings.Join(elems, "/"))
 	if err != nil {
 		return nil, fmt.Errorf("pictoURL() error: %w", err)
 	}
