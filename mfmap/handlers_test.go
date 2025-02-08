@@ -1,6 +1,7 @@
 package mfmap_test
 
 import (
+	"gometeo/appconf"
 	"gometeo/testutils"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +32,7 @@ var testsSvg = []testCase{
 func TestMapHandlers(t *testing.T) {
 
 	//setup server on test data
+	appconf.Init([]string{})
 	m := testBuildMap(t)
 	mux := http.NewServeMux()
 	m.Register(mux)

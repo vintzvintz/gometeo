@@ -2,17 +2,20 @@ package mfmap_test
 
 import (
 	"bytes"
+	"gometeo/appconf"
 	"io"
 	"testing"
 )
 
 func TestWriteHtml(t *testing.T) {
+	appconf.Init( []string{} )
+
 	m := testBuildMap(t)
 
 	buf := &bytes.Buffer{}
 	err := m.WriteHtml(buf)
 	if err != nil {
-		t.Fatalf("BuildHtml() error: %s", err)
+		t.Errorf("BuildHtml() error: %s", err)
 	}
 	b, _ := io.ReadAll(buf)
 	// display html content

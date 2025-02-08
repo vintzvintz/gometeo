@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 )
 
 const (
@@ -20,9 +19,9 @@ type CliOpts struct {
 
 var appOpts *CliOpts
 
-func Init() {
+func Init(args []string) {
 	var err error
-	appOpts, err = getOpts(os.Args[1:])
+	appOpts, err = getOpts(args)
 	if err != nil {
 		//TODO print usage
 		log.Fatal(err)
@@ -43,7 +42,7 @@ func getOpts(args []string) (*CliOpts, error) {
 
 	// validate flag --limit
 	if opts.Limit < 0 {
-		return nil, fmt.Errorf("invalid cli flag -limit '%d'", opts.Limit )
+		return nil, fmt.Errorf("invalid cli flag -limit '%d'", opts.Limit)
 	}
 
 	// validate flag --vue
@@ -57,7 +56,6 @@ func getOpts(args []string) (*CliOpts, error) {
 	}
 	return &opts, nil
 }
-
 
 func Addr() string {
 	return appOpts.Addr

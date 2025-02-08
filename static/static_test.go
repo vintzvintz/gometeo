@@ -1,12 +1,12 @@
 package static
 
 import (
+	"gometeo/testutils"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"testing/fstest"
-	"gometeo/testutils"
 )
 
 var expectedFiles = map[string]struct {
@@ -15,7 +15,7 @@ var expectedFiles = map[string]struct {
 }{
 	"js": {
 		embedJS,
-		[]string{"highcharts.js", "highcharts-more.js", "meteo.js"},
+		[]string{"main.js"},
 	},
 	"css": {
 		embedCSS,
@@ -44,8 +44,15 @@ func TestEmbeddedFiles(t *testing.T) {
 var testStaticPaths = map[string][]string{
 	"js": {
 		"/js/main.js",
-		"/js/vue.esm-browser.js",
+		"/js/components.js",
+	},
+	"vue": {
+		"/js/vue.esm-browser.3.5.15.dev.js",
+		"/js/vue.esm-browser.3.5.15.prod.js",
+	},
+	"highcharts": {
 		"/js/highcharts.js",
+		"/js/highcharts-more.js",
 	},
 	"css": {
 		"/css/meteo.css",
@@ -60,13 +67,13 @@ var testStaticPaths = map[string][]string{
 		"/fonts/fa.woff2",
 	},
 	"/favicon": {
-	"/favicon.ico",
-	"/favicon.svg",
-	"/apple-touch-icon.png",
-	"/favicon-96x96.png",
-	"/web-app-manifest-192x192.png",
-	"/web-app-manifest-512x512.png",
-	"/site.webmanifest",
+		"/favicon.ico",
+		"/favicon.svg",
+		"/apple-touch-icon.png",
+		"/favicon-96x96.png",
+		"/web-app-manifest-192x192.png",
+		"/web-app-manifest-512x512.png",
+		"/site.webmanifest",
 	},
 }
 

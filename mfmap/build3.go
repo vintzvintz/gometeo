@@ -3,9 +3,9 @@ package mfmap
 import (
 	_ "embed"
 	"fmt"
+	"gometeo/appconf"
 	"io"
 	"text/template"
-	"gometeo/appconf"
 )
 
 //go:embed template.html
@@ -15,8 +15,8 @@ var templateFile string
 type TemplateData struct {
 	Description string
 	Title       string
-	Path            string
-	VueJs           string
+	Path        string
+	VueJs       string
 }
 
 // htmlTemplate is a global html/template for html rendering
@@ -37,7 +37,7 @@ func (m *MfMap) WriteHtml(wr io.Writer) error {
 	return htmlTemplate.Execute(wr, &TemplateData{
 		Description: desc,
 		Title:       title,
-		Path:         path,
-		VueJs:        vue,
+		Path:        path,
+		VueJs:       vue,
 	})
 }

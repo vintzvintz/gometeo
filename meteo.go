@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	appconf.Init()
+	appconf.Init(os.Args[1:])
 
 	err := server.Start()
 	if err != nil {
