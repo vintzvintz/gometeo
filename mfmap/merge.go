@@ -1,13 +1,15 @@
 package mfmap
 
+import "slices"
+
 func (m *MfMap) MergeOld(old *MfMap, pastDays int) {
 	//log.Printf("Merge() %s into %s", old.Path(), m.Path())
 
 	// preserve stats
 	m.copyStats(old)
 
-	// parent only available during initial recursive fetch
-	// copying here form old map is a bit hacky
+	// recycle parent map name from old map because it is only available
+	// at initial recursive fetch and not when updating indivial ap update
 	m.Parent = old.Parent
 
 	// temp hashmaps for lookup on old (geo)features
@@ -53,14 +55,21 @@ func mergeTimeSeries[T Echeancer](old []T, new []T, pastDays int) []T {
 			}
 		}
 	}
-	// order is important
+	// order is important, newer data overwrites old data
 	insert(old)
 	insert(new)
 
+	// sort echeances
+	echs := make([]Echeance, 0, len(tmp))
+	for k := range tmp {
+		echs = append(echs, k)
+	}
+	slices.SortFunc(echs, CompareEcheances)
+
 	// TODO: use stdlib 'maps' package on go 1.23
 	merged := make([]T, 0, len(tmp))
-	for _, f := range tmp {
-		merged = append(merged, f)
+	for _, ech := range echs {
+		merged = append(merged, tmp[ech])
 	}
 	return merged
 }
