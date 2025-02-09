@@ -16,16 +16,19 @@ type testCase struct {
 var testsMain = []testCase{
 	{"/", http.StatusOK}, // redirection
 	{"/france", http.StatusOK},
+	{"/france/"+appconf.CacheId()+"/", http.StatusNotFound},
 	{"/wesh", http.StatusNotFound},
 }
 
 var testsData = []testCase{
 	{"/france/data", http.StatusOK},
+	{"/france/"+appconf.CacheId()+"data", http.StatusNotFound},
 	{"/france/_data", http.StatusNotFound},
 }
 
 var testsSvg = []testCase{
-	{"/france/svg", http.StatusOK},
+	{"/france/svg", http.StatusNotFound},
+	{"/france/"+appconf.CacheId()+"/svg", http.StatusOK},
 	{"/france/_svg", http.StatusNotFound},
 }
 

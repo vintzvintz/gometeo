@@ -21,7 +21,6 @@ type TemplateData struct {
 }
 
 // htmlTemplate is a global html/template for html rendering
-// this global variable is set up once at startup by the init() function
 var htmlTemplate = template.Must(template.New("").Parse(templateFile))
 
 // main html file
