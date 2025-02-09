@@ -30,9 +30,9 @@ func (m *MfMap) WriteHtml(wr io.Writer) error {
 	title := fmt.Sprintf("Météo %s", m.Data.Info.Name)
 	desc := fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name)
 	path := m.Path()
-	vue := "vue.esm-browser.3.5.15.dev.js"
+	vue := "vue.esm-browser.dev.js"
 	if appconf.VueProd() {
-		vue = "vue.esm-browser.3.5.15.prod.js"
+		vue = "vue.esm-browser.prod.js"
 	}
 
 	return htmlTemplate.Execute(wr, &TemplateData{

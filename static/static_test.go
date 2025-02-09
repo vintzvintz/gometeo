@@ -51,8 +51,8 @@ var testStaticPaths = map[string][]string{
 		"/css/{{.Id}}/meteo.css",
 	},
 	"vue": {
-		"/js/{{.Id}}/vue.esm-browser.3.5.15.dev.js",
-		"/js/{{.Id}}/vue.esm-browser.3.5.15.prod.js",
+		"/js/{{.Id}}/vue.esm-browser.dev.js",
+		"/js/{{.Id}}/vue.esm-browser.prod.js",
 	},
 	"highcharts": {
 		"/js/{{.Id}}/highcharts.js",
