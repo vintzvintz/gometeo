@@ -1,12 +1,15 @@
 package static
 
 import (
+	"gometeo/appconf"
 	"gometeo/testutils"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
+	"text/template"
 )
 
 var expectedFiles = map[string]struct {
@@ -42,31 +45,29 @@ func TestEmbeddedFiles(t *testing.T) {
 }
 
 var testStaticPaths = map[string][]string{
-	"js": {
-		"/js/main.js",
-		"/js/components.js",
+	"app": {
+		"/js/{{.Id}}/main.js",
+		"/js/{{.Id}}/components.js",
+		"/css/{{.Id}}/meteo.css",
 	},
 	"vue": {
-		"/js/vue.esm-browser.3.5.15.dev.js",
-		"/js/vue.esm-browser.3.5.15.prod.js",
+		"/js/{{.Id}}/vue.esm-browser.3.5.15.dev.js",
+		"/js/{{.Id}}/vue.esm-browser.3.5.15.prod.js",
 	},
 	"highcharts": {
-		"/js/highcharts.js",
-		"/js/highcharts-more.js",
-	},
-	"css": {
-		"/css/meteo.css",
+		"/js/{{.Id}}/highcharts.js",
+		"/js/{{.Id}}/highcharts-more.js",
 	},
 	"leaflet": {
-		"/js/leaflet.js",
-		"/css/leaflet.css",
-		"/css/images/layers.png",
-		"/css/images/marker-icon.png", // etc...
+		"/js/{{.Id}}/leaflet.js",
+		"/css/{{.Id}}/leaflet.css",
+		"/css/{{.Id}}/images/layers.png",
+		"/css/{{.Id}}/images/marker-icon.png", // etc...
 	},
 	"fonts": {
-		"/fonts/fa.woff2",
+		"/fonts/{{.Id}}/fa.woff2",
 	},
-	"/favicon": {
+	"favicon": {
 		"/favicon.ico",
 		"/favicon.svg",
 		"/apple-touch-icon.png",
@@ -85,11 +86,28 @@ func TestStaticHandler(t *testing.T) {
 	defer srv.Close()
 	cl := srv.Client()
 
-	for name, urls := range testStaticPaths {
+	for name, paths := range testStaticPaths {
 		t.Run(name, func(t *testing.T) {
-			for _, u := range urls {
-				testutils.CheckStatusCode(t, cl, srv.URL+u, http.StatusOK)
+			for _, p := range paths {
+				p = fillCacheId(t, p)
+				testutils.CheckStatusCode(t, cl, srv.URL+p, http.StatusOK)
 			}
 		})
 	}
+}
+
+// fillCacheId replaces {{.Id}} with appconf.CacheId() in s
+func fillCacheId(t *testing.T, s string) string {
+	data := struct {
+		Id string
+	}{
+		Id: appconf.CacheId(),
+	}
+	var buf = &strings.Builder{}
+	var tmpl = template.Must(template.New("").Parse(s))
+	err := tmpl.Execute(buf, data)
+	if err != nil {
+		t.Error(err)
+	}
+	return buf.String()
 }

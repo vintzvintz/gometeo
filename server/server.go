@@ -4,10 +4,10 @@ import (
 	"log"
 	"net/http"
 
+	"gometeo/appconf"
 	"gometeo/content"
 	"gometeo/crawl"
 	"gometeo/static"
-	"gometeo/appconf"
 )
 
 // for dev/tests/debug
@@ -17,8 +17,8 @@ const (
 	cacheFile   = "./content_cache.gob"
 )
 
-func Start( ) error {
-	addr := appconf.Addr() 
+func Start() error {
+	addr := appconf.Addr()
 	limit := appconf.Limit()
 
 	entryPoint := startNormal
@@ -32,7 +32,7 @@ func Start( ) error {
 	return entryPoint(addr, limit)
 }
 
-// StartSimple fetches data once (no updates) 
+// StartSimple fetches data once (no updates)
 // and serve it forever when done
 func startOneShot(addr string, limit int) error {
 	var c *content.Meteo
@@ -69,9 +69,9 @@ func startNormal(addr string, limit int) error {
 	// block until either server or crawler terminates
 	select {
 	case <-serverDone:
-			log.Printf("server exited")
+		log.Printf("server exited")
 	case <-crawlerDone:
-			log.Printf("crawler exited")
+		log.Printf("crawler exited")
 	}
 	return nil
 }
@@ -103,4 +103,3 @@ func serveContent(addr string, mc *content.Meteo) (*http.Server, <-chan error) {
 	}()
 	return &srv, ch
 }
-

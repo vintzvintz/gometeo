@@ -2,6 +2,7 @@ package static
 
 import (
 	"embed"
+	"gometeo/appconf"
 	"io"
 	"io/fs"
 	"log"
@@ -9,9 +10,9 @@ import (
 )
 
 const (
-	Js    = "/js/"
-	Css   = "/css/"
-	Fonts = "/fonts/"
+	JsPrefix    = "/js"
+	CssPrefix   = "/css"
+	FontsPrefix = "/fonts"
 )
 
 //go:embed js
@@ -26,10 +27,23 @@ var embedFonts embed.FS
 //go:embed favicon
 var embedFavicon embed.FS
 
+func registerStatic(mux *http.ServeMux, prefix string, fs embed.FS) {
+
+	// pattern matches URL of static ressources under prefix with cacheId
+	pattern := prefix + "/" + appconf.CacheId() + "/{filename...}"
+
+	mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		filename := r.PathValue("filename")
+		fspath := prefix + "/" + filename
+		// TODO : add "immutable" cache control headers
+		http.ServeFileFS(w, r, fs, fspath)
+	})
+}
+
 func Register(mux *http.ServeMux) {
-	mux.Handle(Js, http.FileServerFS(embedJS))
-	mux.Handle(Css, http.FileServerFS(embedCSS))
-	mux.Handle(Fonts, http.FileServerFS(embedFonts))
+	registerStatic(mux, JsPrefix, embedJS)
+	registerStatic(mux, CssPrefix, embedCSS)
+	registerStatic(mux, FontsPrefix, embedFonts)
 	registerFavicon(mux)
 }
 
