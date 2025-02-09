@@ -14,7 +14,7 @@ import (
 	"gometeo/mfmap"
 )
 
-//go:embed status_template.html
+//go:embed status.html
 var statusTemplate string
 
 type Stats struct {
@@ -87,6 +87,7 @@ func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
 			resp.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		resp.WriteHeader(http.StatusOK)
 		_, err = io.Copy(resp, b)
 		if err != nil {
 			log.Printf("ignored send error: %s", err)

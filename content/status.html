@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Application status</title>
   <!--    <link rel="stylesheet" href="style.css"> -->
+  <style>
+    .fastupdate {
+      background-color: rgb(185, 237, 205);
+    }
+  </style>
 </head>
 
 <body>
@@ -17,7 +22,7 @@
       <th>Next update</th>
     </tr>
     {{range .}}
-    <tr>
+    <tr {{if (eq .UpdateMode "fast")}}class="fastupdate"{{end}}>
       <td>{{ .Name}}</td>
       <td>{{ .HitCount}}</td>
       <td>{{ .UpdateMode}}</td>
