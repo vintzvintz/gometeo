@@ -32,7 +32,9 @@ func (m *MfMap) makeMainHandler() func(http.ResponseWriter, *http.Request) {
 			log.Printf("BuildHtml on req '%s' error: %s", req.URL, err)
 			return
 		}
+		resp.Header().Add("Content-Type", "text/html; charset=utf-8")
 		resp.Header().Add("Cache-Control", "no-cache")
+		resp.WriteHeader(http.StatusOK)
 		_, err = io.Copy(resp, &buf)
 		if err != nil {
 			log.Printf("ignored send error: %s", err)
@@ -51,6 +53,7 @@ func (m *MfMap) makeDataHandler() func(http.ResponseWriter, *http.Request) {
 		}
 		resp.Header().Add("Content-Type", "application/json")
 		resp.Header().Add("Cache-Control", "no-cache")
+		resp.WriteHeader(http.StatusOK)
 		_, err = io.Copy(resp, &buf)
 		if err != nil {
 			log.Printf("ignored send error: %s", err)
@@ -70,6 +73,7 @@ func (m *MfMap) makeSvgMapHandler() func(http.ResponseWriter, *http.Request) {
 		}
 		resp.Header().Add("Cache-Control", "max-age=31536000, immutable")
 		resp.Header().Add("Content-Type", "image/svg+xml")
+		resp.WriteHeader(http.StatusOK)
 		_, err := io.Copy(resp, bytes.NewReader(m.SvgMap))
 		if err != nil {
 			log.Printf("ignored send error: %s", err)
