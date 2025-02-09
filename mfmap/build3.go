@@ -17,6 +17,7 @@ type TemplateData struct {
 	Title       string
 	Path        string
 	VueJs       string
+	CacheId     string
 }
 
 // htmlTemplate is a global html/template for html rendering
@@ -38,6 +39,7 @@ func (m *MfMap) WriteHtml(wr io.Writer) error {
 		Description: desc,
 		Title:       title,
 		Path:        path,
+		CacheId:     appconf.CacheId(),
 		VueJs:       vue,
 	})
 }

@@ -3,29 +3,28 @@
 <head>
   <meta charset="utf-8">
   <title> {{.Title}} </title>
+  <meta name="description" content="{{.Description}}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <script type="importmap">
     {
       "imports": {
-        "vue": "/js/{{.VueJs}}",
-        "components": "/js/components.js",
-        "main": "/js/main.js"
+        "vue": "/js/{{.CacheId}}/{{.VueJs}}",
+        "components": "/js/{{.CacheId}}/components.js",
+        "main": "/js/{{.CacheId}}/main.js"
       }
     }
   </script>
 
-  <!-- TODO: add gzip compression on static files -->
-  <meta name="description" content="{{.Description}}">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <!-- import leaflet.css before leaflet.js-->
-  <link rel="stylesheet" href="/css/leaflet.css" />
+  <link rel="stylesheet" href="/css/{{.CacheId}}/leaflet.css" />
 
   <!-- TODO: import as modules instead of global objects -->
-  <script src="/js/leaflet.js"></script>
-  <script src="/js/highcharts.js"></script>
-  <script src="/js/highcharts-more.js"></script>
+  <script src="/js/{{.CacheId}}/leaflet.js"></script>
+  <script src="/js/{{.CacheId}}/highcharts.js"></script>
+  <script src="/js/{{.CacheId}}/highcharts-more.js"></script>
 
-  <link rel="stylesheet" href="/css/meteo.css" />
+  <link rel="stylesheet" href="/css/{{.CacheId}}/meteo.css" />
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
@@ -47,9 +46,7 @@
 
 <body>
   <div id="message"> 
-    <h2>Nouveau site version BETA !</h2>  
-    <p>Redimensionnable. Vaguement compatible smartphone.Nouveau back-end golang.
-    <p>Tests et developpement en cours....</p>
+    <h2>Nouveau site en version BETA !</h2>
   </div>
   <div id="vuejs_root"></div>
   <script type="module">
