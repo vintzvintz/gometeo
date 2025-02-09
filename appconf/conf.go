@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 )
 
 const (
@@ -18,6 +19,21 @@ type CliOpts struct {
 }
 
 var appOpts *CliOpts
+
+var cacheId string
+
+func init() {
+	const magic32bit = 0xdeadbeef
+	n := uint32(time.Now().UnixMilli() & 0xFFFFFFFF)
+	cacheId = fmt.Sprintf("%8x", n^magic32bit)
+}
+
+func CacheId() string {
+	if cacheId == "" {
+		log.Fatalf("cache id is not initialized")
+	}
+	return cacheId
+}
 
 func Init(args []string) {
 	var err error

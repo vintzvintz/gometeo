@@ -11,7 +11,7 @@ import (
 )
 
 // for dev/tests/debug
-// TODO : refactor into a StartSimple() parameter
+// TODO : refactor into a StartOneShot() parameter
 const (
 	cacheServer = true
 	cacheFile   = "./content_cache.gob"

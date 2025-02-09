@@ -58,3 +58,11 @@ func TestVue(t *testing.T) {
 		t.Errorf("cmdline flag --addr got '%s' want '%s'", got, want)
 	}
 }
+
+func TestCacheId(t *testing.T) {
+	id := CacheId()
+	if len(id)!=8 {
+		t.Errorf("CacheId() is not a 8-char string : %s", id)
+	} 
+	t.Logf("cacheId='%s'", id)
+}
