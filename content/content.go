@@ -228,6 +228,7 @@ func (ps *pictoStore) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		log.Printf("error GET picto %s => statuscode%d\n", name, http.StatusNotFound)
 		return
 	}
+	resp.Header().Add("Cache-Control", "max-age=31536000, immutable")
 	resp.Header().Add("Content-Type", "image/svg+xml")
 	resp.WriteHeader(http.StatusOK)
 	_, err := io.Copy(resp, bytes.NewReader(b))

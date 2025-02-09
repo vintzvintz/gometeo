@@ -35,7 +35,7 @@ func registerStatic(mux *http.ServeMux, prefix string, fs embed.FS) {
 	mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		filename := r.PathValue("filename")
 		fspath := prefix + "/" + filename
-		// TODO : add "immutable" cache control headers
+		w.Header().Add( "Cache-Control", "max-age=31536000, immutable")
 		http.ServeFileFS(w, r, fs, fspath)
 	})
 }
@@ -84,6 +84,7 @@ func faviconHandlerFunc(path string, d fs.DirEntry) func(http.ResponseWriter, *h
 		} else {
 			w.Header().Add("Content-Type", mime)
 		}
+		w.Header().Add( "Cache-Control", "max-age=31536000, immutable")
 		w.WriteHeader(http.StatusOK)
 		io.Copy(w, f)
 	}
