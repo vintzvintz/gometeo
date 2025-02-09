@@ -2,20 +2,20 @@ package mfmap
 
 import (
 	"bytes"
+	"gometeo/appconf"
 	"io"
 	"log"
 	"net/http"
 )
 
-
 // Register adds handlers to mux for "/$path", "/$path/data", "/$path/svg"
 // also a redirection from "/"" to "/france"
 func (m *MfMap) Register(mux *http.ServeMux) {
 	p := "/"+m.Path()
-//	log.Printf("Register handlers for '%s'", p)
+	// log.Printf("Register handlers for '%s'", p)
 	mux.HandleFunc(p, m.makeMainHandler())
 	mux.HandleFunc(p+"/data", m.makeDataHandler())
-	mux.HandleFunc(p+"/svg", m.makeSvgMapHandler())
+	mux.HandleFunc(p+"/"+appconf.CacheId()+"/svg", m.makeSvgMapHandler())
 	if p == "/france" {
 		mux.HandleFunc("/{$}", makeRedirectHandler("/france"))
 	}
@@ -55,9 +55,9 @@ func (m *MfMap) makeDataHandler() func(http.ResponseWriter, *http.Request) {
 		if err != nil {
 			log.Printf("ignored send error: %s", err)
 		}
-		// update on data handler (JSON request) instead of main handler 
+		// update on data handler (JSON request) instead of main handler
 		// to allow main page caching and avoid simplest bots
-		m.MarkHit()  
+		m.MarkHit()
 	}
 }
 

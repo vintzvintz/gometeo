@@ -45,7 +45,8 @@ const weatherDisplayOrder = [
 export const RootComponent = {
 
   props: {
-    path: String
+    path: String,
+    cacheId: String
   },
 
   setup(props) {
@@ -56,6 +57,7 @@ export const RootComponent = {
       'path': null,
       'name': null,
       'idtech': null,
+      'cacheId': props.cacheId,
       'taxonomy': null,
       'bbox': {},
       'subzones': new Array(),
@@ -356,7 +358,7 @@ export const MapComponent = {
 
       // add SVG map background
       let svgElt = new Image
-      svgElt.src = `/${props.data.path}/svg`
+      svgElt.src = `/${props.data.path}/${props.data.cacheId}/svg`
       lMap.addLayer(L.imageOverlay(svgElt, lBounds))
 
       // add update info
@@ -568,7 +570,7 @@ export const MapComponent = {
     function markerTemplate(m) {
       let elt_a = /*html*/`
 <div>
-  <img src="/pictos/${m.icon}" 
+  <img src="/pictos/${props.data.cacheId}/${m.icon}" 
        alt="${m.desc}"
        title="${m.title}"
        style="width: ${m.icon_width}px"/>`
@@ -596,7 +598,7 @@ export const MapComponent = {
       return /*html*/`
 <div class="map_tooltip">
   <div class="tt_location">${m.title}</div>
-  <img src="/pictos/${m.icon}" alt="${m.desc}" title="${m.desc}"/>
+  <img src="/pictos/${props.data.cacheId}/${m.icon}" alt="${m.desc}" title="${m.desc}"/>
   <div class='tt_temp'>${m.txt}</div>
   <div class='tt_description'>${m.desc}</p>
   <div>

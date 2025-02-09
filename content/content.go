@@ -2,6 +2,7 @@ package content
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"gometeo/appconf"
 	"gometeo/mfmap"
 )
 
@@ -132,7 +134,7 @@ func (mc *Meteo) Updatable() string {
 
 func (mc *Meteo) rebuildMux() {
 	newMux := http.NewServeMux()
-	newMux.Handle("/pictos/{pic}", &mc.pictos)
+	mc.pictos.register(newMux)
 	mc.maps.register(newMux)
 	mc.mux.setMux(newMux) // concurrent-safe accessor
 }
@@ -214,9 +216,16 @@ func (ps *pictoStore) update(p Picto) {
 	ps.store[p.Name] = p.Img
 }
 
+func (ps *pictoStore) register(mux *http.ServeMux) {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	pattern := fmt.Sprintf("/pictos/%s/{pic}", appconf.CacheId())
+	mux.Handle(pattern, ps)
+}
+
 // ServeHTTP()
-// last segment of the request URL /picto/{pic} selects the picto to return
-// the picto (svg picture) is written on resp as a []byte
+// last segment of the request URL /picto/cacheid/{pic} selects the picto to return
 func (ps *pictoStore) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()
