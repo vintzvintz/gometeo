@@ -3,6 +3,7 @@ package server
 import (
 	"log"
 	"net/http"
+	"regexp"
 
 	"gometeo/appconf"
 	"gometeo/content"
@@ -80,7 +81,8 @@ func makeMeteoHandler(mc *content.Meteo) http.Handler {
 	mux := http.NewServeMux()
 	static.Register(mux)
 	mux.Handle("/", mc)
-	hdl := withLogging(mux)
+	hdl := withOldUrlRedirect(mux)
+	hdl = withLogging(hdl)
 	return hdl
 }
 
@@ -102,4 +104,27 @@ func serveContent(addr string, mc *content.Meteo) (*http.Server, <-chan error) {
 		close(ch)
 	}()
 	return &srv, ch
+}
+
+func withOldUrlRedirect(h http.Handler) http.Handler {
+
+	//
+	pattern := regexp.MustCompile(`.*(/[^\/]+)\.html$`)
+
+	redirectOld := func(resp http.ResponseWriter, req *http.Request) {
+
+		// redirect legacy .html path
+		match := pattern.FindStringSubmatch(req.URL.Path)
+		if (match != nil) && (len(match) == 2) {
+			newpath := match[1]
+			log.Printf("LEGACY ADDRESS %s redirected to %s", req.URL, newpath)
+			http.Redirect(resp, req, newpath, http.StatusMovedPermanently)
+			return
+		}
+
+		// forward request to next handler
+		h.ServeHTTP(resp, req)
+	}
+
+	return http.HandlerFunc(redirectOld)
 }
