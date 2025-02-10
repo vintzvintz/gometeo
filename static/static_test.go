@@ -12,35 +12,23 @@ import (
 	"text/template"
 )
 
-var expectedFiles = map[string]struct {
-	fs    fs.FS
-	files []string
+var expectedFiles = []struct {
+	fs   fs.FS
+	want string
 }{
-	"js": {
-		embedJS,
-		[]string{"main.js"},
-	},
-	"css": {
-		embedCSS,
-		[]string{"meteo.css"},
-	},
-	"fonts": {
-		embedFonts,
-		[]string{"fa.woff2"},
-	},
+	{embedJS, "js/main.js"},
+	{embedCSS, "css/meteo.css"},
+	{embedFonts, "fonts/fa.woff2"},
+	{embedFavicon, "favicon/favicon.svg"},
+	{embedRobotsTxt, "robots.txt"},
 }
 
 func TestEmbeddedFiles(t *testing.T) {
-	for dir, files := range expectedFiles {
-		t.Run(dir, func(t *testing.T) {
-			for _, f := range files.files {
-				want := dir + "/" + f
-				err := fstest.TestFS(files.fs, want)
-				if err != nil {
-					t.Error(err)
-				}
-			}
-		})
+	for _, test := range expectedFiles {
+		err := fstest.TestFS(test.fs, test.want)
+		if err != nil {
+			t.Error(err)
+		}
 	}
 }
 
@@ -75,6 +63,9 @@ var testStaticPaths = map[string][]string{
 		"/web-app-manifest-192x192.png",
 		"/web-app-manifest-512x512.png",
 		"/site.webmanifest",
+	},
+	"robots_txt": {
+		"/robots.txt",
 	},
 }
 

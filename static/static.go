@@ -27,6 +27,9 @@ var embedFonts embed.FS
 //go:embed favicon
 var embedFavicon embed.FS
 
+//go:embed robots.txt
+var embedRobotsTxt embed.FS
+
 func registerStatic(mux *http.ServeMux, prefix string, fs embed.FS) {
 
 	// pattern matches URL of static ressources under prefix with cacheId
@@ -44,7 +47,14 @@ func Register(mux *http.ServeMux) {
 	registerStatic(mux, JsPrefix, embedJS)
 	registerStatic(mux, CssPrefix, embedCSS)
 	registerStatic(mux, FontsPrefix, embedFonts)
+	registerRobotsTxt(mux)
 	registerFavicon(mux)
+}
+
+func registerRobotsTxt(mux *http.ServeMux) {
+	mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFileFS(w, r, embedRobotsTxt, "robots.txt")
+	})
 }
 
 var faviconContentTypes = map[string]string{

@@ -87,6 +87,7 @@ func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
 			resp.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		resp.Header().Add("X-Robots-Tag", "noindex, nofollow")
 		resp.WriteHeader(http.StatusOK)
 		_, err = io.Copy(resp, b)
 		if err != nil {
@@ -107,23 +108,3 @@ func updateModeText(mode mfmap.UpdateMode) string {
 	}
 	return s
 }
-
-/*
-func FormatMapStat(s mfmap.Stats, nameWidth int) string {
-	// start with map name
-	b := strings.Builder{}
-	b.WriteString(s.Name)
-	// append space padding
-	n := max(0, nameWidth-utf8.RuneCountInString(s.Name))
-	b.WriteString(strings.Repeat(" ", n))
-	// append counters values
-	b.WriteString(fmt.Sprintf(
-		" lastUpdate:%v\tlastHit:%v", s.LastUpdate, s.LastHit))
-
-	if s.HitCount > 0 {
-		b.WriteString(fmt.Sprintf(" hitCount:%d", s.HitCount))
-	}
-	b.WriteByte('\n')
-	return b.String()
-}
-*/
