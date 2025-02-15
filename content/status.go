@@ -28,7 +28,7 @@ type Stats struct {
 
 func getStats(m *mfmap.MfMap) Stats {
 	var lh time.Duration
-	if !m.LastHit().Equal(time.Unix(0, 0)) {
+	if !m.LastHit().IsZero() {
 		lh = time.Since(m.LastHit()).Round(time.Second)
 	}
 	return Stats{

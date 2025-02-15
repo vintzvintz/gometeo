@@ -1,13 +1,14 @@
 package mfmap
 
 import (
+	"log"
 	"sync/atomic"
 	"time"
 )
 
 type atomicStats struct {
-	lastUpdate atomic.Int64 // unix time, casted to time.Time by accessors
-	lastHit    atomic.Int64 // unix time, casted to time.Time by accessors
+	lastUpdate atomic.Value // wraps a time.Time
+	lastHit    atomic.Value // wraps a time.Time
 	hitCount   atomic.Int64 // simple counter
 }
 
@@ -23,27 +24,43 @@ const (
 	//fastModeMaxAge   = 1 * time.Minute
 	//slowModeMaxAge   = 5 * time.Minute
 	fastModeDuration = 3 * 24 * time.Hour // duration of fast update after last hit
-	fastModeMaxAge = 30 * time.Minute
-	slowModeMaxAge = 4 * time.Hour
+	fastModeMaxAge   = 30 * time.Minute
+	slowModeMaxAge   = 4 * time.Hour
 )
 
 func (m *MfMap) MarkUpdate() {
-	now := time.Now().Unix()
+	now := time.Now()
 	m.stats.lastUpdate.Store(now)
 }
 
 func (m *MfMap) MarkHit() {
-	now := time.Now().Unix()
+	now := time.Now()
 	m.stats.lastHit.Store(now)
 	m.stats.hitCount.Add(1)
 }
 
 func (m *MfMap) LastHit() time.Time {
-	return time.Unix(m.stats.lastHit.Load(), 0)
+	val := m.stats.lastHit.Load()
+	if val == nil {
+		return time.Time{}
+	}
+	t, ok := val.(time.Time)
+	if !ok {
+		log.Panicf("unexpected type")
+	}
+	return t
 }
 
 func (m *MfMap) LastUpdate() time.Time {
-	return time.Unix(m.stats.lastUpdate.Load(), 0)
+	val := m.stats.lastUpdate.Load()
+	if val == nil {
+		return time.Time{}
+	}
+	t, ok := val.(time.Time)
+	if !ok {
+		log.Panicf("unexpected type")
+	}
+	return t
 }
 
 func (m *MfMap) HitCount() int64 {
