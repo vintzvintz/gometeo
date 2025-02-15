@@ -181,7 +181,7 @@ func (pad prevsAtDay) processPrev(m MomentName, fi featInfo, fb forecastBuild) {
 			Prevs: make(prevsAtPois, 50),
 		}
 	}
-	// TODO warn is d.Time is not unique among other pam.Prevs
+	// TODO warn if d.Time is not unique among other pam.Prevs
 	if fb.f != nil {
 		pam.Time = fb.f.Time
 	} else if fb.d != nil {
@@ -195,7 +195,7 @@ func (pad prevsAtDay) processPrev(m MomentName, fi featInfo, fb forecastBuild) {
 	}
 
 	// pam is a local value of a PrevsAtMoment struct
-	// we have to write a copy back into PrevsAtDay map
+	// write back into PrevsAtDay map to avoid losing updates
 	pad[m] = pam
 }
 

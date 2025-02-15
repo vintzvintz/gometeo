@@ -13,6 +13,8 @@ import (
 	"gometeo/mfmap"
 )
 
+const fetchInterval = 10 //seconds
+
 const (
 	httpsMeteofranceCom = "https://meteofrance.com"
 	sessionCookie       = "mfsession"
@@ -60,7 +62,7 @@ func Start(path string, limit int, mode CrawlMode) (*content.Meteo, <-chan struc
 			<-initDone // wait for init completion
 			log.Printf("enter forever update loop")
 			for {
-				time.Sleep(5 * time.Second)
+				time.Sleep(fetchInterval * time.Second)
 				path := mc.Updatable()
 				if path == "" {
 					continue

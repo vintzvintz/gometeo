@@ -8,8 +8,8 @@ func (m *MfMap) MergeOld(old *MfMap, pastDays int) {
 	// preserve stats
 	m.copyStats(old)
 
-	// recycle parent map name from old map because it is only available
-	// at initial recursive fetch and not when updating indivial ap update
+	// retreive parent map name from old map because it is only available
+	// at initial recursive fetch and not when updating individual map
 	m.Parent = old.Parent
 
 	// temp hashmaps for lookup on old (geo)features
