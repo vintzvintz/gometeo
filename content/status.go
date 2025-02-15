@@ -19,20 +19,24 @@ var statusTemplate string
 
 type Stats struct {
 	Name       string
-	LastUpdate time.Time
-	LastHit    time.Time
+	LastUpdate time.Duration
+	LastHit    time.Duration
 	NextUpdate time.Duration
 	UpdateMode string
 	HitCount   int64
 }
 
 func getStats(m *mfmap.MfMap) Stats {
+	var lh time.Duration
+	if !m.LastHit().Equal(time.Unix(0, 0)) {
+		lh = time.Since(m.LastHit()).Round(time.Second)
+	}
 	return Stats{
 		Name:       m.Name(),
 		HitCount:   m.HitCount(),
 		UpdateMode: updateModeText(m.UpdateMode()),
-		LastHit:    m.LastHit(),
-		LastUpdate: m.LastUpdate(),
+		LastHit:    lh,
+		LastUpdate: time.Since(m.LastUpdate()).Round(time.Second),
 		NextUpdate: m.DurationToUpdate().Round(time.Second),
 	}
 }
@@ -62,16 +66,6 @@ func (ms *mapStore) Status() []Stats {
 	return stats
 }
 
-/*
-	func (ms *mapStore) makeBasicStatusHandler() http.HandlerFunc {
-		return func(resp http.ResponseWriter, _ *http.Request) {
-			resp.WriteHeader(http.StatusOK)
-			for _, s := range ms.Status() {
-				resp.Write([]byte(s.String()))
-			}
-		}
-	}
-*/
 func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
 	// compile template only once
 	tmpl, err := template.New("").Parse(statusTemplate)
@@ -80,8 +74,15 @@ func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
 	}
 	// return closure having http.HandlerFunc signature
 	return func(resp http.ResponseWriter, _ *http.Request) {
+		d := struct {
+			Stats     []Stats
+			Updatable string
+		}{
+			Stats:     ms.Status(),
+			Updatable: ms.updatable(),
+		}
 		b := &bytes.Buffer{}
-		err := tmpl.Execute(b, ms.Status())
+		err := tmpl.Execute(b, d)
 		if err != nil {
 			log.Printf("statusHandler error: %s", err)
 			resp.WriteHeader(http.StatusInternalServerError)

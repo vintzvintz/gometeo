@@ -15,18 +15,25 @@
 </head>
 
 <body>
+  <div>
+  mapStore.Updatable() = {{.Updatable}}
+  </div>
   <table>
     <tr>
       <th>Carte</th>
+      <th>LastHit</th>
       <th>Hits</th>
       <th>Mode</th>
+      <th>Last update</th>
       <th>Next update</th>
     </tr>
-    {{range .}}
+    {{range .Stats}}
     <tr {{if (eq .UpdateMode "fast")}}class="fastupdate"{{end}}>
       <td>{{ .Name}}</td>
+      <td>{{ .LastHit}}</td>
       <td>{{ .HitCount}}</td>
       <td>{{ .UpdateMode}}</td>
+      <td>{{ .LastUpdate}}</td>
       <td>{{ .NextUpdate}}</td>
     </tr>
     {{end}}
