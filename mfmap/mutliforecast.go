@@ -76,9 +76,6 @@ type Daily struct {
 	Uv          int       `json:"uv_index"`
 	WeatherIcon string    `json:"daily_weather_icon"`
 	WeatherDesc string    `json:"daily_weather_description"`
-
-	// calculated field sent to client
-	//LongTerme bool `json:"long_terme"`
 }
 
 // custom types with runtime validation on unmarshalled data
