@@ -40,19 +40,15 @@ func (m *MfMap) MarkHit() {
 }
 
 func (m *MfMap) LastHit() time.Time {
-	val := m.stats.lastHit.Load()
-	if val == nil {
-		return time.Time{}
-	}
-	t, ok := val.(time.Time)
-	if !ok {
-		log.Panicf("unexpected type")
-	}
-	return t
+	return loadAsTime(&m.stats.lastHit)
 }
 
 func (m *MfMap) LastUpdate() time.Time {
-	val := m.stats.lastUpdate.Load()
+	return loadAsTime(&m.stats.lastUpdate)
+}
+
+func loadAsTime(a *atomic.Value) time.Time {
+	val := a.Load()
 	if val == nil {
 		return time.Time{}
 	}
