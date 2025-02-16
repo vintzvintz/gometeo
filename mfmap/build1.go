@@ -22,7 +22,7 @@ type (
 	}
 
 	// relative day from "today" (-1:yesterday, +1 tomorrow, ...)
-	prevList map[int]prevsAtDay
+	prevList map[Date]prevsAtDay
 
 	// data for a day, to be displayed as a row of 4 moments or just a daily map
 	prevsAtDay map[MomentName]prevsAtMoment
@@ -103,6 +103,16 @@ func (m *MfMap) BuildJson() (*jsonMap, error) {
 	return &j, nil
 }
 
+// marshal a prevList (indexed by calendar date) into
+// map indexed by number of relative days
+func (pl prevList) MarshalJSON() ([]byte, error) {
+	var data = make(map[int]prevsAtDay)
+	for d := range pl {
+		data[d.DaysFromNow()] = pl[d]
+	}
+	return json.Marshal(data)
+}
+
 type featInfo struct {
 	coords     Coordinates
 	name       string
@@ -130,15 +140,14 @@ func (mf MultiforecastData) byEcheance() (prevList, error) {
 		for j := range forecasts {
 			f := &(forecasts[j])
 			e := f.Echeance()
-			jour := e.Date.DaysFromNow() // relative number of days from today
 
 			// create PrevAtDay struct on first pass
-			pad, ok := pl[jour]
+			pad, ok := pl[e.Date]
 			if !ok {
 				pad = make(map[MomentName]prevsAtMoment)
 				// pad is a map , not a local copy
 				// mutations of pad are mirrored in pl[jour]
-				pl[jour] = pad
+				pl[e.Date] = pad
 			}
 
 			// accumulate Daily prev into PrevAtDay
