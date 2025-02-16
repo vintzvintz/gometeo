@@ -75,7 +75,7 @@ func mergeTimeSeries[T Echeancer](old []T, new []T, pastDays int) []T {
 }
 
 func (m *MfMap) copyStats(old *MfMap) {
-	m.stats.hitCount.Store(old.stats.hitCount.Load())
-	m.stats.lastHit.Store(old.stats.lastHit.Load())
+	m.stats.hitCount.Store(old.HitCount())
+	m.stats.lastHit.Store(old.LastHit())
 	// m.stats.lastUpdate.Store( old.stats.lastUpdate.Load() )
 }
