@@ -1,7 +1,6 @@
 package mfmap
 
 import (
-	"log"
 	"sync/atomic"
 	"time"
 )
@@ -49,14 +48,12 @@ func (m *MfMap) LastUpdate() time.Time {
 
 func loadAsTime(a *atomic.Value) time.Time {
 	val := a.Load()
-	if val == nil {
+	switch t := val.(type) {
+	case time.Time:
+		return t
+	default:
 		return time.Time{}
 	}
-	t, ok := val.(time.Time)
-	if !ok {
-		log.Panicf("unexpected type")
-	}
-	return t
 }
 
 func (m *MfMap) HitCount() int64 {

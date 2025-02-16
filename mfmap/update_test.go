@@ -43,7 +43,7 @@ func TestLogUpdate(t *testing.T) {
 	}
 	m.MarkUpdate()
 	dur = m.DurationToUpdate()
-	if dur < 0  {
+	if dur < 0 {
 		t.Error("DurationToUpdate() on just-updated map must be positive")
 	}
 }
@@ -51,36 +51,36 @@ func TestLogUpdate(t *testing.T) {
 func TestNeedUpdate(t *testing.T) {
 
 	var tests = map[string]struct {
-		update int64
-		hit    int64
+		update time.Time
+		hit    time.Time
 		want   bool
 	}{
 		"zero": {
-			update: 0,
+			//update: 0,
 			want:   true,
 		},
 		"now": {
-			update: time.Now().Unix(),
+			update: time.Now(),
 			want:   false,
 		},
 		"fast_true": {
-			hit:    time.Now().Add(-fastModeDuration).Unix() + 10, // last hit 10 sec after fastmode cutoff
-			update: time.Now().Add(-fastModeMaxAge).Unix() - 30,   // last update 30 sec before cutoff
+			hit:    time.Now().Add(-fastModeDuration).Add(10 * time.Second), // last hit 10 sec after fastmode cutoff
+			update: time.Now().Add(-fastModeMaxAge).Add(-30 * time.Second),  // last update 30 sec before cutoff
 			want:   true,
 		},
 		"fast_false": {
-			hit:    time.Now().Add(-fastModeDuration).Unix() + 10, // last hit 10 sec after fastmode cutoff
-			update: time.Now().Add(-fastModeMaxAge).Unix() + 30,   // last update 30 sec after cutoff
+			hit:    time.Now().Add(-fastModeDuration).Add(+10 * time.Second), // last hit 10 sec after fastmode cutoff
+			update: time.Now().Add(-fastModeMaxAge).Add(+30 * time.Second),   // last update 30 sec after cutoff
 			want:   false,
 		},
 		"slow_true": {
-			hit:    time.Now().Add(-fastModeDuration).Unix() - 10, // last hit 10 sec before fastmode cutoff
-			update: time.Now().Add(-slowModeMaxAge).Unix() - 30,   // last update 30 sec before cutoff
+			hit:    time.Now().Add(-fastModeDuration).Add(-10 * time.Second), // last hit 10 sec before fastmode cutoff
+			update: time.Now().Add(-slowModeMaxAge).Add(-30 * time.Second),   // last update 30 sec before cutoff
 			want:   true,
 		},
 		"slow_false": {
-			hit:    time.Now().Add(-fastModeDuration).Unix() - 10, // last hit 10 sec before fastmode cutoff
-			update: time.Now().Add(-slowModeMaxAge).Unix() + 30,   // last update 30 sec after cutoff
+			hit:    time.Now().Add(-fastModeDuration).Add(-10 * time.Second), // last hit 10 sec before fastmode cutoff
+			update: time.Now().Add(-slowModeMaxAge).Add(+30 * time.Second),   // last update 30 sec after cutoff
 			want:   false,
 		},
 	}
