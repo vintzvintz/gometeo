@@ -17,10 +17,10 @@ func makeMultiforecast(t *testing.T) MultiforecastData {
 	if err != nil {
 		t.Fatal(fmt.Errorf("parseMultiforecast() error: %w", err))
 	}
-	if len(m.Forecasts) == 0 {
+	if len(m.Multi) == 0 {
 		t.Fatal("parseMultiforecast() returned no data")
 	}
-	return m.Forecasts
+	return m.Multi
 }
 
 func TestByEcheances(t *testing.T) {

@@ -13,28 +13,28 @@ func (m *MfMap) MergeOld(old *MfMap, pastDays int) {
 	m.Parent = old.Parent
 
 	// temp hashmaps for lookup on old (geo)features
-	oldForecasts := make(map[codeInsee][]Forecast, len(old.Forecasts))
-	oldDailies := make(map[codeInsee][]Daily, len(old.Forecasts))
+	oldForecasts := make(map[codeInsee][]Forecast, len(old.Multi))
+	oldDailies := make(map[codeInsee][]Daily, len(old.Multi))
 
-	for _, feat := range old.Forecasts {
+	for _, feat := range old.Multi {
 		oldForecasts[feat.Properties.Insee] = feat.Properties.Forecasts
 		oldDailies[feat.Properties.Insee] = feat.Properties.Dailies
 	}
 
 	// iterate over (geo)features
 	// merge both inputs (old and new []Forecast series) into new time-series
-	for i := range m.Forecasts {
+	for i := range m.Multi {
 		mergedF := mergeTimeSeries(
-			oldForecasts[m.Forecasts[i].Properties.Insee],
-			m.Forecasts[i].Properties.Forecasts,
+			oldForecasts[m.Multi[i].Properties.Insee],
+			m.Multi[i].Properties.Forecasts,
 			pastDays)
-		m.Forecasts[i].Properties.Forecasts = mergedF
+		m.Multi[i].Properties.Forecasts = mergedF
 
 		mergedD := mergeTimeSeries(
-			oldDailies[m.Forecasts[i].Properties.Insee],
-			m.Forecasts[i].Properties.Dailies,
+			oldDailies[m.Multi[i].Properties.Insee],
+			m.Multi[i].Properties.Dailies,
 			pastDays)
-		m.Forecasts[i].Properties.Dailies = mergedD
+		m.Multi[i].Properties.Dailies = mergedD
 	}
 }
 

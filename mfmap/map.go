@@ -19,7 +19,7 @@ type MfMap struct {
 	Data *MapData
 
 	// Forecasts holds forecast data parsed from upstream json
-	Forecasts MultiforecastData
+	Multi MultiforecastData
 
 	// SvgMap is the background image (viewport-cropped upstream image)
 	SvgMap []byte

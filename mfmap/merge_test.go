@@ -7,19 +7,19 @@ import (
 
 // remove nb items from the time-series on each (geo)feature
 func truncateTimeSeries(m *mfmap.MfMap, nbForecast int, nbDaily int) {
-	for i := range m.Forecasts {
-		m.Forecasts[i].Properties.Forecasts = m.Forecasts[i].Properties.Forecasts[nbForecast:]
-		m.Forecasts[i].Properties.Dailies = m.Forecasts[i].Properties.Dailies[nbDaily:]
+	for i := range m.Multi {
+		m.Multi[i].Properties.Forecasts = m.Multi[i].Properties.Forecasts[nbForecast:]
+		m.Multi[i].Properties.Dailies = m.Multi[i].Properties.Dailies[nbDaily:]
 	}
 }
 
 func countItems(m *mfmap.MfMap) (nbFeatures, nbForecasts, nbDailies int) {
-	for i := range m.Forecasts {
+	for i := range m.Multi {
 		// forecast count for current (geo)feature
-		nbForecasts += len(m.Forecasts[i].Properties.Forecasts)
-		nbDailies += len(m.Forecasts[i].Properties.Dailies)
+		nbForecasts += len(m.Multi[i].Properties.Forecasts)
+		nbDailies += len(m.Multi[i].Properties.Dailies)
 	}
-	return len(m.Forecasts), nbForecasts, nbDailies
+	return len(m.Multi), nbForecasts, nbDailies
 }
 
 func TestMerge(t *testing.T) {

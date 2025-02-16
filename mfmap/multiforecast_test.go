@@ -63,16 +63,16 @@ func testParseMultiforecast(t *testing.T) mfmap.MultiforecastData {
 	if err != nil {
 		t.Fatal(fmt.Errorf("parseMultiforecast() error: %w", err))
 	}
-	if len(m.Forecasts) == 0 {
+	if len(m.Multi) == 0 {
 		t.Fatal("parseMultiforecast() returned no data")
 	}
-	return m.Forecasts
+	return m.Multi
 }
 
 func TestPictoNames(t *testing.T) {
 	const minLength = 20
 	m := mfmap.MfMap{
-		Forecasts: testParseMultiforecast(t),
+		Multi: testParseMultiforecast(t),
 	}
 	pics := m.PictoNames()
 	if len(pics) < minLength {

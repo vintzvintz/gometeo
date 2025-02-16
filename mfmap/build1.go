@@ -76,7 +76,7 @@ func (m *MfMap) WriteJson(wr io.Writer) error {
 }
 
 func (m *MfMap) BuildJson() (*jsonMap, error) {
-	prevs, err := m.Forecasts.byEcheance()
+	prevs, err := m.Multi.byEcheance()
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (m *MfMap) BuildJson() (*jsonMap, error) {
 	}
 	// highchart disabled for PAYS. Only on DEPTs & REGIONs
 	if m.Data.Info.Taxonomy != "PAYS" {
-		graphdata, err := m.Forecasts.toChroniques()
+		graphdata, err := m.Multi.toChroniques()
 		if err != nil {
 			return nil, err
 		}

@@ -76,7 +76,7 @@ func checkMap(t *testing.T, m *mfmap.MfMap) {
 	if m.Data == nil {
 		t.Errorf("MfMap field m.Data is nil")
 	}
-	if m.Forecasts == nil {
+	if m.Multi == nil {
 		t.Errorf("MfMap field m.Forecasts is nil")
 	}
 	if m.Geography == nil {

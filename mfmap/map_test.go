@@ -109,7 +109,7 @@ func TestApiUrl(t *testing.T) {
 func testBuildMap(t *testing.T) *mfmap.MfMap {
 	return &mfmap.MfMap{
 		Data:      testParseMap(t),
-		Forecasts: testParseMultiforecast(t),
+		Multi:     testParseMultiforecast(t),
 		Geography: testParseGeography(t),
 		SvgMap:    testParseSvg(t),
 	}
