@@ -3,10 +3,9 @@ package mfmap
 import "slices"
 
 func (m *MfMap) MergeOld(old *MfMap, pastDays int) {
-	//log.Printf("Merge() %s into %s", old.Path(), m.Path())
-
-	// preserve stats
-	m.copyStats(old)
+	// preserve stats - lastUpdate excluded
+	m.stats.hitCount.Store(old.HitCount())
+	m.stats.lastHit.Store(old.LastHit())
 
 	// retreive parent map name from old map because it is only available
 	// at initial recursive fetch and not when updating individual map
@@ -72,10 +71,4 @@ func mergeTimeSeries[T Echeancer](old []T, new []T, pastDays int) []T {
 		merged = append(merged, tmp[ech])
 	}
 	return merged
-}
-
-func (m *MfMap) copyStats(old *MfMap) {
-	m.stats.hitCount.Store(old.HitCount())
-	m.stats.lastHit.Store(old.LastHit())
-	// m.stats.lastUpdate.Store( old.stats.lastUpdate.Load() )
 }
