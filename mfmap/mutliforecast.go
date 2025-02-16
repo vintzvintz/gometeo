@@ -31,10 +31,6 @@ type MfGeometry struct {
 	Coords Coordinates `json:"coordinates"`
 }
 
-type Coordinates struct {
-	Lat, Lng float64
-}
-
 type MfProperties struct {
 	Name      string     `json:"name"`
 	Country   countryFr  `json:"country"`
@@ -209,29 +205,6 @@ func (ctry *countryFr) UnmarshalJSON(b []byte) error {
 	}
 	*ctry = countryFr(s)
 	return nil
-}
-
-func (c *Coordinates) UnmarshalJSON(b []byte) error {
-	// https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.1
-	var a [2]float64
-	if err := json.Unmarshal(b, &a); err != nil {
-		return fmt.Errorf("coordinates unmarshal error: %w. Want a [2]float64 array", err)
-	}
-	if err := checkLng(a[0]); err != nil {
-		return err
-	}
-	if err := checkLat(a[1]); err != nil {
-		return err
-	}
-	c.Lng, c.Lat = a[0], a[1]
-	return nil
-}
-
-// MarshalJSON outputs lng/lat as [float, float]
-// instead of default object {Lng:float, Lat:float}
-// cf https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.1
-func (c *Coordinates) MarshalJSON() ([]byte, error) {
-	return json.Marshal([]float64{c.Lng, c.Lat})
 }
 
 func (code *codeInsee) UnmarshalJSON(b []byte) error {

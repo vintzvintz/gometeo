@@ -46,6 +46,10 @@ type GeoGeometry struct {
 	Coords [][]Coordinates `json:"coordinates"`
 }
 
+type Coordinates struct {
+	Lat, Lng float64
+}
+
 type Prop0 struct {
 	Nom   string `json:"nom"`
 	Cible string `json:"cible"`
@@ -111,7 +115,6 @@ func (m *MfMap) ParseGeography(r io.Reader) error {
 	return nil
 }
 
-var polygonStr = regexp.MustCompile("Polygon")
 
 func (bbox *Bbox) UnmarshalJSON(b []byte) error {
 	var a [4]float64
@@ -147,6 +150,7 @@ func (b Bbox) Crop() Bbox {
 }
 
 func (pt *PolygonType) UnmarshalJSON(b []byte) error {
+	var polygonStr = regexp.MustCompile("Polygon")
 	s, err := unmarshalStringValidate(b, polygonStr, "GeoGeometry.Type")
 	if err != nil {
 		return err
@@ -166,6 +170,29 @@ func parseGeoCollection(r io.Reader) (*GeoCollection, error) {
 		return nil, fmt.Errorf("invalid geography: %w", err)
 	}
 	return &gc, nil
+}
+
+func (c *Coordinates) UnmarshalJSON(b []byte) error {
+	// https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.1
+	var a [2]float64
+	if err := json.Unmarshal(b, &a); err != nil {
+		return fmt.Errorf("coordinates unmarshal error: %w. Want a [2]float64 array", err)
+	}
+	if err := checkLng(a[0]); err != nil {
+		return err
+	}
+	if err := checkLat(a[1]); err != nil {
+		return err
+	}
+	c.Lng, c.Lat = a[0], a[1]
+	return nil
+}
+
+// MarshalJSON outputs lng/lat as [float, float]
+// instead of default object {Lng:float, Lat:float}
+// cf https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.1
+func (c *Coordinates) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]float64{c.Lng, c.Lat})
 }
 
 func checkLng(lng float64) error {
