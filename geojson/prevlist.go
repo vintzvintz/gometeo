@@ -1,28 +1,14 @@
-package mfmap
+package geojson
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"log"
 	"time"
 )
 
 type (
-	jsonMap struct {
-		Name       string      `json:"name"`
-		Path       string      `json:"path"`
-		Breadcrumb Breadcrumbs `json:"breadcrumb"`
-		Idtech     string      `json:"idtech"`
-		Taxonomy   string      `json:"taxonomy"`
-		Bbox       Bbox        `json:"bbox"`
-		SubZones   geoFeatures `json:"subzones"`
-		Prevs      prevList    `json:"prevs"`
-		Chroniques Graphdata   `json:"chroniques"`
-	}
-
 	// relative day from "today" (-1:yesterday, +1 tomorrow, ...)
-	prevList map[Date]prevsAtDay
+	PrevList map[Date]prevsAtDay
 
 	// data for a day, to be displayed as a row of 4 moments or just a daily map
 	prevsAtDay map[MomentName]prevsAtMoment
@@ -58,54 +44,9 @@ const (
 	termeCourt
 )
 
-// writes all forecast data available in m as a big json object
-func (m *MfMap) WriteJson(wr io.Writer) error {
-	obj, err := m.BuildJson()
-	if err != nil {
-		return err
-	}
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(wr, bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m *MfMap) BuildJson() (*jsonMap, error) {
-	prevs, err := m.Multi.byEcheance()
-	if err != nil {
-		return nil, err
-	}
-
-	j := jsonMap{
-		Name:       m.Name(),
-		Path:       m.Path(),
-		Breadcrumb: m.Breadcrumb, // not from upstream
-		Idtech:     m.Data.Info.IdTechnique,
-		Taxonomy:   m.Data.Info.Taxonomy,
-		SubZones:   m.Geography.Features, // transfered without modification
-		Bbox:       m.Geography.Bbox.Crop(),
-		Prevs:      prevs,
-		// Chroniques:      // see below
-	}
-	// highchart disabled for PAYS. Only on DEPTs & REGIONs
-	if m.Data.Info.Taxonomy != "PAYS" {
-		graphdata, err := m.Multi.toChroniques()
-		if err != nil {
-			return nil, err
-		}
-		j.Chroniques = graphdata
-	}
-	return &j, nil
-}
-
 // marshal a prevList (indexed by calendar date) into
 // map indexed by number of relative days
-func (pl prevList) MarshalJSON() ([]byte, error) {
+func (pl PrevList) MarshalJSON() ([]byte, error) {
 	var data = make(map[int]prevsAtDay)
 	for d := range pl {
 		data[d.DaysFromNow()] = pl[d]
@@ -123,8 +64,8 @@ type featInfo struct {
 // byEcheance reshapes original data (poi->echeance) into a
 // reversed jour->moment->poi structure
 // TODO: improve handling of incomplete/invalid mutliforecast
-func (mf MultiforecastData) byEcheance() (prevList, error) {
-	pl := make(prevList)
+func (mf MultiforecastData) BuildPrevs() (PrevList, error) {
+	pl := make(PrevList)
 
 	// iterate over POIs, known as "Features" in json data
 	for i := range mf {

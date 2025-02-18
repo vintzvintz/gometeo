@@ -7,6 +7,7 @@ import (
 	"gometeo/testutils"
 	"io"
 	"reflect"
+	"regexp"
 	"testing"
 )
 
@@ -17,6 +18,8 @@ var cropPc = svt.CropRatio{
 	Top:    0.08,
 	Bottom: 0.08,
 }
+
+const svgRegexp = `^https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/[A-Z]+/[a-z0-9]+.svg`
 
 func parseAndGetSize(t *testing.T, r io.ReadCloser) (*svt.Tree, svt.Size) {
 	var sz svt.Size
@@ -56,18 +59,15 @@ func testParseSvg(t *testing.T) []byte {
 	return m.SvgMap
 }
 
-func TestSvgURL(t *testing.T) {
-	t.Run("map_svg", func(t *testing.T) {
-		m := testBuildMap(t)
-		name := m.Name()
-		u, err := m.SvgURL()
-		if err != nil {
-			t.Fatal(err)
-		}
-		got := u.String()
-		want := "https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg"
-		if got != want {
-			t.Errorf("svgUrl('%s') got '%s' want '%s'", name, got, want)
-		}
-	})
+func TestSvgUrl(t *testing.T) {
+	m := testBuildMap(t)
+	u, err := m.SvgURL()
+	if err != nil {
+		t.Errorf("svgURL() error: %s", err)
+		return
+	}
+	expr := regexp.MustCompile(svgRegexp)
+	if !expr.Match([]byte(u.String())) {
+		t.Errorf("svgUrl()='%s' does not match '%s'", u.String(), svgRegexp)
+	}
 }

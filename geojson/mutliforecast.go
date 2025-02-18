@@ -1,13 +1,11 @@
-package mfmap
+package geojson
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"regexp"
 	"slices"
-	"strings"
 	"time"
 )
 
@@ -94,37 +92,21 @@ var (
 )
 
 const (
-	codeInseeMinLen = 6
+	codeInseeMinLen  = 6
+	ApiMultiforecast = "/multiforecast"
 )
 
-const (
-	apiMultiforecast = "/multiforecast"
-)
-
-func (m *MfMap) ForecastURL() (*url.URL, error) {
-	// zone is described by a seqence of coordinates
-	ids := make([]string, len(m.Data.Children))
-	for i, poi := range m.Data.Children {
-		ids[i] = poi.Insee
-	}
-	query := make(url.Values)
-	query.Add("bbox", "")
-	query.Add("begin_time", "")
-	query.Add("end_time", "")
-	query.Add("time", "")
-	query.Add("instants", "morning,afternoon,evening,night")
-	query.Add("liste_id", strings.Join(ids, ","))
-
-	return m.Data.ApiURL(apiMultiforecast, &query)
-}
-
-func (m *MfMap) ParseMultiforecast(r io.Reader) error {
-	fc, err := parseMfCollection(r)
+func ParseMultiforecast(r io.Reader) (*mfCollection, error) {
+	var fc mfCollection
+	j, err := io.ReadAll(r)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("could not read multiforecast data: %w", err)
 	}
-	m.Multi = fc.Features
-	return nil
+	err = json.Unmarshal(j, &fc)
+	if err != nil {
+		return nil, fmt.Errorf("invalid multiforecast: %w", err)
+	}
+	return &fc, nil
 }
 
 // Unmarshall into a Forecast struct. Sets f.OnlyLT true
@@ -219,38 +201,10 @@ func (code *codeInsee) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (m *MomentName) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return fmt.Errorf("moment unmarshal error: %w", err)
-	}
-	allowedNames := []string{Matin, Apresmidi, Soir, Nuit}
-	for _, name := range allowedNames {
-		if s == name {
-			*m = MomentName(s)
-			return nil
-		}
-	}
-	return fmt.Errorf("moment '%s' not in known values  %v", s, allowedNames)
-}
-
-func parseMfCollection(r io.Reader) (*mfCollection, error) {
-	var fc mfCollection
-	j, err := io.ReadAll(r)
-	if err != nil {
-		return nil, fmt.Errorf("could not read multiforecast data: %w", err)
-	}
-	err = json.Unmarshal(j, &fc)
-	if err != nil {
-		return nil, fmt.Errorf("invalid multiforecast: %w", err)
-	}
-	return &fc, nil
-}
-
 // PictoNames() return a list of all pictos used on the map
-func (m *MfMap) PictoNames() []string {
+func (multi MultiforecastData) PictoNames() []string {
 	pictos := make([]string, 0)
-	for _, feat := range m.Multi {
+	for _, feat := range multi {
 		for _, prop := range feat.Properties.Forecasts {
 			pictos = append(pictos, prop.WeatherIcon, prop.WindIcon)
 		}

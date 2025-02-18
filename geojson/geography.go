@@ -1,18 +1,16 @@
-package mfmap
+package geojson
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"regexp"
-	"strings"
 )
 
 type GeoCollection struct {
 	Type     FeatureCollectionType `json:"type"`
 	Bbox     Bbox                  `json:"bbox"`
-	Features geoFeatures           `json:"features"`
+	Features GeoFeatures           `json:"features"`
 }
 
 type Bbox struct {
@@ -22,7 +20,7 @@ type Bbox struct {
 	LatS float64 `json:"s"`
 }
 
-type geoFeatures []*geoFeature
+type GeoFeatures []*geoFeature
 
 type geoFeature struct {
 	Bbox       Bbox        `json:"bbox"`
@@ -72,49 +70,35 @@ const (
 	maxLng = 15.0
 )
 
-// https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
-func (m *MfMap) GeographyURL() (*url.URL, error) {
-	elems := []string{
-		"modules",
-		"custom",
-		"mf_map_layers_v2",
-		"maps",
-		"desktop",
-		m.Data.Info.PathAssets,
-		"geo_json",
-		strings.ToLower(m.Data.Info.IdTechnique) + "-aggrege.json",
-	}
-	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+// ParseGeograpy parses a geojson object into a GeoCollection.
+// subzones maps "geoFeature.feat.Properties.Prop0.Cible" to a CustomPath.
+// Drops any Feature not referenced by subzones parameter
+func ParseGeography(r io.Reader, subzones map[string]string) (*GeoCollection, error) {
+	var gc GeoCollection
+	j, err := io.ReadAll(r)
 	if err != nil {
-		return nil, fmt.Errorf("m.geographyURL() error: %w", err)
+		return nil, fmt.Errorf("could not read geography data: %w", err)
 	}
-	return u, nil
-}
+	err = json.Unmarshal(j, &gc)
+	if err != nil {
+		return nil, fmt.Errorf("invalid geography: %w", err)
+	}
 
-func (m *MfMap) ParseGeography(r io.Reader) error {
-	if m.Geography != nil {
-		return fmt.Errorf("MfMap.Geography already populated")
-	}
-	geo, err := parseGeoCollection(r)
-	if err != nil {
-		return err
-	}
 	// keep only geographical subzones having a reference in map metadata
-	geoFeats := make(geoFeatures, 0, len(geo.Features))
-	for _, feat := range geo.Features {
-		sz, ok := m.Data.Subzones[feat.Properties.Prop0.Cible]
+	geoFeats := make(GeoFeatures, 0, len(subzones))
+	for _, feat := range gc.Features {
+		cible := feat.Properties.Prop0.Cible
+		path, ok := subzones[cible]
 		if !ok {
 			continue
 		}
 		// add subzone path (could also be done client-side but simpler here)
-		feat.Properties.CustomPath = extractPath(sz.Path)
+		feat.Properties.CustomPath = path // extractPath(sz.Path)
 		geoFeats = append(geoFeats, feat)
 	}
-	geo.Features = geoFeats // cant simplify geo because m.Geography == nil
-	m.Geography = geo
-	return nil
+	gc.Features = geoFeats // cant simplify geo because m.Geography == nil
+	return &gc, nil
 }
-
 
 func (bbox *Bbox) UnmarshalJSON(b []byte) error {
 	var a [4]float64
@@ -140,12 +124,12 @@ func (bbox *Bbox) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (b Bbox) Crop() Bbox {
+func (b Bbox) Crop(left, right, top, bottom float64) Bbox {
 	return Bbox{
-		LngW: b.LngW + cropPc.Left*(b.LngE-b.LngW),
-		LatS: b.LatS + cropPc.Bottom*(b.LatN-b.LatS),
-		LngE: b.LngE - cropPc.Right*(b.LngE-b.LngW),
-		LatN: b.LatN - cropPc.Top*(b.LatN-b.LatS),
+		LngW: b.LngW + left*(b.LngE-b.LngW),
+		LatS: b.LatS + bottom*(b.LatN-b.LatS),
+		LngE: b.LngE - right*(b.LngE-b.LngW),
+		LatN: b.LatN - top*(b.LatN-b.LatS),
 	}
 }
 
@@ -159,18 +143,6 @@ func (pt *PolygonType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func parseGeoCollection(r io.Reader) (*GeoCollection, error) {
-	var gc GeoCollection
-	j, err := io.ReadAll(r)
-	if err != nil {
-		return nil, fmt.Errorf("could not read geography data: %w", err)
-	}
-	err = json.Unmarshal(j, &gc)
-	if err != nil {
-		return nil, fmt.Errorf("invalid geography: %w", err)
-	}
-	return &gc, nil
-}
 
 func (c *Coordinates) UnmarshalJSON(b []byte) error {
 	// https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.1

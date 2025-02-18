@@ -12,10 +12,10 @@ import (
 )
 
 var cropPc = svt.CropRatio{
-	Left   : 0.20,
-	Right  : 0.08,
-	Top    : 0.08,
-	Bottom :0.08,
+	Left:   0.20,
+	Right:  0.08,
+	Top:    0.08,
+	Bottom: 0.08,
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg

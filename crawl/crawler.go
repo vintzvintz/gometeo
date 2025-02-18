@@ -125,7 +125,7 @@ func (cr *Crawler) Fetch(startPath string, limit int) (
 			}
 			// donwload pictos
 			// cache will avoid multiple downloads of same a picto
-			cr.fetchPictos(m.PictoNames(), &wgPictos, chPicto)
+			cr.fetchPictos(m.Pictos, &wgPictos, chPicto)
 
 			// send map and drop pointer because ownership is transferred
 			chMap <- m

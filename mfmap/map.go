@@ -1,11 +1,17 @@
 package mfmap
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
+	"text/template"
 
 	"golang.org/x/net/html"
+
+	"gometeo/appconf"
+	gj "gometeo/geojson"
 )
 
 // MfMap is the main in-memory storage type of this project.
@@ -18,14 +24,16 @@ type MfMap struct {
 	// Data is the result of parsing upstream html main page
 	Data *MapData
 
-	// Forecasts holds forecast data parsed from upstream json
-	Multi MultiforecastData
+	Prevs     gj.PrevList  // = gj.BuildPrevs()
+	Graphdata gj.Graphdata // =  gj.BuildChroniques()
+
+	Pictos []string
 
 	// SvgMap is the background image (viewport-cropped upstream image)
 	SvgMap []byte
 
 	// Geography are geographical boundaries of subzones
-	Geography *GeoCollection
+	Geography gj.GeoCollection
 
 	// breadcrumb is built by recursive parent lookup in MapCollection
 	Parent     string
@@ -44,6 +52,41 @@ type (
 	Breadcrumbs []BreadcrumbItem
 )
 
+//go:embed template.html
+var templateFile string
+
+// TemplateData contains data for htmlTemplate.Execute()
+type TemplateData struct {
+	Description string
+	Title       string
+	Path        string
+	VueJs       string
+	CacheId     string
+}
+
+// htmlTemplate is a global html/template for html rendering
+var htmlTemplate = template.Must(template.New("").Parse(templateFile))
+
+// main html file
+func (m *MfMap) WriteHtml(wr io.Writer) error {
+
+	title := fmt.Sprintf("Météo %s", m.Data.Info.Name)
+	desc := fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name)
+	path := m.Path()
+	vue := "vue.esm-browser.dev.js"
+	if appconf.VueProd() {
+		vue = "vue.esm-browser.prod.js"
+	}
+
+	return htmlTemplate.Execute(wr, &TemplateData{
+		Description: desc,
+		Title:       title,
+		Path:        path,
+		CacheId:     appconf.CacheId(),
+		VueJs:       vue,
+	})
+}
+
 func (m *MfMap) ParseHtml(html io.Reader) error {
 	j, err := htmlFilter(html)
 	if err != nil {
@@ -53,8 +96,6 @@ func (m *MfMap) ParseHtml(html io.Reader) error {
 	if err != nil {
 		return err
 	}
-	// keep only selected subzones, excluding marine & montagne & outermer
-	data.Subzones.filterSubzones(data.Info.Taxonomy)
 	m.Data = data
 	return nil
 }
@@ -99,4 +140,83 @@ func isJsonTag(t html.Token) bool {
 		}
 	}
 	return isScript && hasAttrType && hasDrupalAttr
+}
+
+func (m *MfMap) ForecastURL() (*url.URL, error) {
+	// zone is described by a seqence of coordinates
+	ids := make([]string, len(m.Data.Children))
+	for i, poi := range m.Data.Children {
+		ids[i] = poi.Insee
+	}
+	query := make(url.Values)
+	query.Add("bbox", "")
+	query.Add("begin_time", "")
+	query.Add("end_time", "")
+	query.Add("time", "")
+	query.Add("instants", "morning,afternoon,evening,night")
+	query.Add("liste_id", strings.Join(ids, ","))
+
+	return m.Data.ApiURL(gj.ApiMultiforecast, &query)
+}
+
+func (m *MfMap) ParseMultiforecast(r io.Reader) error {
+	fc, err := gj.ParseMultiforecast(r)
+	if err != nil {
+		return err
+	}
+	prevs, err := fc.Features.BuildPrevs()
+	if err != nil {
+		return err
+	}
+	graphdata, err := fc.Features.BuildChroniques()
+	if err != nil {
+		return err
+	}
+	m.Prevs = prevs
+	m.Graphdata = graphdata
+	m.Pictos = fc.Features.PictoNames()
+	return nil
+}
+
+// https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
+func (m *MfMap) GeographyURL() (*url.URL, error) {
+	elems := []string{
+		"modules",
+		"custom",
+		"mf_map_layers_v2",
+		"maps",
+		"desktop",
+		m.Data.Info.PathAssets,
+		"geo_json",
+		strings.ToLower(m.Data.Info.IdTechnique) + "-aggrege.json",
+	}
+	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	if err != nil {
+		return nil, fmt.Errorf("m.geographyURL() error: %w", err)
+	}
+	return u, nil
+}
+
+// ParseGeography() parses a response from "geography" api endpoint.
+// Calls geojson.ParseGeography() with valid subzones list.
+func (m *MfMap) ParseGeography(r io.Reader) error {
+	if len(m.Geography.Features) != 0 {
+		return fmt.Errorf("MfMap.Geography already populated")
+	}
+	subzones := make(map[string]string)
+	for sz := range m.Data.Subzones {
+		path := extractPath(m.Data.Subzones[sz].Path)
+		if path == "" {
+			continue
+		}
+		subzones[sz] = path
+	}
+	gc, err := gj.ParseGeography(r, subzones)
+	if err != nil {
+		return err
+	}
+	if gc != nil {
+		m.Geography = *gc
+	}
+	return nil
 }

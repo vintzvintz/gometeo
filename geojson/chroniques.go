@@ -1,4 +1,4 @@
-package mfmap
+package geojson
 
 import (
 	"encoding/json"
@@ -33,10 +33,10 @@ type (
 	}
 
 	FloatRangeTs struct {
-		ts  time.Time
-		min float64
-		max float64
-		offsetHours int 
+		ts          time.Time
+		min         float64
+		max         float64
+		offsetHours int
 	}
 
 	IntTs struct {
@@ -45,10 +45,10 @@ type (
 	}
 
 	IntRangeTs struct {
-		ts  time.Time
-		min int
-		max int
-		offsetHours int 
+		ts          time.Time
+		min         int
+		max         int
+		offsetHours int
 	}
 )
 
@@ -87,11 +87,11 @@ const (
 
 var dailiesChroniques = []string{
 	Trange,
-//	Tmin,
-//	Tmax,
+	//	Tmin,
+	//	Tmax,
 	Hrange,
-//	Hmin,
-//	Hmax,
+	//	Hmin,
+	//	Hmax,
 	Uv,
 }
 
@@ -104,7 +104,7 @@ const chroniqueMaxDays = 11
 
 // toChroniques() formats Multiforecastdata into Graphdata
 // for client-side charts
-func (mf MultiforecastData) toChroniques() (Graphdata, error) {
+func (mf MultiforecastData) BuildChroniques() (Graphdata, error) {
 	g := Graphdata{}
 
 	for i := range mf {
@@ -157,7 +157,7 @@ seriesLoop:
 				continue
 			}
 			// ignore data after configured limit
-			if v.Sub( time.Now() ) > chroniqueMaxDays * 24 * time.Hour {
+			if v.Sub(time.Now()) > chroniqueMaxDays*24*time.Hour {
 				continue
 			}
 			chro = append(chro, v)
@@ -169,7 +169,7 @@ seriesLoop:
 
 func (f Forecast) withTimestamp(data string) (ValueTs, error) {
 	if f.LongTerme {
-		return nil,nil
+		return nil, nil
 	}
 	ts := f.Time
 	switch data {
@@ -228,7 +228,7 @@ func (v FloatTs) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON outputs a timestamped float as an array [ts, min, max]
 func (v FloatRangeTs) MarshalJSON() ([]byte, error) {
-	t :=  timeToJs(v.ts.Add( time.Duration(v.offsetHours) * time.Hour))
+	t := timeToJs(v.ts.Add(time.Duration(v.offsetHours) * time.Hour))
 	s := fmt.Sprintf("[%d, %f, %f]", t, v.min, v.max)
 	return []byte(s), nil
 }
@@ -241,7 +241,7 @@ func (v IntTs) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON outputs a timestamped float as an array [ts, min, max]
 func (v IntRangeTs) MarshalJSON() ([]byte, error) {
-	t :=  timeToJs(v.ts.Add( time.Duration(v.offsetHours) * time.Hour))
+	t := timeToJs(v.ts.Add(time.Duration(v.offsetHours) * time.Hour))
 	s := fmt.Sprintf("[%d, %d, %d]", t, v.min, v.max)
 	return []byte(s), nil
 }

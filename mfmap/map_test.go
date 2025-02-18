@@ -1,9 +1,13 @@
 package mfmap_test
 
 import (
+	"bytes"
+	"io"
+	"regexp"
 	"strings"
 	"testing"
 
+	"gometeo/appconf"
 	"gometeo/mfmap"
 	"gometeo/testutils"
 )
@@ -106,11 +110,104 @@ func TestApiUrl(t *testing.T) {
 }
 
 // buildTestMap returns a JsonMap structure filled form test files
+
 func testBuildMap(t *testing.T) *mfmap.MfMap {
-	return &mfmap.MfMap{
-		Data:      testParseMap(t),
-		Multi:     testParseMultiforecast(t),
-		Geography: testParseGeography(t),
-		SvgMap:    testParseSvg(t),
+	var m mfmap.MfMap
+	if err := m.ParseHtml(testutils.HtmlReader(t)); err != nil {
+		t.Error(err)
+	}
+	if err := m.ParseGeography(testutils.GeoCollectionReader(t)); err != nil {
+		t.Error(err)
+	}
+	if err := m.ParseMultiforecast(testutils.MultiforecastReader(t)); err != nil {
+		t.Error(err)
+	}
+	if err := m.ParseSvgMap(testutils.SvgReader(t)); err != nil {
+		t.Error(err)
+	}
+	return &m
+}
+
+const (
+	emptyRegexp    = `^$`
+	anyRegexp      = `.*`
+	coordsRegexp   = `^([\d\.],?)+$`
+	instantsRegexp = `morning,afternoon,evening,night`
+)
+
+func TestWriteHtml(t *testing.T) {
+	appconf.Init([]string{})
+
+	m := testBuildMap(t)
+
+	buf := &bytes.Buffer{}
+	err := m.WriteHtml(buf)
+	if err != nil {
+		t.Errorf("BuildHtml() error: %s", err)
+	}
+	b, _ := io.ReadAll(buf)
+	// display html content
+	t.Log(string(b[:400]))
+	// TODO: improve html content checks
+}
+
+func TestBuildJson(t *testing.T) {
+	m := testBuildMap(t)
+	j, err := m.BuildJson()
+	if err != nil {
+		t.Fatalf("BuildJson() error: %s", err)
+	}
+	// check content
+	if j.Name != "France" {
+		t.Errorf("jsonMap.Name=%s expected %s", j.Name, "France")
+	}
+	// TODO improve json content checks
+}
+
+func TestForecastURL(t *testing.T) {
+	m := testParseHtml(t)
+
+	validationRegexps := map[string]string{
+		"bbox":       emptyRegexp,
+		"begin_time": emptyRegexp,
+		"end_time":   emptyRegexp,
+		"time":       emptyRegexp,
+		"instants":   instantsRegexp,
+		"liste_id":   coordsRegexp,
+	}
+
+	u, err := m.ForecastURL()
+	if err != nil {
+		t.Fatalf("forecastURL() error: %s", err)
+	}
+	values := u.Query()
+	for key, expr := range validationRegexps {
+		re := regexp.MustCompile(expr)
+		got, ok := values[key]
+		if !ok {
+			t.Fatalf("forecastURL() query does not have key '%s'", key)
+		}
+		if len(got) != 1 {
+			t.Fatalf("forecastURL() query ['%s'] has %d values %q, want 1", key, len(got), got)
+		}
+		if re.Find([]byte(got[0])) == nil {
+			t.Errorf("forecastURL() query ['%s']='%s' doesnt match '%s'", key, got[0], expr)
+		}
+	}
+}
+
+const geoRegexp = `^https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/[A-Z]+/geo_json/[a-z0-9]+-aggrege.json$`
+
+func TestGeographyURL(t *testing.T) {
+
+	m := testParseHtml(t)
+
+	u, err := m.GeographyURL()
+	if err != nil {
+		t.Fatalf("geographyURL() error: %s", err)
+	}
+	expr := regexp.MustCompile(geoRegexp)
+	if !expr.Match([]byte(u.String())) {
+		t.Errorf("geographyUrl()='%s' does not match '%s'", u.String(), geoRegexp)
 	}
 }

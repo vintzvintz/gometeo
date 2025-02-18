@@ -25,7 +25,7 @@ func TestPictoUrl(t *testing.T) {
 }
 
 func TestFetch(t *testing.T) {
-	var wantN int = 7
+	var wantN int = 5
 	maps, pictos := newCrawler().Fetch("/", wantN)
 
 	var nbMaps, nbPics int
@@ -76,11 +76,17 @@ func checkMap(t *testing.T, m *mfmap.MfMap) {
 	if m.Data == nil {
 		t.Errorf("MfMap field m.Data is nil")
 	}
-	if m.Multi == nil {
-		t.Errorf("MfMap field m.Forecasts is nil")
+	if m.Prevs == nil {
+		t.Errorf("MfMap field m.Prevs is nil")
 	}
-	if m.Geography == nil {
-		t.Errorf("MfMap field m.Geography is nil")
+	if m.Graphdata == nil {
+		t.Errorf("MfMap field m.Graphdata is nil")
+	}
+	if len(m.Pictos) == 0 {
+		t.Error("mfMap has no picto")
+	}
+	if m.Geography.Type != "FeatureCollection" {
+	 	t.Errorf("MfMap.Geography has worng type")
 	}
 	if m.SvgMap == nil {
 		t.Errorf("MfMap field m.SvgMap is nil")

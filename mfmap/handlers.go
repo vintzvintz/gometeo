@@ -2,16 +2,19 @@ package mfmap
 
 import (
 	"bytes"
+	"encoding/json"
 	"gometeo/appconf"
 	"io"
 	"log"
 	"net/http"
+
+	gj "gometeo/geojson"
 )
 
 // Register adds handlers to mux for "/$path", "/$path/data", "/$path/svg"
 // also a redirection from "/"" to "/france"
 func (m *MfMap) Register(mux *http.ServeMux) {
-	p := "/"+m.Path()
+	p := "/" + m.Path()
 	// log.Printf("Register handlers for '%s'", p)
 	mux.HandleFunc(p, m.makeMainHandler())
 	mux.HandleFunc(p+"/data", m.makeDataHandler())
@@ -86,4 +89,56 @@ func makeRedirectHandler(url string) func(http.ResponseWriter, *http.Request) {
 		log.Printf("redirect from %s to %s", req.URL, url)
 		http.Redirect(resp, req, url, http.StatusMovedPermanently)
 	}
+}
+
+type jsonMap struct {
+	Name       string         `json:"name"`
+	Path       string         `json:"path"`
+	Breadcrumb Breadcrumbs    `json:"breadcrumb"`
+	Idtech     string         `json:"idtech"`
+	Taxonomy   string         `json:"taxonomy"`
+	Bbox       gj.Bbox        `json:"bbox"`
+	SubZones   gj.GeoFeatures `json:"subzones"`
+	Prevs      gj.PrevList    `json:"prevs"`
+	Chroniques gj.Graphdata   `json:"chroniques"`
+}
+
+// writes all forecast data available in m as a big json object
+func (m *MfMap) WriteJson(wr io.Writer) error {
+	obj, err := m.BuildJson()
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(wr, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *MfMap) BuildJson() (*jsonMap, error) {
+
+	bbox := m.Geography.Bbox.Crop(
+		cropPc.Left, cropPc.Right, cropPc.Top, cropPc.Bottom)
+
+	j := jsonMap{
+		Name:       m.Name(),
+		Path:       m.Path(),
+		Breadcrumb: m.Breadcrumb, // not from upstream
+		Idtech:     m.Data.Info.IdTechnique,
+		Taxonomy:   m.Data.Info.Taxonomy,
+		SubZones:   m.Geography.Features,
+		Bbox:       bbox,
+		Prevs:      m.Prevs,
+		Chroniques: m.Graphdata,
+	}
+	// highchart disabled for PAYS. Only on DEPTs & REGIONs
+	if m.Data.Info.Taxonomy == "PAYS" {
+		j.Chroniques = nil
+	}
+	return &j, nil
 }

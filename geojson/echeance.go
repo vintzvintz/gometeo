@@ -1,6 +1,7 @@
-package mfmap
+package geojson
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -61,7 +62,7 @@ func (f Forecast) Echeance() Echeance {
 }
 
 // compare two moments
-func CompareMoments(a, b MomentName)  int {
+func CompareMoments(a, b MomentName) int {
 	var ia, ib int
 	for i := range momentsStr {
 		if a == momentsStr[i] {
@@ -124,4 +125,19 @@ func (d Date) DaysFromNow() int {
 	// TODO : Paramétrer un décalage du changement de date par rapport à 00h00 UTC
 	today := NewDate(time.Now())
 	return d.Sub(today)
+}
+
+func (m *MomentName) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return fmt.Errorf("moment unmarshal error: %w", err)
+	}
+	allowedNames := []string{Matin, Apresmidi, Soir, Nuit}
+	for _, name := range allowedNames {
+		if s == name {
+			*m = MomentName(s)
+			return nil
+		}
+	}
+	return fmt.Errorf("moment '%s' not in known values  %v", s, allowedNames)
 }

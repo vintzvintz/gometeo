@@ -1,4 +1,4 @@
-package mfmap
+package geojson
 
 import (
 	"fmt"
@@ -6,33 +6,35 @@ import (
 	"time"
 
 	"gometeo/testutils"
+
 )
 
 func makeMultiforecast(t *testing.T) MultiforecastData {
 	j := testutils.MultiforecastReader(t)
 	defer j.Close()
 
-	m := MfMap{}
-	err := m.ParseMultiforecast(j)
+	fc, err := ParseMultiforecast(j)
 	if err != nil {
-		t.Fatal(fmt.Errorf("parseMultiforecast() error: %w", err))
+		t.Error(fmt.Errorf("parseMfCollection() error: %w", err))
 	}
-	if len(m.Multi) == 0 {
-		t.Fatal("parseMultiforecast() returned no data")
+	if len(fc.Features) == 0 {
+		t.Fatal("parseMfCollection() returned no data")
 	}
-	return m.Multi
+	return fc.Features
 }
 
 func TestByEcheances(t *testing.T) {
 
 	mf := makeMultiforecast(t)
-	prevs, err := mf.byEcheance()
+	prevs, err := mf.BuildPrevs()
 	if err != nil {
 		t.Fatalf("byEcheance error: %s", err)
 	}
 	if len(prevs) == 0 {
 		t.Error("No forecast found in test data")
 	}
+
+
 }
 
 func inspectGraphdata(t *testing.T, g Graphdata) {
@@ -48,9 +50,9 @@ func inspectGraphdata(t *testing.T, g Graphdata) {
 	}
 }
 
-func TestToChronique(t *testing.T) {
+func TestBuildChroniques(t *testing.T) {
 	mf := makeMultiforecast(t)
-	g, err := mf.toChroniques()
+	g, err := mf.BuildChroniques()
 	if err != nil {
 		t.Fatalf("toChronique() error: %s", err)
 	}

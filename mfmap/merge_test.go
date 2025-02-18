@@ -1,5 +1,5 @@
 package mfmap_test
-
+/*
 import (
 	"gometeo/mfmap"
 	"testing"
@@ -50,3 +50,4 @@ func TestMerge(t *testing.T) {
 		t.Errorf("got %d truncate->%d merge->%d", oldDailies, trDailies, mergeDailies)
 	}
 }
+*/

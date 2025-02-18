@@ -1,7 +1,15 @@
 package mfmap
+/*
+import (
+	"slices"
+	gj "gometeo/geojson"
 
-import "slices"
-
+)
+*/
+func (m *MfMap) MergeOld(old *MfMap, pastDays int) {
+	panic("MergeOld not implemented")
+}
+/*
 func (m *MfMap) MergeOld(old *MfMap, pastDays int) {
 	// preserve stats - lastUpdate excluded
 	m.stats.hitCount.Store(old.HitCount())
@@ -72,3 +80,4 @@ func mergeTimeSeries[T Echeancer](old []T, new []T, pastDays int) []T {
 	}
 	return merged
 }
+*/

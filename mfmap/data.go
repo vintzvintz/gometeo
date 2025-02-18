@@ -58,38 +58,33 @@ type (
 )
 
 var szFilters = map[string]*regexp.Regexp{
-	//		"DEPARTEMENT":   no subzones
+	// "DEPARTEMENT": no subzones
 	"REGION": regexp.MustCompile(`^DEPT[0-9][0-9AB]$`),
 	"PAYS":   regexp.MustCompile(`^REGIN[0-9][0-9]$`),
 }
 
-func (sz Subzones) filterSubzones(taxonomy string) {
-
-	re, ok := szFilters[taxonomy]
-	if !ok {
-		re = regexp.MustCompile(`$^`) // match nothing
-	}
-	if re == nil {
-		return
-	}
-	for id := range sz {
-		if !re.MatchString(id) {
-			delete(sz, id)
-			// TODO verbose
-			// log.Printf("ignore subzone %s", id)
-		}
-	}
-}
-
 // mapParser parses json data to initialise a MfMap data structure
 func ParseData(r io.Reader) (*MapData, error) {
-	var j MapData
+	var data MapData
 	buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(buf, &j)
-	return &j, err
+	err = json.Unmarshal(buf, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	// keep only selected subzones, excluding marine & montagne & outermer
+	re, ok := szFilters[data.Info.Taxonomy]
+	if ok {
+		for id := range data.Subzones {
+			if !re.MatchString(id) {
+				delete(data.Subzones, id)	
+			}
+		}
+	}
+	return &data, nil
 }
 
 func (m *MfMap) Name() string {
