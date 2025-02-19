@@ -61,6 +61,10 @@ type featInfo struct {
 	updateTime time.Time
 }
 
+func (pl PrevList)Merge( old PrevList, pastDays int) {
+	log.Print("PrevList.Merge() not implemented")
+}
+
 // byEcheance reshapes original data (poi->echeance) into a
 // reversed jour->moment->poi structure
 // TODO: improve handling of incomplete/invalid mutliforecast

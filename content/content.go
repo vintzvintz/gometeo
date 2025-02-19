@@ -148,7 +148,7 @@ func (ms *mapStore) update(m *mfmap.MfMap, pastDays int) {
 	path := m.Path()
 	old, ok := ms.store[path]
 	if ok {
-		m.MergeOld(old, pastDays)
+		m.Merge(old, pastDays)
 	}
 	ms.store[m.Path()] = m
 	// rebuild all breadcrumbs is not optimal

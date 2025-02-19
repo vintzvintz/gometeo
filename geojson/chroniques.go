@@ -131,6 +131,10 @@ func (mf MultiforecastData) BuildChroniques() (Graphdata, error) {
 	return g, nil
 }
 
+func (pl Graphdata) Merge(old Graphdata, pastDays int) {
+	log.Print("Graphdata.Merge() not implemented")
+}
+
 // getChroniques POI reshapes data for client-side highchart
 // * forecasts: list of forecasts (either regular or daily) of a given POI
 // * series: names of fields to extract from input forecast data
