@@ -20,7 +20,7 @@ var cropPc = svt.CropRatio{
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg
-func (m *MfMap) SvgURL() (*url.URL, error) {
+func (m *MfMap) SvgUrl() (*url.URL, error) {
 	elems := []string{
 		appconf.UPSTREAM_ROOT,
 		"modules",

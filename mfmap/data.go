@@ -142,8 +142,8 @@ func (sz *Subzones) UnmarshalJSON(b []byte) error {
 
 // ApiURL builds API URL from "config" node
 // typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0/path
-func (j *MapData) ApiURL(path string, query *url.Values) (*url.URL, error) {
-	conf := j.Tools.Config
+func (m *MfMap) ApiUrl(path string, query *url.Values) (*url.URL, error) {
+	conf := m.Data.Tools.Config
 	var querystring string
 	if query != nil {
 		querystring = "?" + query.Encode()

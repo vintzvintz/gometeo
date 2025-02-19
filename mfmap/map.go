@@ -142,7 +142,7 @@ func isJsonTag(t html.Token) bool {
 	return isScript && hasAttrType && hasDrupalAttr
 }
 
-func (m *MfMap) ForecastURL() (*url.URL, error) {
+func (m *MfMap) ForecastUrl() (*url.URL, error) {
 	// zone is described by a seqence of coordinates
 	ids := make([]string, len(m.Data.Children))
 	for i, poi := range m.Data.Children {
@@ -156,7 +156,7 @@ func (m *MfMap) ForecastURL() (*url.URL, error) {
 	query.Add("instants", "morning,afternoon,evening,night")
 	query.Add("liste_id", strings.Join(ids, ","))
 
-	return m.Data.ApiURL(gj.ApiMultiforecast, &query)
+	return m.ApiUrl(ApiMultiforecast, &query)
 }
 
 func (m *MfMap) ParseMultiforecast(r io.Reader) error {
@@ -179,7 +179,7 @@ func (m *MfMap) ParseMultiforecast(r io.Reader) error {
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
-func (m *MfMap) GeographyURL() (*url.URL, error) {
+func (m *MfMap) GeographyUrl() (*url.URL, error) {
 	elems := []string{
 		appconf.UPSTREAM_ROOT,
 		"modules",
@@ -193,7 +193,7 @@ func (m *MfMap) GeographyURL() (*url.URL, error) {
 	}
 	u, err := url.Parse( strings.Join(elems, "/"))
 	if err != nil {
-		return nil, fmt.Errorf("m.geographyURL() error: %w", err)
+		return nil, fmt.Errorf("m.GeographyUrl() error: %w", err)
 	}
 	return u, nil
 }

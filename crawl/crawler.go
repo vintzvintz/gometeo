@@ -161,7 +161,7 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 
 	// prepare closure returning a preconfigured api client
 	apiClient := func() (*Client, error) {
-		apiBaseUrl, err := m.Data.ApiURL("", nil)
+		apiBaseUrl, err := m.ApiUrl("", nil)
 		if err != nil {
 			return nil, err
 		}
@@ -172,13 +172,13 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 	}
 
 	// subqueries to retreive SVG, geographical subzones and actual forecasts
-	if err = cr.getAsset(m.SvgURL, m.ParseSvgMap, nil); err != nil {
+	if err = cr.getAsset(m.SvgUrl, m.ParseSvgMap, nil); err != nil {
 		return nil, err
 	}
-	if err = cr.getAsset(m.GeographyURL, m.ParseGeography, nil); err != nil {
+	if err = cr.getAsset(m.GeographyUrl, m.ParseGeography, nil); err != nil {
 		return nil, err
 	}
-	if err = cr.getAsset(m.ForecastURL, m.ParseMultiforecast, apiClient); err != nil {
+	if err = cr.getAsset(m.ForecastUrl, m.ParseMultiforecast, apiClient); err != nil {
 		return nil, err
 	}
 	m.MarkUpdate() // record update time
