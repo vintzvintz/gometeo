@@ -19,6 +19,7 @@ var statusTemplate string
 
 type Stats struct {
 	Name       string
+	Path       string
 	LastUpdate time.Duration
 	LastHit    time.Duration
 	NextUpdate time.Duration
@@ -33,6 +34,7 @@ func getStats(m *mfmap.MfMap) Stats {
 	}
 	return Stats{
 		Name:       m.Name(),
+		Path:       m.Path(),
 		HitCount:   m.HitCount(),
 		UpdateMode: updateModeText(m.UpdateMode()),
 		LastHit:    lh,
