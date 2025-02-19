@@ -9,6 +9,9 @@ import (
 
 const (
 	DEFAULT_ADDR = ":1051"
+
+	// TODO: refactor into env var
+	UPSTREAM_ROOT = "https://meteofrance.com"
 )
 
 type CliOpts struct {

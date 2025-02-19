@@ -181,6 +181,7 @@ func (m *MfMap) ParseMultiforecast(r io.Reader) error {
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
 func (m *MfMap) GeographyURL() (*url.URL, error) {
 	elems := []string{
+		appconf.UPSTREAM_ROOT,
 		"modules",
 		"custom",
 		"mf_map_layers_v2",
@@ -190,7 +191,7 @@ func (m *MfMap) GeographyURL() (*url.URL, error) {
 		"geo_json",
 		strings.ToLower(m.Data.Info.IdTechnique) + "-aggrege.json",
 	}
-	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	u, err := url.Parse( strings.Join(elems, "/"))
 	if err != nil {
 		return nil, fmt.Errorf("m.geographyURL() error: %w", err)
 	}

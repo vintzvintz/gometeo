@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"gometeo/appconf"
 	"gometeo/content"
 	"gometeo/mfmap"
 )
@@ -16,7 +17,6 @@ import (
 const fetchInterval = 10 //seconds
 
 const (
-	httpsMeteofranceCom = "https://meteofrance.com"
 	sessionCookie       = "mfsession"
 )
 
@@ -27,7 +27,7 @@ type Crawler struct {
 // NewCrawler allocates a Crawler with a pre-configured client
 func newCrawler() *Crawler {
 	return &Crawler{
-		mainClient: NewClient(httpsMeteofranceCom),
+		mainClient: NewClient(appconf.UPSTREAM_ROOT),
 	}
 }
 
@@ -251,7 +251,7 @@ func (cr *Crawler) getPicto(name string) ([]byte, error) {
 // exemple https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/p3j.svg
 func pictoURL(name string) (*url.URL, error) {
 	elems := []string{
-		httpsMeteofranceCom,
+		appconf.UPSTREAM_ROOT,
 		"modules",
 		"custom",
 		"mf_tools_common_theme_public",
