@@ -52,8 +52,7 @@ type (
 	Breadcrumbs []BreadcrumbItem
 )
 
-//go:embed template.html
-var templateFile string
+const ApiMultiforecast = "/multiforecast"
 
 // TemplateData contains data for htmlTemplate.Execute()
 type TemplateData struct {
@@ -64,26 +63,20 @@ type TemplateData struct {
 	CacheId     string
 }
 
+//go:embed template.html
+var templateFile string
+
 // htmlTemplate is a global html/template for html rendering
 var htmlTemplate = template.Must(template.New("").Parse(templateFile))
 
 // main html file
 func (m *MfMap) WriteHtml(wr io.Writer) error {
-
-	title := fmt.Sprintf("Météo %s", m.Data.Info.Name)
-	desc := fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name)
-	path := m.Path()
-	vue := "vue.esm-browser.dev.js"
-	if appconf.VueProd() {
-		vue = "vue.esm-browser.prod.js"
-	}
-
 	return htmlTemplate.Execute(wr, &TemplateData{
-		Description: desc,
-		Title:       title,
-		Path:        path,
+		Description: fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name),
+		Title:       fmt.Sprintf("Météo %s", m.Data.Info.Name),
+		Path:        m.Path(),
 		CacheId:     appconf.CacheId(),
-		VueJs:       vue,
+		VueJs:       appconf.VueJs(),
 	})
 }
 

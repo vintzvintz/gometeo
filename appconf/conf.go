@@ -12,6 +12,10 @@ const (
 
 	// TODO: refactor into env var
 	UPSTREAM_ROOT = "https://meteofrance.com"
+
+	VUE_DEV = "vue.esm-browser.dev.js"
+	VUE_PROD = "vue.esm-browser.prod.js"
+
 )
 
 type CliOpts struct {
@@ -89,6 +93,9 @@ func Limit() int {
 }
 
 // VueProd select which vue.js file is called from mail html template
-func VueProd() bool {
-	return appOpts.Vue != "dev"
+func VueJs() string {
+	if appOpts.Vue != "dev" {
+		return VUE_DEV
+	}
+	return VUE_PROD
 }
