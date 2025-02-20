@@ -61,7 +61,7 @@ type featInfo struct {
 	updateTime time.Time
 }
 
-func (pl PrevList)Merge( old PrevList, pastDays int) {
+func (pl PrevList) Merge(old PrevList, pastDays int) {
 	log.Print("PrevList.Merge() not implemented")
 }
 

@@ -1,7 +1,5 @@
 package mfmap
 
-import "log"
-
 /*
 import (
 
@@ -10,18 +8,6 @@ import (
 
 )
 */
-func (m *MfMap) Merge(old *MfMap, pastDays int) {
-
-	// sanity check
-	if (m.Name() != old.Name()) || (m.Path() != old.Path()) {
-		log.Print("MfMap.Merge() : name or path mismatch")
-		return
-	}
-
-	// keep up to pastDays of backlog
-	m.Prevs.Merge(old.Prevs, pastDays)
-	m.Graphdata.Merge(old.Graphdata, pastDays)
-}
 
 /*
 func (m *MfMap) MergeOld(old *MfMap, pastDays int) {

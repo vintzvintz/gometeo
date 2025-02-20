@@ -1,9 +1,11 @@
 package geojson_test
 
 import (
+	"fmt"
 	gj "gometeo/geojson"
 	"slices"
 	"testing"
+	"time"
 )
 
 var (
@@ -83,6 +85,42 @@ func TestEcheancesSort(t *testing.T) {
 	for i := range sorted {
 		if test[i] != sorted[i] {
 			t.Errorf("Sorting echeances failed at index %d got %v want %v", i, test[i], sorted[i])
+		}
+	}
+}
+
+func TestEcheanceString(t *testing.T) {
+	m := gj.Matin
+	d, _ := time.Parse(time.RFC3339, "2024-12-02T15:51:12.000Z")
+	e := gj.Echeance{Date: gj.NewDate(d), Moment: gj.MomentName(m)}
+
+	want := fmt.Sprintf("%4d-%02d-%02d %s", d.Year(), d.Month(), d.Day(), m)
+	got := e.String()
+	if got != want {
+		t.Errorf("Echeance.String()='%s' want '%s'", got, want)
+	}
+}
+
+func TestDateSub(t *testing.T) {
+	now := gj.Date{2024, 12, 28}
+	tests := []struct {
+		y    int
+		m    int
+		d    int
+		want int
+	}{
+		{y: 2024, m: 12, d: 20, want: -8},
+		{y: 2024, m: 12, d: 27, want: -1},
+		{y: 2024, m: 12, d: 28, want: 0},
+		{y: 2025, m: 1, d: 1, want: 4},
+		{y: 2025, m: 1, d: 2, want: 5},
+		{y: 2026, m: 1, d: 1, want: 365 + 4},
+	}
+	for _, test := range tests {
+		d := gj.Date{Year: test.y, Month: time.Month(test.m), Day: test.d}
+		got := d.Sub(now)
+		if got != test.want {
+			t.Errorf("DaysFrom() test : (%s)-(%s) got %d want %d", d, now, got, test.want)
 		}
 	}
 }

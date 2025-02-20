@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"gometeo/mfmap"
 )
 
 const assets_path = "../test_data/"
@@ -17,6 +19,23 @@ const (
 	fileJsonGeography     = "geography.json"
 	fileSvgRacine         = "pays007.svg"
 )
+
+func BuildTestMap(t *testing.T) *mfmap.MfMap {
+	var m mfmap.MfMap
+	if err := m.ParseHtml(openFile(t, fileHtmlRacine)); err != nil {
+		t.Error(err)
+	}
+	if err := m.ParseGeography(openFile(t, fileJsonGeography)); err != nil {
+		t.Error(err)
+	}
+	if err := m.ParseMultiforecast(openFile(t, fileJsonMultiforecast)); err != nil {
+		t.Error(err)
+	}
+	if err := m.ParseSvgMap(openFile(t, fileSvgRacine)); err != nil {
+		t.Error(err)
+	}
+	return &m
+}
 
 func HtmlReader(t *testing.T) io.ReadCloser {
 	return openFile(t, fileHtmlRacine)

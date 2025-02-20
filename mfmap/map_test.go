@@ -211,3 +211,10 @@ func TestGeographyURL(t *testing.T) {
 		t.Errorf("geographyUrl()='%s' does not match '%s'", u.String(), geoRegexp)
 	}
 }
+
+func TestMerge(t *testing.T){
+	t.Skip()
+	// TODO check new has stats updated
+}
+
+

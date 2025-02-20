@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"strings"
 	"text/template"
@@ -91,6 +92,17 @@ func (m *MfMap) ParseHtml(html io.Reader) error {
 	}
 	m.Data = data
 	return nil
+}
+
+// Merge() recovers pastDays of backlog for Prevs and Chroniques
+func (m *MfMap) Merge(old *MfMap, pastDays int) {
+	// sanity check
+	if (m.Name() != old.Name()) || (m.Path() != old.Path()) {
+		log.Print("MfMap.Merge() : name or path mismatch")
+		return
+	}
+	m.Prevs.Merge(old.Prevs, pastDays)
+	m.Graphdata.Merge(old.Graphdata, pastDays)
 }
 
 // htmFlilter extracts the json data part of an html page
@@ -184,7 +196,7 @@ func (m *MfMap) GeographyUrl() (*url.URL, error) {
 		"geo_json",
 		strings.ToLower(m.Data.Info.IdTechnique) + "-aggrege.json",
 	}
-	u, err := url.Parse( strings.Join(elems, "/"))
+	u, err := url.Parse(strings.Join(elems, "/"))
 	if err != nil {
 		return nil, fmt.Errorf("m.GeographyUrl() error: %w", err)
 	}
