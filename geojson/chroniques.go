@@ -141,6 +141,14 @@ func (mf MultiforecastData) BuildChroniques() (Graphdata, error) {
 	return g, nil
 }
 
+func (c Chroniques)MarshalJSON()([]byte, error) {
+	tmp := []Chronique{}
+	for insee := range c {
+		tmp = append(tmp, c[insee])
+	}
+	return json.Marshal(tmp)
+}
+
 func (g Graphdata) Merge(old Graphdata, dayMin, dayMax int) {
 
 	for nom := range g {
