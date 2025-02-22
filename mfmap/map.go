@@ -95,14 +95,19 @@ func (m *MfMap) ParseHtml(html io.Reader) error {
 }
 
 // Merge() recovers pastDays of backlog for Prevs and Chroniques
-func (m *MfMap) Merge(old *MfMap, pastDays int) {
+func (m *MfMap) Merge(old *MfMap, dayMin, dayMax int) {
 	// sanity check
 	if (m.Name() != old.Name()) || (m.Path() != old.Path()) {
 		log.Print("MfMap.Merge() : name or path mismatch")
 		return
 	}
-	m.Prevs.Merge(old.Prevs, pastDays)
-	m.Graphdata.Merge(old.Graphdata, pastDays)
+	// merge maps and chroniques
+	m.Prevs.Merge(old.Prevs, dayMin, dayMax)
+	m.Graphdata.Merge(old.Graphdata, dayMin, dayMax)
+
+	// copy stats
+	m.stats.lastHit.Store( old.stats.lastHit.Load() )
+	m.stats.hitCount.Store( old.stats.hitCount.Load() )
 }
 
 // htmFlilter extracts the json data part of an html page

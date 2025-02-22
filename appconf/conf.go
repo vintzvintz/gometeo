@@ -16,6 +16,8 @@ const (
 	VUE_DEV = "vue.esm-browser.dev.js"
 	VUE_PROD = "vue.esm-browser.prod.js"
 
+	KEEP_DAY_MIN = -1
+	KEEP_DAY_MAX = 0
 )
 
 type CliOpts struct {
@@ -98,4 +100,8 @@ func VueJs() string {
 		return VUE_DEV
 	}
 	return VUE_PROD
+}
+
+func KeepDays() (dayMin, dayMax int) {
+	return KEEP_DAY_MIN, KEEP_DAY_MAX
 }
