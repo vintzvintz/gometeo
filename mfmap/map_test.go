@@ -97,7 +97,7 @@ func TestApiUrl(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			u, err := m.Data.ApiURL(test.path, nil)
+			u, err := m.ApiUrl(test.path, nil)
 			if err != nil {
 				t.Fatalf("ApiURL() error : %s", err)
 			}
@@ -176,7 +176,7 @@ func TestForecastURL(t *testing.T) {
 		"liste_id":   coordsRegexp,
 	}
 
-	u, err := m.ForecastURL()
+	u, err := m.ForecastUrl()
 	if err != nil {
 		t.Fatalf("forecastURL() error: %s", err)
 	}
@@ -202,7 +202,7 @@ func TestGeographyURL(t *testing.T) {
 
 	m := testParseHtml(t)
 
-	u, err := m.GeographyURL()
+	u, err := m.GeographyUrl()
 	if err != nil {
 		t.Fatalf("geographyURL() error: %s", err)
 	}
@@ -211,3 +211,10 @@ func TestGeographyURL(t *testing.T) {
 		t.Errorf("geographyUrl()='%s' does not match '%s'", u.String(), geoRegexp)
 	}
 }
+
+func TestMerge(t *testing.T){
+	t.Skip()
+	// TODO check new has stats updated
+}
+
+

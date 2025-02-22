@@ -9,6 +9,15 @@ import (
 
 const (
 	DEFAULT_ADDR = ":1051"
+
+	// TODO: refactor into env var
+	UPSTREAM_ROOT = "https://meteofrance.com"
+
+	VUE_DEV = "vue.esm-browser.dev.js"
+	VUE_PROD = "vue.esm-browser.prod.js"
+
+	KEEP_DAY_MIN = -1
+	KEEP_DAY_MAX = 0
 )
 
 type CliOpts struct {
@@ -86,6 +95,13 @@ func Limit() int {
 }
 
 // VueProd select which vue.js file is called from mail html template
-func VueProd() bool {
-	return appOpts.Vue != "dev"
+func VueJs() string {
+	if appOpts.Vue != "dev" {
+		return VUE_DEV
+	}
+	return VUE_PROD
+}
+
+func KeepDays() (dayMin, dayMax int) {
+	return KEEP_DAY_MIN, KEEP_DAY_MAX
 }

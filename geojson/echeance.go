@@ -20,11 +20,6 @@ type (
 		Day   int
 	}
 
-	// implemented by Daily and Forecast types
-	Echeancer interface {
-		Echeance() Echeance
-	}
-
 	Echeances []Echeance
 )
 

@@ -5,12 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"time"
 )
 
 type (
 	// time-series for charts
-	Graphdata map[string][]Chronique
+	Graphdata map[NomSerie]Chroniques
+
+	NomSerie string
+
+	Chroniques map[codeInsee]Chronique
 
 	Chronique []ValueTs
 
@@ -20,11 +25,12 @@ type (
 	ValueTs interface {
 		json.Marshaler
 		Sub(time.Time) time.Duration
+		Ts() time.Time
 	}
 
 	// timeStamper yields TsValues from a specified 'series' name'
 	timeStamper interface {
-		withTimestamp(series string) (ValueTs, error)
+		withTimestamp(series NomSerie) (ValueTs, error)
 	}
 
 	FloatTs struct {
@@ -53,6 +59,7 @@ type (
 )
 
 const (
+	// series in Forecast objects
 	Temperature   = "T"
 	Ressenti      = "Ress"
 	WindSpeed     = "WindSpeed"
@@ -61,9 +68,17 @@ const (
 	CloudCover    = "Cloud"
 	Hrel          = "Hrel"
 	Psea          = "Psea"
+
+	// series in Dailies objects
+	Uv     = "Uv"
+	Trange = "Trange"
+	Hrange = "Hrange"
+
+	// shift min/max points position from 00h00
+	dailyOffset = 8 // hours
 )
 
-var forecastsChroniques = []string{
+var forecastsChroniques = []NomSerie{
 	Temperature,
 	Ressenti,
 	WindSpeed,
@@ -74,24 +89,9 @@ var forecastsChroniques = []string{
 	Psea,
 }
 
-// series in Dailies objects
-const (
-	Tmin   = "Tmin"
-	Tmax   = "Tmax"
-	Hmin   = "Hmin"
-	Hmax   = "Hmax"
-	Uv     = "Uv"
-	Trange = "Trange"
-	Hrange = "Hrange"
-)
-
-var dailiesChroniques = []string{
+var dailiesChroniques = []NomSerie{
 	Trange,
-	//	Tmin,
-	//	Tmax,
 	Hrange,
-	//	Hmin,
-	//	Hmax,
 	Uv,
 }
 
@@ -108,15 +108,20 @@ func (mf MultiforecastData) BuildChroniques() (Graphdata, error) {
 	g := Graphdata{}
 
 	for i := range mf {
-		//lieu := mf[i].Properties.Insee
+		codeInsee := mf[i].Properties.Insee
 
 		forecasts := mf[i].Properties.Forecasts
 		g1, err := getChroniquesPoi(forecasts, forecastsChroniques)
 		if err != nil {
 			return nil, err
 		}
-		for name, chro := range g1 {
-			g[name] = append(g[name], chro)
+		for name, c := range g1 {
+			chros := g[name]
+			if chros == nil {
+				chros = make(Chroniques)
+			}
+			chros[codeInsee] = c
+			g[name] = chros
 		}
 
 		dailies := mf[i].Properties.Dailies
@@ -124,18 +129,88 @@ func (mf MultiforecastData) BuildChroniques() (Graphdata, error) {
 		if err != nil {
 			return nil, err
 		}
-		for name, chro := range g2 {
-			g[name] = append(g[name], chro)
+		for name, c := range g2 {
+			chros := g[name]
+			if chros == nil {
+				chros = make(Chroniques)
+			}
+			chros[codeInsee] = c
+			g[name] = chros
 		}
 	}
 	return g, nil
 }
 
+func (c Chroniques)MarshalJSON()([]byte, error) {
+	tmp := []Chronique{}
+	for insee := range c {
+		tmp = append(tmp, c[insee])
+	}
+	return json.Marshal(tmp)
+}
+
+func (g Graphdata) Merge(old Graphdata, dayMin, dayMax int) {
+
+	for nom := range g {
+		// skip series not present in old
+		oldSerie, ok := old[nom]
+		if !ok {
+			continue
+		}
+		serie := g[nom]
+		for insee := range serie {
+			oldChro, ok := oldSerie[insee]
+			// skip places (codeInsee) not present in old
+			if !ok {
+				continue
+			}
+			newChro := serie[insee]
+			serie[insee] = mergeChronique(newChro, oldChro, dayMin, dayMax)
+		}
+		g[nom] = serie
+	}
+}
+
+func mergeChronique(new, old Chronique, dayMin, dayMax int) Chronique {
+
+	// use a temp map keyed by unix timestamp to merge old into new
+	merged := make(map[int64]ValueTs)
+
+	// fill with old data, filtered by dayMin, dayMax
+	for _, v := range old {
+		age := time.Since(v.Ts()) / time.Hour
+
+		if int(age) < 24*dayMin || int(age) > 24*dayMax {
+			continue
+		}
+		merged[v.Ts().Unix()] = v
+	}
+
+	// insert all new data overwriting old
+	for _, v := range new {
+		//ts := v.Ts().Unix()
+		merged[v.Ts().Unix()] = v
+	}
+
+	// sort timestamps
+	timestamps := make([]int64, 0, len(merged))
+	for ts := range merged {
+		timestamps = append(timestamps, ts)
+	}
+	slices.Sort[[]int64](timestamps)
+
+	ret := make(Chronique, 0, len(merged))
+	for _, ts := range timestamps {
+		ret = append(ret, merged[ts])
+	}
+	return ret
+}
+
 // getChroniques POI reshapes data for client-side highchart
 // * forecasts: list of forecasts (either regular or daily) of a given POI
 // * series: names of fields to extract from input forecast data
-func getChroniquesPoi[T timeStamper](forecasts []T, series []string) (map[string]Chronique, error) {
-	ret := map[string]Chronique{}
+func getChroniquesPoi[T timeStamper](forecasts []T, series []NomSerie) (map[NomSerie]Chronique, error) {
+	ret := map[NomSerie]Chronique{}
 seriesLoop:
 	// iterate over series names ( T, Tmax, etc... )
 	for _, nom := range series {
@@ -167,7 +242,7 @@ seriesLoop:
 	return ret, nil
 }
 
-func (f Forecast) withTimestamp(data string) (ValueTs, error) {
+func (f Forecast) withTimestamp(data NomSerie) (ValueTs, error) {
 	if f.LongTerme {
 		return nil, nil
 	}
@@ -194,21 +269,13 @@ func (f Forecast) withTimestamp(data string) (ValueTs, error) {
 	}
 }
 
-func (d Daily) withTimestamp(data string) (ValueTs, error) {
+func (d Daily) withTimestamp(data NomSerie) (ValueTs, error) {
 	ts := d.Time
 	switch data {
-	case Tmin:
-		return FloatTs{ts, d.Tmin}, nil
-	case Tmax:
-		return FloatTs{ts, d.Tmax}, nil
 	case Trange:
-		return FloatRangeTs{ts, d.Tmin, d.Tmax, 8}, nil
-	case Hmin:
-		return IntTs{ts, d.Hmin}, nil
-	case Hmax:
-		return IntTs{ts, d.Hmax}, nil
+		return FloatRangeTs{ts, d.Tmin, d.Tmax, dailyOffset}, nil
 	case Hrange:
-		return IntRangeTs{ts, d.Hmin, d.Hmax, 8}, nil
+		return IntRangeTs{ts, d.Hmin, d.Hmax, dailyOffset}, nil
 	case Uv:
 		return IntTs{ts, d.Uv}, nil
 	default:
@@ -246,18 +313,12 @@ func (v IntRangeTs) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
-func (v IntTs) Sub(t time.Time) time.Duration {
-	return v.ts.Sub(t)
-}
+func (v IntTs) Sub(t time.Time) time.Duration        { return v.ts.Sub(t) }
+func (v FloatTs) Sub(t time.Time) time.Duration      { return v.ts.Sub(t) }
+func (v IntRangeTs) Sub(t time.Time) time.Duration   { return v.ts.Sub(t) }
+func (v FloatRangeTs) Sub(t time.Time) time.Duration { return v.ts.Sub(t) }
 
-func (v FloatTs) Sub(t time.Time) time.Duration {
-	return v.ts.Sub(t)
-}
-
-func (v IntRangeTs) Sub(t time.Time) time.Duration {
-	return v.ts.Sub(t)
-}
-
-func (v FloatRangeTs) Sub(t time.Time) time.Duration {
-	return v.ts.Sub(t)
-}
+func (v IntTs) Ts() time.Time        { return v.ts }
+func (v FloatTs) Ts() time.Time      { return v.ts }
+func (v IntRangeTs) Ts() time.Time   { return v.ts }
+func (v FloatRangeTs) Ts() time.Time { return v.ts }

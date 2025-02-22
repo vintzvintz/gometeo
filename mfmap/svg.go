@@ -8,6 +8,7 @@ import (
 
 	"github.com/beevik/etree"
 
+	"gometeo/appconf"
 	svt "gometeo/svgtools"
 )
 
@@ -19,8 +20,9 @@ var cropPc = svt.CropRatio{
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/pays007.svg
-func (m *MfMap) SvgURL() (*url.URL, error) {
+func (m *MfMap) SvgUrl() (*url.URL, error) {
 	elems := []string{
+		appconf.UPSTREAM_ROOT,
 		"modules",
 		"custom",
 		"mf_map_layers_v2",
@@ -29,7 +31,7 @@ func (m *MfMap) SvgURL() (*url.URL, error) {
 		m.Data.Info.PathAssets,
 		fmt.Sprintf("%s.svg", strings.ToLower(m.Data.Info.IdTechnique)),
 	}
-	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	u, err := url.Parse(strings.Join(elems, "/"))
 	if err != nil {
 		return nil, fmt.Errorf("m.svgURL() error: %w", err)
 	}

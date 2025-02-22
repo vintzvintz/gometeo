@@ -61,7 +61,7 @@ func testParseSvg(t *testing.T) []byte {
 
 func TestSvgUrl(t *testing.T) {
 	m := testBuildMap(t)
-	u, err := m.SvgURL()
+	u, err := m.SvgUrl()
 	if err != nil {
 		t.Errorf("svgURL() error: %s", err)
 		return

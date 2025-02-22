@@ -102,7 +102,8 @@ func (mc *Meteo) ReceiveMaps(ch <-chan *mfmap.MfMap) <-chan struct{} {
 	go func() {
 		defer close(done)
 		for m := range ch {
-			mc.maps.update(m, KEEP_PAST_DAYS)
+			dayMin, dayMax := appconf.KeepDays()
+			mc.maps.update(m, dayMin, dayMax)
 			mc.rebuildMux()
 		}
 	}()
@@ -141,14 +142,14 @@ func (mc *Meteo) rebuildMux() {
 
 // update()  adds or replace a map in the store.
 // rebuilds all breadcrumbs in all maps in the store.
-func (ms *mapStore) update(m *mfmap.MfMap, pastDays int) {
+func (ms *mapStore) update(m *mfmap.MfMap, dayMin, dayMax int) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 
 	path := m.Path()
 	old, ok := ms.store[path]
 	if ok {
-		m.MergeOld(old, pastDays)
+		m.Merge(old, dayMin, dayMax)
 	}
 	ms.store[m.Path()] = m
 	// rebuild all breadcrumbs is not optimal

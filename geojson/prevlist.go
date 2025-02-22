@@ -61,6 +61,33 @@ type featInfo struct {
 	updateTime time.Time
 }
 
+func (pl PrevList) Merge(old PrevList, dayMin, dayMax int) {
+	// iterate over old prevs to fill missing slots in pl
+	for date := range old {
+		// ignore dates outside of requested time window
+		n := date.DaysFromNow()
+		if  n < dayMin || n > dayMax {
+			continue
+		}
+		padOld := old[date]
+		padNew := pl[date]
+		// create missing prevs slot in new
+		// required if pastDays < 0 because upstream does not send history
+		if padNew == nil {
+			padNew = make(prevsAtDay)
+		}
+		// copy old[date][moment] in padNew, only if moment is missing in new
+		for moment := range padOld {
+			if _, ok := padNew[moment]; ok {
+				continue
+			}
+			padNew[moment] = padOld[moment]
+		}
+		// store merged padNew back into pl
+		pl[date] = padNew
+	}
+}
+
 // byEcheance reshapes original data (poi->echeance) into a
 // reversed jour->moment->poi structure
 // TODO: improve handling of incomplete/invalid mutliforecast

@@ -93,7 +93,6 @@ var (
 
 const (
 	codeInseeMinLen  = 6
-	ApiMultiforecast = "/multiforecast"
 )
 
 func ParseMultiforecast(r io.Reader) (*mfCollection, error) {

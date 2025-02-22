@@ -1,14 +1,14 @@
 package mfmap
+
 /*
 import (
+
 	"slices"
 	gj "gometeo/geojson"
 
 )
 */
-func (m *MfMap) MergeOld(old *MfMap, pastDays int) {
-	panic("MergeOld not implemented")
-}
+
 /*
 func (m *MfMap) MergeOld(old *MfMap, pastDays int) {
 	// preserve stats - lastUpdate excluded

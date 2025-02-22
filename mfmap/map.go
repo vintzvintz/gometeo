@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"strings"
 	"text/template"
@@ -52,8 +53,7 @@ type (
 	Breadcrumbs []BreadcrumbItem
 )
 
-//go:embed template.html
-var templateFile string
+const ApiMultiforecast = "/multiforecast"
 
 // TemplateData contains data for htmlTemplate.Execute()
 type TemplateData struct {
@@ -64,26 +64,20 @@ type TemplateData struct {
 	CacheId     string
 }
 
+//go:embed template.html
+var templateFile string
+
 // htmlTemplate is a global html/template for html rendering
 var htmlTemplate = template.Must(template.New("").Parse(templateFile))
 
 // main html file
 func (m *MfMap) WriteHtml(wr io.Writer) error {
-
-	title := fmt.Sprintf("Météo %s", m.Data.Info.Name)
-	desc := fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name)
-	path := m.Path()
-	vue := "vue.esm-browser.dev.js"
-	if appconf.VueProd() {
-		vue = "vue.esm-browser.prod.js"
-	}
-
 	return htmlTemplate.Execute(wr, &TemplateData{
-		Description: desc,
-		Title:       title,
-		Path:        path,
+		Description: fmt.Sprintf("Météo pour la zone %s sur une page grande et unique", m.Data.Info.Name),
+		Title:       fmt.Sprintf("Météo %s", m.Data.Info.Name),
+		Path:        m.Path(),
 		CacheId:     appconf.CacheId(),
-		VueJs:       vue,
+		VueJs:       appconf.VueJs(),
 	})
 }
 
@@ -98,6 +92,22 @@ func (m *MfMap) ParseHtml(html io.Reader) error {
 	}
 	m.Data = data
 	return nil
+}
+
+// Merge() recovers pastDays of backlog for Prevs and Chroniques
+func (m *MfMap) Merge(old *MfMap, dayMin, dayMax int) {
+	// sanity check
+	if (m.Name() != old.Name()) || (m.Path() != old.Path()) {
+		log.Print("MfMap.Merge() : name or path mismatch")
+		return
+	}
+	// merge maps and chroniques
+	m.Prevs.Merge(old.Prevs, dayMin, dayMax)
+	m.Graphdata.Merge(old.Graphdata, dayMin, dayMax)
+
+	// copy stats
+	m.stats.lastHit.Store( old.stats.lastHit.Load() )
+	m.stats.hitCount.Store( old.stats.hitCount.Load() )
 }
 
 // htmFlilter extracts the json data part of an html page
@@ -142,7 +152,7 @@ func isJsonTag(t html.Token) bool {
 	return isScript && hasAttrType && hasDrupalAttr
 }
 
-func (m *MfMap) ForecastURL() (*url.URL, error) {
+func (m *MfMap) ForecastUrl() (*url.URL, error) {
 	// zone is described by a seqence of coordinates
 	ids := make([]string, len(m.Data.Children))
 	for i, poi := range m.Data.Children {
@@ -156,7 +166,7 @@ func (m *MfMap) ForecastURL() (*url.URL, error) {
 	query.Add("instants", "morning,afternoon,evening,night")
 	query.Add("liste_id", strings.Join(ids, ","))
 
-	return m.Data.ApiURL(gj.ApiMultiforecast, &query)
+	return m.ApiUrl(ApiMultiforecast, &query)
 }
 
 func (m *MfMap) ParseMultiforecast(r io.Reader) error {
@@ -179,8 +189,9 @@ func (m *MfMap) ParseMultiforecast(r io.Reader) error {
 }
 
 // https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/METROPOLE/geo_json/regin13-aggrege.json
-func (m *MfMap) GeographyURL() (*url.URL, error) {
+func (m *MfMap) GeographyUrl() (*url.URL, error) {
 	elems := []string{
+		appconf.UPSTREAM_ROOT,
 		"modules",
 		"custom",
 		"mf_map_layers_v2",
@@ -190,9 +201,9 @@ func (m *MfMap) GeographyURL() (*url.URL, error) {
 		"geo_json",
 		strings.ToLower(m.Data.Info.IdTechnique) + "-aggrege.json",
 	}
-	u, err := url.Parse("https://meteofrance.com/" + strings.Join(elems, "/"))
+	u, err := url.Parse(strings.Join(elems, "/"))
 	if err != nil {
-		return nil, fmt.Errorf("m.geographyURL() error: %w", err)
+		return nil, fmt.Errorf("m.GeographyUrl() error: %w", err)
 	}
 	return u, nil
 }
