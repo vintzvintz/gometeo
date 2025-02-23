@@ -40,9 +40,9 @@ type CliOpts struct {
 }
 
 type UpdateRates struct {
-	HotDuration time.Duration //= 3 * 24 * time.Hour // duration of fast update after last hit
-	HotMaxAge   time.Duration //= 30 * time.Minute
-	ColdMaxAge  time.Duration // = 4 * time.Hour
+	HotDuration time.Duration // map lose "hot" status after this delay
+	HotMaxAge   time.Duration // update freq for "hot" maps
+	ColdMaxAge  time.Duration // update rate for "cold" maps  ( default for maps never used )
 }
 
 var appOpts *CliOpts
