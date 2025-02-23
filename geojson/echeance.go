@@ -50,6 +50,9 @@ func (f Forecast) Echeance() Echeance {
 	if f.Moment == Nuit {
 		day -= 1
 	}
+	// convert into a time.Time to normalize dates when day==0
+	normalized := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	year, month, day = normalized.Date()
 	return Echeance{
 		Moment: f.Moment,
 		Date:   Date{Day: day, Month: month, Year: year},

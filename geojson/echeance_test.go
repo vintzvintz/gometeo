@@ -124,3 +124,20 @@ func TestDateSub(t *testing.T) {
 		}
 	}
 }
+
+func TestEcheanceNight(t *testing.T) {
+	// 3h du mat le 1r janver
+	f := gj.Forecast{
+		Moment: gj.Nuit,
+		Time:   time.Date(2025, 1, 1, 3, 0, 0, 0, time.UTC),
+	}
+
+	want := gj.Date{2024, 12, 31}
+	got := f.Echeance().Date
+
+	if want != got {
+		t.Errorf("Date d'une échéance nuit le 1r jour du mois got %d-%d-%d, want %d-%d-%d ", 
+		got.Year, got.Month, got.Day,
+		want.Year, want.Month, want.Day)
+	}
+}

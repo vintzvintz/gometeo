@@ -18,7 +18,7 @@ const (
 
 	// chorniques history retention
 	KEEP_DAY_MIN = -2
-	KEEP_DAY_MAX = 0
+	KEEP_DAY_MAX = 2
 )
 
 const (

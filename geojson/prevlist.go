@@ -154,7 +154,7 @@ func (pad prevsAtDay) processPrev(m MomentName, fi featInfo, fb forecastBuild) {
 	pam, ok := pad[m]
 	if !ok {
 		pam = prevsAtMoment{
-			// all (most) maps have less than 50 geofeatures
+			// most (all ?) maps have less than 50 geofeatures
 			Prevs: make(prevsAtPois, 50),
 		}
 	}
