@@ -18,6 +18,8 @@ const (
 	cacheFile   = "./content_cache.gob"
 )
 
+const startPath = "/"
+
 func Start() error {
 	addr := appconf.Addr()
 	limit := appconf.Limit()
@@ -45,7 +47,7 @@ func startOneShot(addr string, limit int) error {
 	// fetch data if cache is disabled or failed
 	if c == nil {
 		var crawlerDone <-chan struct{}
-		c, crawlerDone = crawl.Start("/", limit, crawl.ModeOnce)
+		c, crawlerDone = crawl.Start(startPath, limit, crawl.ModeOnce)
 		<-crawlerDone // wait for all maps downloads to complete
 
 		// for dev/debug/test
@@ -61,7 +63,7 @@ func startOneShot(addr string, limit int) error {
 // TODO add more crawl/serve/config options, maybe in a struct
 func startNormal(addr string, limit int) error {
 
-	c, crawlerDone := crawl.Start("/", limit, crawl.ModeForever)
+	c, crawlerDone := crawl.Start(startPath, limit, crawl.ModeForever)
 	defer c.Close()
 
 	srv, serverDone := serveContent(addr, c)

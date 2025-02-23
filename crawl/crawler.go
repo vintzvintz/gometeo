@@ -75,7 +75,8 @@ func Start(path string, limit int, mode CrawlMode) (*content.Meteo, <-chan struc
 	return mc, done
 }
 
-// TODO: add timeout
+// Fetch() crawl upstream map tree with a recursion limit.
+// TODO: handle timeouts, errors or unavailable maps
 func (cr *Crawler) Fetch(startPath string, limit int) (
 	chMap chan *mfmap.MfMap,
 	chPicto chan content.Picto,

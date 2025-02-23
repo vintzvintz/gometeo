@@ -84,7 +84,7 @@ func ParseGeography(r io.Reader, subzones map[string]string) (*GeoCollection, er
 		return nil, fmt.Errorf("invalid geography: %w", err)
 	}
 
-	// keep only geographical subzones having a reference in map metadata
+	// skip geographical subzones unreferenced in map metadata
 	geoFeats := make(GeoFeatures, 0, len(subzones))
 	for _, feat := range gc.Features {
 		cible := feat.Properties.Prop0.Cible
