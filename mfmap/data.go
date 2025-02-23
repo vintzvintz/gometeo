@@ -75,15 +75,16 @@ func ParseData(r io.Reader) (*MapData, error) {
 		return nil, err
 	}
 
-	// keep only selected subzones, excluding marine & montagne & outermer
+	// exclude marine & montagne & outermer
+	filteredSubzones := make(Subzones)
 	re, ok := szFilters[data.Info.Taxonomy]
-	if ok {
-		for id := range data.Subzones {
-			if !re.MatchString(id) {
-				delete(data.Subzones, id)	
-			}
+	// keep only subzones matching filter regexp, ignore others
+	for id := range data.Subzones {
+		if ok && re.MatchString(id) {
+			filteredSubzones[id] = data.Subzones[id]
 		}
 	}
+	data.Subzones = filteredSubzones
 	return &data, nil
 }
 
