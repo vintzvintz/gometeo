@@ -32,15 +32,19 @@ func getStats(m *mfmap.MfMap) Stats {
 	if !m.LastHit().IsZero() {
 		lh = time.Since(m.LastHit()).Round(time.Second)
 	}
-	return Stats{
+	s := Stats{
 		Name:       m.Name(),
 		Path:       m.Path(),
 		HitCount:   m.HitCount(),
-		UpdateMode: updateModeText(m.UpdateMode()),
+		UpdateMode: "-",
 		LastHit:    lh,
 		LastUpdate: time.Since(m.LastUpdate()).Round(time.Second),
 		NextUpdate: m.DurationToUpdate().Round(time.Second),
 	}
+	if m.IsHot() {
+		s.UpdateMode = "hot"
+	}
+	return s
 }
 
 func (s Stats) String() string {
@@ -97,17 +101,4 @@ func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
 			log.Printf("ignored send error: %s", err)
 		}
 	}
-}
-
-// return a human-readable string of a mfmap.UpdateMode internal code
-func updateModeText(mode mfmap.UpdateMode) string {
-	var updateModeText = map[mfmap.UpdateMode]string{
-		mfmap.UPDATE_FAST: "fast",
-		mfmap.UPDATE_SLOW: "slow",
-	}
-	s, ok := updateModeText[mode]
-	if !ok {
-		return fmt.Sprintf("unknown mode (%d)", mode)
-	}
-	return s
 }

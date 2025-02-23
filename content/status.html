@@ -28,7 +28,7 @@
       <th>Next update</th>
     </tr>
     {{range .Stats}}
-    <tr {{if (eq .UpdateMode "fast")}}class="fastupdate"{{end}}>
+    <tr {{if (eq .UpdateMode "hot")}}class="fastupdate"{{end}}>
       <td><a href="{{.Path}}">{{ .Name}}</a></td>
       <td>{{ .LastHit}}</td>
       <td>{{ .HitCount}}</td>

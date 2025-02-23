@@ -4,6 +4,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"gometeo/appconf"
 )
 
 func TestAtomicRace(t *testing.T) {
@@ -49,7 +51,7 @@ func TestLogUpdate(t *testing.T) {
 }
 
 func TestNeedUpdate(t *testing.T) {
-
+	r := appconf.UpdateRate()
 	var tests = map[string]struct {
 		update time.Time
 		hit    time.Time
@@ -64,23 +66,23 @@ func TestNeedUpdate(t *testing.T) {
 			want:   false,
 		},
 		"fast_true": {
-			hit:    time.Now().Add(-fastModeDuration).Add(10 * time.Second), // last hit 10 sec after fastmode cutoff
-			update: time.Now().Add(-fastModeMaxAge).Add(-30 * time.Second),  // last update 30 sec before cutoff
+			hit:    time.Now().Add(-r.HotDuration).Add(10 * time.Second), // last hit 10 sec after fastmode cutoff
+			update: time.Now().Add(-r.HotMaxAge).Add(-30 * time.Second),  // last update 30 sec before cutoff
 			want:   true,
 		},
 		"fast_false": {
-			hit:    time.Now().Add(-fastModeDuration).Add(+10 * time.Second), // last hit 10 sec after fastmode cutoff
-			update: time.Now().Add(-fastModeMaxAge).Add(+30 * time.Second),   // last update 30 sec after cutoff
+			hit:    time.Now().Add(-r.HotDuration).Add(+10 * time.Second), // last hit 10 sec after fastmode cutoff
+			update: time.Now().Add(-r.HotMaxAge).Add(+30 * time.Second),   // last update 30 sec after cutoff
 			want:   false,
 		},
 		"slow_true": {
-			hit:    time.Now().Add(-fastModeDuration).Add(-10 * time.Second), // last hit 10 sec before fastmode cutoff
-			update: time.Now().Add(-slowModeMaxAge).Add(-30 * time.Second),   // last update 30 sec before cutoff
+			hit:    time.Now().Add(-r.HotDuration).Add(-10 * time.Second), // last hit 10 sec before fastmode cutoff
+			update: time.Now().Add(-r.ColdMaxAge).Add(-30 * time.Second),   // last update 30 sec before cutoff
 			want:   true,
 		},
 		"slow_false": {
-			hit:    time.Now().Add(-fastModeDuration).Add(-10 * time.Second), // last hit 10 sec before fastmode cutoff
-			update: time.Now().Add(-slowModeMaxAge).Add(+30 * time.Second),   // last update 30 sec after cutoff
+			hit:    time.Now().Add(-r.HotDuration).Add(-10 * time.Second), // last hit 10 sec before fastmode cutoff
+			update: time.Now().Add(-r.ColdMaxAge).Add(+30 * time.Second),   // last update 30 sec after cutoff
 			want:   false,
 		},
 	}

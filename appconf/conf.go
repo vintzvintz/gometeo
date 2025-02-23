@@ -7,24 +7,42 @@ import (
 	"time"
 )
 
+// TODO: refactor into env var
 const (
 	DEFAULT_ADDR = ":1051"
 
-	// TODO: refactor into env var
 	UPSTREAM_ROOT = "https://meteofrance.com"
 
-	VUE_DEV = "vue.esm-browser.dev.js"
+	VUE_DEV  = "vue.esm-browser.dev.js"
 	VUE_PROD = "vue.esm-browser.prod.js"
 
-	KEEP_DAY_MIN = -1
+	// chorniques history retention
+	KEEP_DAY_MIN = -2
 	KEEP_DAY_MAX = 0
 )
 
+const (
+	fastHotDuration = 30 * time.Minute
+	fastHotMaxAge   = 1 * time.Minute
+	fastColdMaxAge  = 5 * time.Minute
+
+	normalHotDuration = 72 * time.Hour
+	normalHotMaxAge   = 60 * time.Minute
+	normalColdMaxAge  = 240 * time.Minute
+)
+
 type CliOpts struct {
-	Addr    string
-	OneShot bool
-	Limit   int
-	Vue     string
+	Addr       string
+	OneShot    bool
+	Limit      int
+	Vue        string
+	FastUpdate bool
+}
+
+type UpdateRates struct {
+	HotDuration time.Duration //= 3 * 24 * time.Hour // duration of fast update after last hit
+	HotMaxAge   time.Duration //= 30 * time.Minute
+	ColdMaxAge  time.Duration // = 4 * time.Hour
 }
 
 var appOpts *CliOpts
@@ -62,6 +80,7 @@ func getOpts(args []string) (*CliOpts, error) {
 	f.IntVar(&opts.Limit, "limit", 0, "limit number of maps")
 	f.BoolVar(&opts.OneShot, "oneshot", false, "useful only for dev and debug")
 	f.StringVar(&opts.Vue, "vue", "prod", "select 'prod' or 'dev' build of vue.js")
+	f.BoolVar(&opts.FastUpdate, "fastupdate", false, "increase update rate (for dev)")
 
 	f.Parse(args)
 
@@ -96,7 +115,7 @@ func Limit() int {
 
 // VueProd select which vue.js file is called from mail html template
 func VueJs() string {
-	if appOpts.Vue != "dev" {
+	if appOpts.Vue == "dev" {
 		return VUE_DEV
 	}
 	return VUE_PROD
@@ -104,4 +123,19 @@ func VueJs() string {
 
 func KeepDays() (dayMin, dayMax int) {
 	return KEEP_DAY_MIN, KEEP_DAY_MAX
+}
+
+func UpdateRate() UpdateRates {
+	if appOpts != nil && appOpts.FastUpdate {
+		return UpdateRates{
+			HotDuration: fastHotDuration,
+			HotMaxAge:   fastHotMaxAge,
+			ColdMaxAge:  fastColdMaxAge,
+		}
+	}
+	return UpdateRates{
+		HotDuration: normalHotDuration,
+		HotMaxAge:   normalHotMaxAge,
+		ColdMaxAge:  normalColdMaxAge,
+	}
 }

@@ -3,6 +3,8 @@ package mfmap
 import (
 	"sync/atomic"
 	"time"
+
+	"gometeo/appconf"
 )
 
 type atomicStats struct {
@@ -10,22 +12,6 @@ type atomicStats struct {
 	lastHit    atomic.Value // wraps a time.Time
 	hitCount   atomic.Int64 // simple counter
 }
-
-type UpdateMode int
-
-const (
-	UPDATE_SLOW UpdateMode = iota
-	UPDATE_FAST
-)
-
-const (
-	//fastModeDuration = 30 * time.Minute
-	//fastModeMaxAge   = 1 * time.Minute
-	//slowModeMaxAge   = 5 * time.Minute
-	fastModeDuration = 3 * 24 * time.Hour // duration of fast update after last hit
-	fastModeMaxAge   = 30 * time.Minute
-	slowModeMaxAge   = 4 * time.Hour
-)
 
 func (m *MfMap) MarkUpdate() {
 	now := time.Now()
@@ -60,24 +46,20 @@ func (m *MfMap) HitCount() int64 {
 	return m.stats.hitCount.Load()
 }
 
-func (m *MfMap) UpdateMode() UpdateMode {
+func (m *MfMap) IsHot() bool {
+	r := appconf.UpdateRate()
 	hitAge := time.Since(m.LastHit())
-	switch {
-	case hitAge < fastModeDuration:
-		return UPDATE_FAST
-	default:
-		return UPDATE_SLOW
-	}
+	return hitAge < r.HotDuration 
 }
 
 func (m *MfMap) DurationToUpdate() time.Duration {
+	r := appconf.UpdateRate()
+	hitAge := time.Since(m.LastHit())
 	updateAge := time.Since(m.LastUpdate())
-	switch m.UpdateMode() {
-	case UPDATE_FAST:
-		return fastModeMaxAge - updateAge
-	case UPDATE_SLOW:
-		fallthrough
-	default:
-		return slowModeMaxAge - updateAge
+
+	if hitAge < r.HotDuration {
+		return r.HotMaxAge - updateAge
+	} else {
+		return r.ColdMaxAge - updateAge
 	}
 }

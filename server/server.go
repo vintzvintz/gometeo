@@ -23,14 +23,16 @@ const startPath = "/"
 func Start() error {
 	addr := appconf.Addr()
 	limit := appconf.Limit()
-
+	rates := appconf.UpdateRate()
 	entryPoint := startNormal
 	if appconf.OneShot() {
 		entryPoint = startOneShot
 	}
 
-	log.Printf(`Starting gometeo : Addr='%s' Limit=%d OneShot=%v `,
-		addr, limit, appconf.OneShot())
+	log.Printf(`Starting gometeo Addr='%s' Limit=%d OneShot=%v VueJs=%s `,
+		addr, limit, appconf.OneShot(), appconf.VueJs())
+	log.Printf("update rates HotDuraion=%v HotMaxAge=%v ColdMaxAge=%v",
+		rates.HotDuration, rates.HotMaxAge, rates.ColdMaxAge )
 
 	return entryPoint(addr, limit)
 }
