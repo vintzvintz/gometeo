@@ -2,6 +2,7 @@ package geojson
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 )
@@ -66,7 +67,7 @@ func (pl PrevList) Merge(old PrevList, dayMin, dayMax int) {
 	for date := range old {
 		// ignore dates outside of requested time window
 		n := date.DaysFromNow()
-		if  n < dayMin || n > dayMax {
+		if n < dayMin || n > dayMax {
 			continue
 		}
 		padOld := old[date]
@@ -181,15 +182,16 @@ func (fb forecastBuild) MarshalJSON() ([]byte, error) {
 	type marshallPrev struct {
 		// from Forecast
 		// TODO : omitempty and pointer types
-		Moment        MomentName `json:"moment_day"`
-		Time          time.Time  `json:"time"`
-		T             float64    `json:"T"`
-		TWindchill    float64    `json:"T_windchill"`
-		WindSpeed     int        `json:"wind_speed"`
-		WindSpeedGust int        `json:"wind_speed_gust"`
-		WindDirection int        `json:"wind_direction"`
-		WindIcon      string     `json:"wind_icon"`
-		//Iso0          int        `json:"iso0"`
+		Moment MomentName `json:"moment_day"`
+		Time   time.Time  `json:"time"`
+		T      float64    `json:"T"`
+
+		TWindchill    float64 `json:"T_windchill"`
+		WindSpeed     int     `json:"wind_speed"`
+		WindSpeedGust int     `json:"wind_speed_gust"`
+		WindDirection int     `json:"wind_direction"`
+		WindIcon      string  `json:"wind_icon"`
+		//Iso0      int     `json:"iso0"`
 		CloudCover  int     `json:"total_cloud_cover"`
 		WeatherIcon string  `json:"weather_icon"`
 		WeatherDesc string  `json:"weather_description"`
@@ -212,6 +214,14 @@ func (fb forecastBuild) MarshalJSON() ([]byte, error) {
 
 	// alias
 	f, d := fb.f, fb.d
+
+	// DEBUG : catch a production bug
+	if d == nil && f == nil {
+		return nil, fmt.Errorf("forecastBuild has 2 nil pointers")
+	}
+	if d == nil {
+		return nil, fmt.Errorf("missing daily prev with forecast %s,", fb.f.describe())
+	}
 
 	// basic init with fields for the Daily version (long-term)
 	obj := marshallPrev{
@@ -244,6 +254,10 @@ func (fb forecastBuild) MarshalJSON() ([]byte, error) {
 		obj.Confiance = f.Confiance
 	}
 	return json.Marshal(obj)
+}
+
+func (f *Forecast) describe() string {
+	return fmt.Sprintf("time %v", f.Time)
 }
 
 // marshal (unordered) PrevAtDay maps into an (ordered) json array
