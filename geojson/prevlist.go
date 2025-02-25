@@ -123,6 +123,7 @@ func (mf MultiforecastData) BuildPrevs() (PrevList, error) {
 			d := mf.findDaily(fi.insee, e)
 			if d == nil {
 				log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
+				continue
 			}
 			pad.processPrev(Journalier, fi, forecastBuild{nil, d})
 
