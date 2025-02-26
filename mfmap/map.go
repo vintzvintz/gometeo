@@ -108,6 +108,9 @@ func (m *MfMap) Merge(old *MfMap, dayMin, dayMax int) {
 	// copy stats
 	m.stats.lastHit.Store( old.LastHit() )
 	m.stats.hitCount.Store( old.HitCount() )
+
+	// copy parent, only available on init ( for breadcrumbs )
+	m.Parent = old.Parent 
 }
 
 // htmFlilter extracts the json data part of an html page

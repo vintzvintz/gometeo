@@ -152,7 +152,7 @@ func (ms *mapStore) update(m *mfmap.MfMap, dayMin, dayMax int) {
 		m.Merge(old, dayMin, dayMax)
 	}
 	ms.store[m.Path()] = m
-	// rebuild all breadcrumbs is not optimal
+	// TODO : optimize this quadractic algo
 	for name := range ms.store {
 		ms.buildBreadcrumbs(name)
 	}
@@ -165,7 +165,7 @@ func (ms *mapStore) buildBreadcrumbs(path string) {
 	m, ok := ms.store[path]
 	if !ok || m == nil {
 		log.Printf("rebuildBreadcrumbs(): map '%s' not found", path)
-		return // non fatal, abort without any modification
+		return // non fatal
 	}
 
 	// max depth is 3 France/Region/Dept
