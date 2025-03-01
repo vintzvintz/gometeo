@@ -17,21 +17,21 @@
   </script>
 
   <!-- import leaflet.css before leaflet.js-->
-  <link rel="stylesheet" href="/css/{{.CacheId}}/leaflet.css" />
+  <link rel="stylesheet" href="/css/{{.CacheId}}/leaflet.css">
 
   <!-- TODO: import as modules instead of global objects -->
   <script src="/js/{{.CacheId}}/leaflet.js"></script>
   <script src="/js/{{.CacheId}}/highcharts.js"></script>
   <script src="/js/{{.CacheId}}/highcharts-more.js"></script>
 
-  <link rel="stylesheet" href="/css/{{.CacheId}}/meteo.css" />
+  <link rel="stylesheet" href="/css/{{.CacheId}}/meteo.css">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="shortcut icon" href="/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
 
   <style>
     #message {
@@ -45,9 +45,9 @@
 </head>
 
 <body>
-  <div id="message"> 
-    <h2>Nouveau site en version BETA !</h2>
-  </div>
+<!--  <div id="message"> 
+    <h2>message informatif</h2>
+  </div> -->
   <div id="vuejs_root"></div>
   <script type="module">
     import {createMeteoApp} from 'main'

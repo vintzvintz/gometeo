@@ -122,7 +122,7 @@ func (mf MultiforecastData) BuildPrevs() (PrevList, error) {
 			// accumulate Daily prev into PrevAtDay
 			d := mf.findDaily(fi.insee, e)
 			if d == nil {
-				log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
+				//log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
 				continue
 			}
 			pad.processPrev(Journalier, fi, forecastBuild{nil, d})
