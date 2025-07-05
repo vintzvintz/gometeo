@@ -50,7 +50,7 @@ func TestFetch(t *testing.T) {
 	wg.Wait()
 
 	if nbMaps != wantN {
-		t.Errorf("donwload %d maps, want %d ", nbMaps, wantN)
+		t.Errorf("download %d maps, want %d ", nbMaps, wantN)
 	}
 	wantPictos := minPictosPerMap * wantN
 	if nbPics < wantPictos {
@@ -86,7 +86,7 @@ func checkMap(t *testing.T, m *mfmap.MfMap) {
 		t.Error("mfMap has no picto")
 	}
 	if m.Geography.Type != "FeatureCollection" {
-	 	t.Errorf("MfMap.Geography has worng type")
+	 	t.Errorf("MfMap.Geography has wrong type")
 	}
 	if m.SvgMap == nil {
 		t.Errorf("MfMap field m.SvgMap is nil")

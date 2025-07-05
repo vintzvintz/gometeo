@@ -14,10 +14,9 @@ import (
 	"gometeo/mfmap"
 )
 
-const fetchInterval = 10 //seconds
-
 const (
-	sessionCookie       = "mfsession"
+	fetchInterval = 10 //seconds
+	sessionCookie = "mfsession"
 )
 
 type Crawler struct {
@@ -160,7 +159,7 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 		return nil, err
 	}
 
-	// prepare closure returning a preconfigured api client
+	// apiClient is a closure returning a preconfigured api client
 	apiClient := func() (*Client, error) {
 		apiBaseUrl, err := m.ApiUrl("", nil)
 		if err != nil {
