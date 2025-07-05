@@ -50,9 +50,10 @@ var appOpts *CliOpts
 var cacheId string
 
 func init() {
-	const magic32bit = 0xdeadbeef
 	n := uint32(time.Now().UnixMilli() & 0xFFFFFFFF)
-	cacheId = fmt.Sprintf("%8x", n^magic32bit)
+	n |= 0x1 << 31   // force left bit to 1 so hex string length is not shorter than 8 chars 
+	cacheId = fmt.Sprintf("%8x", n)
+	log.Printf("cacheId = '%s'", cacheId)
 }
 
 func CacheId() string {
