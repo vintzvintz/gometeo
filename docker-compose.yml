@@ -20,7 +20,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-lan"
-      - "traefik.http.routers.to-gometeo.rule=Host(`gometeo.vintz.fr`)"
+      - "traefik.http.routers.to-gometeo.ruleSyntax=v3"
+      - "traefik.http.routers.to-gometeo.rule=Host(`meteo.vintz.fr`)"
       - "traefik.http.routers.to-gometeo.tls.certresolver=vintz-wildcard"
       - "traefik.http.routers.to-gometeo.tls.domains[0].main=*.vintz.fr"  
       - "traefik.http.services.gometeo.loadbalancer.server.port=1051"
