@@ -1,0 +1,74 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Docker: Build",
+            "type": "shell",
+            "command": "bash",
+            "args": ["-c", "COMMIT_ID=$(git rev-parse --short HEAD) docker compose -f docker-compose.dev.yml build"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker: Run",
+            "type": "shell",
+            "command": "bash",
+            "args": ["-c", "COMMIT_ID=$(git rev-parse --short HEAD) docker compose -f docker-compose.dev.yml up --build"],
+            "group": "test",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker: Stop",
+            "type": "shell",
+            "command": "docker compose -f docker-compose.dev.yml down",
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker: Logs",
+            "type": "shell",
+            "command": "docker compose -f docker-compose.dev.yml logs -f",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Traefik: Run",
+            "type": "shell",
+            "command": "bash",
+            "args": ["-c", "COMMIT_ID=$(git rev-parse --short HEAD) DOCKER_GID=$(getent group docker | cut -d: -f3) docker compose -f docker-compose.dev_traefik.yml up --build"],
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Traefik: Stop",
+            "type": "shell",
+            "command": "DOCKER_GID=$(getent group docker | cut -d: -f3) docker compose -f docker-compose.dev_traefik.yml down",
+            "problemMatcher": []
+        },
+        {
+            "label": "Traefik: Logs",
+            "type": "shell",
+            "command": "DOCKER_GID=$(getent group docker | cut -d: -f3) docker compose -f docker-compose.dev_traefik.yml logs -f",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Go: Clean Build",
+            "type": "shell",
+            "command": "go",
+            "args": ["clean", "-cache"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Go: Build (full rebuild)",
+            "type": "shell",
+            "command": "bash",
+            "args": ["-c", "go clean -cache && go build -o gometeo"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$go"]
+        }
+    ]
+}

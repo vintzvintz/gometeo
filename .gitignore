@@ -2,6 +2,7 @@
 # vscode local stuff
 /.vscode/*
 !/.vscode/launch.json
+!/.vscode/tasks.json
 
 # local dev compose-file
 *.env
