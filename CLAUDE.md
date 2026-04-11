@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Gometeo** is a Go weather forecasting web application that crawls Météo-France, processes multi-source forecast data, and serves it as HTML pages + JSON API with a Vue.js frontend.
 
+Hobby project. App code and containerization are developed on the home machine; "production" code is pushed to the GitHub `master` branch. Deployment target is a VPS where `/srv/gometeo` is the root directory: a local repo is cloned from GitHub with `master` tracking `origin/master`, and `./deploy.sh` performs the update. Keep design and containerization decisions compatible with this simple single-VPS / git-pull deploy flow.
+
 ## Commands
 
 ```bash
@@ -42,7 +44,6 @@ docker-compose up
 | Flag | Default | Purpose |
 |------|---------|---------|
 | `-addr` | `:1051` | Server listen address (env: `GOMETEO_ADDR`) |
-| `-upstream` | meteofrance.com | Upstream base URL (env: `GOMETEO_UPSTREAM`) |
 | `-limit` | `0` (unlimited) | Stop crawling after N maps |
 | `-oneshot` | `false` | Fetch once, then serve (dev/debug) |
 | `-cache` | `""` (disabled) | Path to `.gob` cache file for oneshot mode |
@@ -105,7 +106,7 @@ In `-oneshot` mode, `-cache <file.gob>` saves/loads the full in-memory store to 
 
 ### Test Fixtures
 
-- `test_data/` contains HTML pages and JSON responses from upstream
+- `test_data/` has update.py to download fresh HTML pages and JSON responses from upstream.
 - `testutils/` provides mock HTTP handlers and map helpers reused across packages
 - `integration_test.go` at repo root tests the full content-to-handler pipeline
 

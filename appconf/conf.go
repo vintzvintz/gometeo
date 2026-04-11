@@ -84,7 +84,7 @@ func getOpts(args []string) (*CliOpts, error) {
 
 	// define cli flags — env vars override hardcoded defaults, explicit flags override env vars
 	f.StringVar(&opts.Addr, "addr", envDefault("GOMETEO_ADDR", DEFAULT_ADDR), "listening server address")
-	f.StringVar(&opts.Upstream, "upstream", envDefault("GOMETEO_UPSTREAM", UPSTREAM_ROOT), "upstream base URL")
+	opts.Upstream = envDefault("GOMETEO_UPSTREAM", UPSTREAM_ROOT)
 	f.IntVar(&opts.Limit, "limit", 0, "limit number of maps")
 	f.BoolVar(&opts.OneShot, "oneshot", false, "useful only for dev and debug")
 	f.StringVar(&opts.Vue, "vue", "prod", "select 'prod' or 'dev' build of vue.js")
