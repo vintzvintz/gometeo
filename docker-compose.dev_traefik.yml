@@ -1,0 +1,38 @@
+services:
+  traefik:
+    image: traefik:v3.6
+    restart: unless-stopped
+    group_add:
+      - "${DOCKER_GID:-999}"
+    command:
+      - --configFile=/etc/traefik/traefik.yml
+    ports:
+      - "127.0.0.1:1051:80"
+    volumes:
+      - ./dev/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - gometeo-dev
+
+  app:
+    build:
+      context: .
+      network: host
+      args:
+        COMMIT_ID: ${COMMIT_ID:-unknown}
+    command: ["/gometeo", "-oneshot", "-limit", "5", "-fastupdate"]
+    environment:
+      - TZ=Europe/Paris
+    networks:
+      - gometeo-dev
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=gometeo-dev"
+      - "traefik.http.routers.gometeo-dev.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.gometeo-dev.entrypoints=web"
+      - "traefik.http.services.gometeo-dev.loadbalancer.server.port=1051"
+
+networks:
+  gometeo-dev:
+    name: gometeo-dev
+    driver: bridge

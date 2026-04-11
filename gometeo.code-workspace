@@ -9,7 +9,10 @@
         { "label": "$(tools) Build", "task": "Go: Build (full rebuild)" },
         { "label": "$(play) Docker Run", "task": "Docker: Run" },
         { "label": "$(debug-stop) Docker Stop", "task": "Docker: Stop" },
-        { "label": "$(output) Logs", "task": "Docker: Logs" }
+        { "label": "$(output) Logs", "task": "Docker: Logs" },
+        { "label": "$(globe) Traefik Run", "task": "Traefik: Run" },
+        { "label": "$(debug-stop) Traefik Stop", "task": "Traefik: Stop" },
+        { "label": "$(output) Traefik Logs", "task": "Traefik: Logs" }
     	]
 	}
 }
