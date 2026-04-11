@@ -12,7 +12,6 @@ import (
 	svt "gometeo/svgtools"
 )
 
-
 func TestGetSvgSize(t *testing.T) {
 	var svgTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -28,7 +27,7 @@ func TestGetSvgSize(t *testing.T) {
 		want_size svt.Size
 		want_err  bool
 	}{
-//		"nil":      {"", nil, true},                      // error
+		//		"nil":      {"", nil, true},                      // error
 		"empty":    {"", svt.Size{}, true},               // error
 		"bullshit": {bullshitTemplate, svt.Size{}, true}, // error
 		"zeroes":   {svgTemplate, svt.Size{}, false},
@@ -76,10 +75,10 @@ func TestGetSvgSize(t *testing.T) {
 func TestCrop(t *testing.T) {
 	w := 724
 	h := 565
-	cr := svt.CropRatio{   // random percentages
-		Left: 0.15,
-		Right: 0.25,
-		Top: 0.075,
+	cr := svt.CropRatio{ // random percentages
+		Left:   0.15,
+		Right:  0.25,
+		Top:    0.075,
 		Bottom: 0.2,
 	}
 	szOrig := svt.Size{

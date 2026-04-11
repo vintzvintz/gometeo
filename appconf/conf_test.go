@@ -1,6 +1,7 @@
 package appconf
 
 import (
+	"os"
 	"testing"
 )
 
@@ -59,10 +60,61 @@ func TestVue(t *testing.T) {
 	}
 }
 
+func TestAddrEnvVar(t *testing.T) {
+	os.Setenv("GOMETEO_ADDR", ":9999")
+	defer os.Unsetenv("GOMETEO_ADDR")
+
+	opts, err := getOpts([]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Addr != ":9999" {
+		t.Errorf("env GOMETEO_ADDR: got %q, want %q", opts.Addr, ":9999")
+	}
+}
+
+func TestAddrFlagOverridesEnv(t *testing.T) {
+	os.Setenv("GOMETEO_ADDR", ":9999")
+	defer os.Unsetenv("GOMETEO_ADDR")
+
+	opts, err := getOpts([]string{"-addr", ":8080"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Addr != ":8080" {
+		t.Errorf("flag should override env: got %q, want %q", opts.Addr, ":8080")
+	}
+}
+
+func TestUpstreamEnvVar(t *testing.T) {
+	os.Setenv("GOMETEO_UPSTREAM", "https://example.com")
+	defer os.Unsetenv("GOMETEO_UPSTREAM")
+
+	opts, err := getOpts([]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Upstream != "https://example.com" {
+		t.Errorf("env GOMETEO_UPSTREAM: got %q, want %q", opts.Upstream, "https://example.com")
+	}
+}
+
+func TestUpstreamDefault(t *testing.T) {
+	os.Unsetenv("GOMETEO_UPSTREAM")
+
+	opts, err := getOpts([]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Upstream != UPSTREAM_ROOT {
+		t.Errorf("default upstream: got %q, want %q", opts.Upstream, UPSTREAM_ROOT)
+	}
+}
+
 func TestCacheId(t *testing.T) {
 	id := CacheId()
-	if len(id)!=8 {
+	if len(id) != 8 {
 		t.Errorf("CacheId() is not a 8-char string : %s", id)
-	} 
+	}
 	t.Logf("cacheId='%s'", id)
 }

@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"os"
 
-	"gometeo/server"
 	"gometeo/appconf"
+	"gometeo/server"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 
 	err := server.Start()
 	if err != nil {
-		log.Println(err)
+		slog.Error("server error", "err", err)
 		os.Exit(1)
 	}
 }

@@ -1,23 +1,15 @@
-FROM golang:1.22.11-bookworm AS base
-
-
-# Move to working directory /build
+FROM golang:1.26.2-bookworm AS builder
+ARG COMMIT_ID=unknown
 WORKDIR /build
-
-# Copy the go.mod and go.sum files to the /build directory
 COPY go.mod go.sum ./
-
-# Install dependencies
 RUN go mod download
-
-# Copy the entire source code into the container
 COPY . .
+RUN CGO_ENABLED=0 go build -ldflags "-X gometeo/appconf.CommitID=${COMMIT_ID}" -o gometeo
 
-# Build the application
-RUN go build -o gometeo
-
-# Document the port that may need to be published
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=builder /build/gometeo /gometeo
 EXPOSE 1051
-
-# Start the application
-CMD ["/build/gometeo"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO- http://localhost:1051/healthz || exit 1
+CMD ["/gometeo"]

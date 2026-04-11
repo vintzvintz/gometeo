@@ -1,15 +1,13 @@
-package mfmap
+package schedule
 
 import (
 	"sync"
 	"testing"
 	"time"
-
-	"gometeo/appconf"
 )
 
 func TestAtomicRace(t *testing.T) {
-	m := MfMap{}
+	s := Stats{}
 	var wg sync.WaitGroup
 	start := make(chan struct{})
 
@@ -20,8 +18,8 @@ func TestAtomicRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start // wait for start signal
-			m.MarkHit()
-			m.MarkUpdate()
+			s.MarkHit()
+			s.MarkUpdate()
 		}()
 	}
 	// unleach all goroutines for a massive attack !
@@ -29,29 +27,35 @@ func TestAtomicRace(t *testing.T) {
 	// wait for hitting to complete
 	wg.Wait()
 
-	if m.HitCount() != n {
-		t.Errorf("concurrency issues...  got %d hits, want %d", m.HitCount(), n)
+	if s.HitCount() != n {
+		t.Errorf("concurrency issues...  got %d hits, want %d", s.HitCount(), n)
 	}
-	if time.Since(m.LastHit()).Abs() > time.Second {
+	if time.Since(s.LastHit()).Abs() > time.Second {
 		t.Errorf("last hit time not properly recorded")
 	}
 }
 
+var testRates = UpdateRates{
+	HotDuration: 72 * time.Hour,
+	HotMaxAge:   60 * time.Minute,
+	ColdMaxAge:  240 * time.Minute,
+}
+
 func TestLogUpdate(t *testing.T) {
-	m := MfMap{}
-	dur := m.DurationToUpdate()
+	s := Stats{Rates: testRates}
+	dur := s.DurationToUpdate()
 	if dur > 0 {
 		t.Error("DurationToUpdate() on zero-valued map expected negative")
 	}
-	m.MarkUpdate()
-	dur = m.DurationToUpdate()
+	s.MarkUpdate()
+	dur = s.DurationToUpdate()
 	if dur < 0 {
 		t.Error("DurationToUpdate() on just-updated map must be positive")
 	}
 }
 
 func TestNeedUpdate(t *testing.T) {
-	r := appconf.UpdateRate()
+	r := testRates
 	var tests = map[string]struct {
 		update time.Time
 		hit    time.Time
@@ -59,7 +63,7 @@ func TestNeedUpdate(t *testing.T) {
 	}{
 		"zero": {
 			//update: 0,
-			want:   true,
+			want: true,
 		},
 		"now": {
 			update: time.Now(),
@@ -77,21 +81,21 @@ func TestNeedUpdate(t *testing.T) {
 		},
 		"slow_true": {
 			hit:    time.Now().Add(-r.HotDuration).Add(-10 * time.Second), // last hit 10 sec before fastmode cutoff
-			update: time.Now().Add(-r.ColdMaxAge).Add(-30 * time.Second),   // last update 30 sec before cutoff
+			update: time.Now().Add(-r.ColdMaxAge).Add(-30 * time.Second),  // last update 30 sec before cutoff
 			want:   true,
 		},
 		"slow_false": {
 			hit:    time.Now().Add(-r.HotDuration).Add(-10 * time.Second), // last hit 10 sec before fastmode cutoff
-			update: time.Now().Add(-r.ColdMaxAge).Add(+30 * time.Second),   // last update 30 sec after cutoff
+			update: time.Now().Add(-r.ColdMaxAge).Add(+30 * time.Second),  // last update 30 sec after cutoff
 			want:   false,
 		},
 	}
-	m := MfMap{}
+	s := Stats{Rates: testRates}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			m.stats.lastUpdate.Store(test.update)
-			m.stats.lastHit.Store(test.hit)
-			got := m.DurationToUpdate() < 0
+			s.lastUpdate.Store(test.update)
+			s.lastHit.Store(test.hit)
+			got := s.DurationToUpdate() < 0
 			if got != test.want {
 				t.Errorf("DurationToUpdate()<0 got %v, want %v", got, test.want)
 			}

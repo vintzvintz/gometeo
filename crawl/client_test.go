@@ -2,6 +2,7 @@ package crawl
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +34,7 @@ func TestAddUrlBase(t *testing.T) {
 	}
 
 	t.Run("empty baseUrl", func(t *testing.T) {
-		cl := NewClient("")
+		cl := NewClient("", nil)
 		_, err := cl.addUrlBase("/")
 		if err == nil {
 			t.Errorf("expect error on empty urlBase")
@@ -43,7 +44,7 @@ func TestAddUrlBase(t *testing.T) {
 	t.Run("invalid paths", func(t *testing.T) {
 		for name, path := range pathInvalid {
 			t.Run(name, func(t *testing.T) {
-				cl := NewClient(urlBaseTest)
+				cl := NewClient(urlBaseTest, nil)
 				_, err := cl.addUrlBase(path)
 				if err == nil {
 					t.Errorf("expect error on invalid path '%s'", path)
@@ -55,7 +56,7 @@ func TestAddUrlBase(t *testing.T) {
 	t.Run("valid paths", func(t *testing.T) {
 		for name, d := range pathValid {
 			t.Run(name, func(t *testing.T) {
-				cl := NewClient(urlBaseTest)
+				cl := NewClient(urlBaseTest, nil)
 				got, err := cl.addUrlBase(d.path)
 				if err != nil {
 					t.Error(err)
@@ -71,7 +72,7 @@ func TestAddUrlBase(t *testing.T) {
 func setupServerAndClient(t *testing.T, filename string, cnt *int) (srv *httptest.Server, client *Client) {
 	cookie := &http.Cookie{Name: sessionCookie, Value: "random_auth_token_value"}
 	srv = setupServerCustom(t, filename, cnt, cookie)
-	client = NewClient(srv.URL)
+	client = NewClient(srv.URL, nil)
 	return
 }
 
@@ -143,11 +144,11 @@ func assertGetEqualsBytes(t *testing.T, client *Client, path string, r io.Reader
 const fileRacine = "racine.html"
 
 func TestCacheHit(t *testing.T) {
-	cl := NewClient("")
+	cl := NewClient("", nil)
 	cl.cache = NewCache(dataSet01())
 	for path, expected := range dataSet01() {
 		t.Run(path, func(t *testing.T) {
-			body, err := cl.Get(path, CacheOnly)
+			body, err := cl.Get(context.Background(), path, CacheOnly)
 			if err != nil {
 				t.Error(err)
 			}
@@ -161,10 +162,10 @@ func TestCacheHit(t *testing.T) {
 
 func TestCacheMiss(t *testing.T) {
 	key := "missing_key"
-	cl := NewClient("")
+	cl := NewClient("", nil)
 	cl.cache = NewCache(dataSet01())
 	cl.client = nil
-	_, err := cl.Get(key, CacheOnly)
+	_, err := cl.Get(context.Background(), key, CacheOnly)
 	if err == nil {
 		t.Errorf("MfClient.Get() should have returned error on '%s'", key)
 	}
@@ -177,7 +178,7 @@ func TestGetCacheOnly(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		// Echec attendu en mode cacheOnly car le cache est vide
-		data, err := client.Get("/", CacheOnly)
+		data, err := client.Get(context.Background(), "/", CacheOnly)
 		_ = data
 		if err == nil {
 			t.Error("GET should fail in CacheOnly mode")
@@ -255,7 +256,7 @@ func TestGetCacheUpdate(t *testing.T) {
 
 func testClientGet(t *testing.T, client *Client, path string, policy CachePolicy) []byte {
 	t.Helper()
-	body, err := client.Get(path, policy)
+	body, err := client.Get(context.Background(), path, policy)
 	if err != nil {
 		t.Fatalf("client.Get() error: %s", err)
 	}
@@ -282,11 +283,11 @@ func TestGetMissingCookie(t *testing.T) {
 	t.Run("missing cookie error", func(t *testing.T) {
 		srv := setupServerCustom(t, "", nil, nil) // no data, no counter, no cookie
 		defer srv.Close()
-		client := NewClient(srv.URL)
+		client := NewClient(srv.URL, nil)
 
 		// send a request, expect a "missing cookie" error
 		var err error
-		if _, err = client.Get("/", CacheDisabled); err == nil {
+		if _, err = client.Get(context.Background(), "/", CacheDisabled); err == nil {
 			t.Error("error expected when server does not send auth token")
 			return
 		}
@@ -318,7 +319,7 @@ func TestGetModifiedCookie(t *testing.T) {
 		cookieValA = "cookie_value_A"
 		cookieValB = "cookie_value_B"
 	)
-	client := NewClient("")
+	client := NewClient("", nil)
 	assertCookie(t, client, cookieValA)
 	assertCookie(t, client, cookieValB)
 }
@@ -330,11 +331,11 @@ func TestGetBadPath(t *testing.T) {
 		"noLeadingSlash": "x",
 		"invalid scheme": "://example.com/",
 	}
-	client := NewClient("")
+	client := NewClient("", nil)
 	client.client = nil // should prevent real requests
 	for name, path := range badPaths {
 		t.Run(name, func(t *testing.T) {
-			_, err := client.Get(path, CacheDisabled)
+			_, err := client.Get(context.Background(), path, CacheDisabled)
 			if err == nil {
 				t.Errorf("expected error on invalid path '%s'", path)
 			}
@@ -343,7 +344,7 @@ func TestGetBadPath(t *testing.T) {
 }
 
 func TestHttpErrors(t *testing.T) {
-	client := NewClient("")
+	client := NewClient("", nil)
 	statusCodes := []int{401, 404, 500}
 
 	for _, code := range statusCodes {
@@ -351,7 +352,7 @@ func TestHttpErrors(t *testing.T) {
 			srv := setupServerWithStatus(t, code)
 			defer srv.Close()
 			client.baseUrl = srv.URL
-			_, err := client.Get("/", CacheDefault)
+			_, err := client.Get(context.Background(), "/", CacheDefault)
 			if err == nil {
 				t.Fatalf("client.Get() did not returned an error")
 			}

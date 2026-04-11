@@ -1,11 +1,14 @@
 package crawl
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"sync"
+
+	"gometeo/obs"
 )
 
 type Client struct {
@@ -14,6 +17,13 @@ type Client struct {
 	token           atomicToken
 	client          *http.Client
 	cache           *Cache
+	obs             *obs.Registry // optional; nil disables upstream-request counting
+}
+
+// SetObs attaches an obs registry so that each outgoing upstream request
+// (cache miss) bumps the upstreamRequests counter. Nil-safe.
+func (cl *Client) SetObs(r *obs.Registry) {
+	cl.obs = r
 }
 
 type atomicToken struct {
@@ -34,11 +44,11 @@ const (
 const userAgentFirefox = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"
 
 // NewClient allocates a *MfClient.
-// cache is an optional pre-initialized cache.
-func NewClient(baseUrl string) *Client {
+// transport is optional; nil uses http.DefaultTransport.
+func NewClient(baseUrl string, transport http.RoundTripper) *Client {
 	return &Client{
 		baseUrl: baseUrl,
-		client:  &http.Client{},
+		client:  &http.Client{Transport: transport},
 		cache:   NewCache(nil),
 	}
 }
@@ -107,8 +117,8 @@ func (cl *Client) addUrlBase(path string) (string, error) {
 }
 
 // Get issues a GET request to path, prefixed with 'baseUrl' constant.
-// implement a basic cache, controlled with policy parameter
-func (cl *Client) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
+// implement a basic cache, controlled with policy parameter.
+func (cl *Client) Get(ctx context.Context, path string, policy CachePolicy) (io.ReadCloser, error) {
 	// commence par chercher dans le cache avant de lancer la requete
 	// le cache est ignoré avec CacheDisabled et CacheUpdate
 	if policy == CacheDefault || policy == CacheOnly {
@@ -127,7 +137,7 @@ func (cl *Client) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		msg := fmt.Sprintf("erreur de création de la requête http pour %s", path)
 		return nil, errors.New(msg)
@@ -139,6 +149,7 @@ func (cl *Client) Get(path string, policy CachePolicy) (io.ReadCloser, error) {
 	}
 	req.Header.Add("user-agent", userAgentFirefox)
 
+	cl.obs.RecordUpstreamRequest()
 	resp, err := cl.client.Do(req)
 	if err != nil {
 		return nil, err

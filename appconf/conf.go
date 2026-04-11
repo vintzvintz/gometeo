@@ -4,10 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
+	"os"
 	"time"
+
+	"gometeo/mfmap/schedule"
 )
 
-// TODO: refactor into env var
 const (
 	DEFAULT_ADDR = ":1051"
 
@@ -33,16 +36,12 @@ const (
 
 type CliOpts struct {
 	Addr       string
+	Upstream   string
 	OneShot    bool
 	Limit      int
 	Vue        string
 	FastUpdate bool
-}
-
-type UpdateRates struct {
-	HotDuration time.Duration // map lose "hot" status after this delay
-	HotMaxAge   time.Duration // update freq for "hot" maps
-	ColdMaxAge  time.Duration // update rate for "cold" maps  ( default for maps never used )
+	CacheFile  string
 }
 
 var appOpts *CliOpts
@@ -51,9 +50,9 @@ var cacheId string
 
 func init() {
 	n := uint32(time.Now().UnixMilli() & 0xFFFFFFFF)
-	n |= 0x1 << 31   // force left bit to 1 so hex string length is not shorter than 8 chars 
+	n |= 0x1 << 31 // force left bit to 1 so hex string length is not shorter than 8 chars
 	cacheId = fmt.Sprintf("%8x", n)
-	log.Printf("cacheId = '%s'", cacheId)
+	slog.Info("cacheId generated", "cacheId", cacheId)
 }
 
 func CacheId() string {
@@ -72,16 +71,25 @@ func Init(args []string) {
 	}
 }
 
+func envDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
 func getOpts(args []string) (*CliOpts, error) {
 	f := flag.NewFlagSet("Gometeo", flag.ContinueOnError)
 	opts := CliOpts{}
 
-	// define cli flags
-	f.StringVar(&opts.Addr, "addr", DEFAULT_ADDR, "listening server address")
+	// define cli flags — env vars override hardcoded defaults, explicit flags override env vars
+	f.StringVar(&opts.Addr, "addr", envDefault("GOMETEO_ADDR", DEFAULT_ADDR), "listening server address")
+	f.StringVar(&opts.Upstream, "upstream", envDefault("GOMETEO_UPSTREAM", UPSTREAM_ROOT), "upstream base URL")
 	f.IntVar(&opts.Limit, "limit", 0, "limit number of maps")
 	f.BoolVar(&opts.OneShot, "oneshot", false, "useful only for dev and debug")
 	f.StringVar(&opts.Vue, "vue", "prod", "select 'prod' or 'dev' build of vue.js")
 	f.BoolVar(&opts.FastUpdate, "fastupdate", false, "increase update rate (for dev)")
+	f.StringVar(&opts.CacheFile, "cache", "", "path to .gob cache file for oneshot mode (empty = disabled)")
 
 	f.Parse(args)
 
@@ -106,6 +114,10 @@ func Addr() string {
 	return appOpts.Addr
 }
 
+func Upstream() string {
+	return appOpts.Upstream
+}
+
 func OneShot() bool {
 	return appOpts.OneShot
 }
@@ -122,19 +134,24 @@ func VueJs() string {
 	return VUE_PROD
 }
 
+// CacheFile returns the path to the .gob cache file, or "" if disabled.
+func CacheFile() string {
+	return appOpts.CacheFile
+}
+
 func KeepDays() (dayMin, dayMax int) {
 	return KEEP_DAY_MIN, KEEP_DAY_MAX
 }
 
-func UpdateRate() UpdateRates {
+func UpdateRate() schedule.UpdateRates {
 	if appOpts != nil && appOpts.FastUpdate {
-		return UpdateRates{
+		return schedule.UpdateRates{
 			HotDuration: fastHotDuration,
 			HotMaxAge:   fastHotMaxAge,
 			ColdMaxAge:  fastColdMaxAge,
 		}
 	}
-	return UpdateRates{
+	return schedule.UpdateRates{
 		HotDuration: normalHotDuration,
 		HotMaxAge:   normalHotMaxAge,
 		ColdMaxAge:  normalColdMaxAge,

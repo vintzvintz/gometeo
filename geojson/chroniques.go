@@ -1,10 +1,12 @@
 package geojson
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
+	"math"
 	"slices"
 	"time"
 )
@@ -141,7 +143,7 @@ func (mf MultiforecastData) BuildChroniques() (Graphdata, error) {
 	return g, nil
 }
 
-func (c Chroniques)MarshalJSON()([]byte, error) {
+func (c Chroniques) MarshalJSON() ([]byte, error) {
 	tmp := []Chronique{}
 	for insee := range c {
 		tmp = append(tmp, c[insee])
@@ -221,7 +223,7 @@ seriesLoop:
 			v, err := f.withTimestamp(nom)
 			if errors.Is(err, ErrNoSuchData) {
 				ret[nom] = nil
-				log.Printf("series not found: '%s'", nom)
+				slog.Warn("series not found", "name", nom)
 				continue seriesLoop // shortcut to next serie
 			}
 			if err != nil {
@@ -322,3 +324,101 @@ func (v IntTs) Ts() time.Time        { return v.ts }
 func (v FloatTs) Ts() time.Time      { return v.ts }
 func (v IntRangeTs) Ts() time.Time   { return v.ts }
 func (v FloatRangeTs) Ts() time.Time { return v.ts }
+
+// GobEncode/GobDecode for gob serialization of unexported fields
+
+func (v FloatTs) GobEncode() ([]byte, error) {
+	ts, err := v.ts.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	buf := make([]byte, 2+len(ts)+8)
+	binary.LittleEndian.PutUint16(buf, uint16(len(ts)))
+	copy(buf[2:], ts)
+	binary.LittleEndian.PutUint64(buf[2+len(ts):], math.Float64bits(v.val))
+	return buf, nil
+}
+
+func (v *FloatTs) GobDecode(data []byte) error {
+	tsLen := int(binary.LittleEndian.Uint16(data))
+	if err := v.ts.UnmarshalBinary(data[2 : 2+tsLen]); err != nil {
+		return err
+	}
+	v.val = math.Float64frombits(binary.LittleEndian.Uint64(data[2+tsLen:]))
+	return nil
+}
+
+func (v IntTs) GobEncode() ([]byte, error) {
+	ts, err := v.ts.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	buf := make([]byte, 2+len(ts)+8)
+	binary.LittleEndian.PutUint16(buf, uint16(len(ts)))
+	copy(buf[2:], ts)
+	binary.LittleEndian.PutUint64(buf[2+len(ts):], uint64(v.val))
+	return buf, nil
+}
+
+func (v *IntTs) GobDecode(data []byte) error {
+	tsLen := int(binary.LittleEndian.Uint16(data))
+	if err := v.ts.UnmarshalBinary(data[2 : 2+tsLen]); err != nil {
+		return err
+	}
+	v.val = int(binary.LittleEndian.Uint64(data[2+tsLen:]))
+	return nil
+}
+
+func (v FloatRangeTs) GobEncode() ([]byte, error) {
+	ts, err := v.ts.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	buf := make([]byte, 2+len(ts)+8+8+8)
+	binary.LittleEndian.PutUint16(buf, uint16(len(ts)))
+	copy(buf[2:], ts)
+	off := 2 + len(ts)
+	binary.LittleEndian.PutUint64(buf[off:], math.Float64bits(v.min))
+	binary.LittleEndian.PutUint64(buf[off+8:], math.Float64bits(v.max))
+	binary.LittleEndian.PutUint64(buf[off+16:], uint64(v.offsetHours))
+	return buf, nil
+}
+
+func (v *FloatRangeTs) GobDecode(data []byte) error {
+	tsLen := int(binary.LittleEndian.Uint16(data))
+	if err := v.ts.UnmarshalBinary(data[2 : 2+tsLen]); err != nil {
+		return err
+	}
+	off := 2 + tsLen
+	v.min = math.Float64frombits(binary.LittleEndian.Uint64(data[off:]))
+	v.max = math.Float64frombits(binary.LittleEndian.Uint64(data[off+8:]))
+	v.offsetHours = int(binary.LittleEndian.Uint64(data[off+16:]))
+	return nil
+}
+
+func (v IntRangeTs) GobEncode() ([]byte, error) {
+	ts, err := v.ts.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	buf := make([]byte, 2+len(ts)+8+8+8)
+	binary.LittleEndian.PutUint16(buf, uint16(len(ts)))
+	copy(buf[2:], ts)
+	off := 2 + len(ts)
+	binary.LittleEndian.PutUint64(buf[off:], uint64(v.min))
+	binary.LittleEndian.PutUint64(buf[off+8:], uint64(v.max))
+	binary.LittleEndian.PutUint64(buf[off+16:], uint64(v.offsetHours))
+	return buf, nil
+}
+
+func (v *IntRangeTs) GobDecode(data []byte) error {
+	tsLen := int(binary.LittleEndian.Uint16(data))
+	if err := v.ts.UnmarshalBinary(data[2 : 2+tsLen]); err != nil {
+		return err
+	}
+	off := 2 + tsLen
+	v.min = int(binary.LittleEndian.Uint64(data[off:]))
+	v.max = int(binary.LittleEndian.Uint64(data[off+8:]))
+	v.offsetHours = int(binary.LittleEndian.Uint64(data[off+16:]))
+	return nil
+}

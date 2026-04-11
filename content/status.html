@@ -6,38 +6,158 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Application status</title>
-  <!--    <link rel="stylesheet" href="style.css"> -->
   <style>
-    .fastupdate {
-      background-color: rgb(185, 237, 205);
+    :root {
+      --border: #d0d4d9;
+      --soft: #f4f6f8;
+      --muted: #6b7280;
+      --accent: #2c5282;
+      --hot: rgb(185, 237, 205);
     }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 1em auto;
+      max-width: 1100px;
+      padding: 0 1em;
+      color: #222;
+    }
+    h1 {
+      font-size: 1.3em;
+      margin: 0 0 0.8em 0;
+      color: var(--accent);
+    }
+    h2 {
+      font-size: 1.0em;
+      margin: 0 0 0.5em 0;
+      color: var(--accent);
+    }
+    section.card {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.8em 1em;
+      margin-bottom: 1em;
+      background: var(--soft);
+    }
+    .header-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4em 1.5em;
+      font-size: 0.95em;
+      margin-bottom: 0.2em;
+    }
+    .header-line span.label { color: var(--muted); }
+    .header-line code {
+      background: #eaecef;
+      padding: 0 4px;
+      border-radius: 2px;
+      font-size: 0.9em;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.9em;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      text-align: left;
+    }
+    th {
+      background: #eef1f4;
+      font-weight: 600;
+    }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.total td { font-weight: 600; background: #eef1f4; }
+    tr.fastupdate { background-color: var(--hot); }
+    .src-map   { color: #a33; }
+    .src-picto { color: #c80; }
+    .src-crawl { color: #666; }
+    .next-line { margin-top: 0.4em; color: var(--muted); font-size: 0.9em; }
   </style>
 </head>
 
 <body>
-  <div>
-  mapStore.Updatable() = {{.Updatable}}
-  </div>
-  <table>
-    <tr>
-      <th>Carte</th>
-      <th>LastHit</th>
-      <th>Hits</th>
-      <th>Mode</th>
-      <th>Last update</th>
-      <th>Next update</th>
-    </tr>
-    {{range .Stats}}
-    <tr {{if (eq .UpdateMode "hot")}}class="fastupdate"{{end}}>
-      <td><a href="{{.Path}}">{{ .Name}}</a></td>
-      <td>{{ .LastHit}}</td>
-      <td>{{ .HitCount}}</td>
-      <td>{{ .UpdateMode}}</td>
-      <td>{{ .LastUpdate}}</td>
-      <td>{{ .NextUpdate}}</td>
-    </tr>
-    {{end}}
-  </table>
+  <h1>Gometeo status</h1>
+
+  <section class="card">
+    <h2>Overview</h2>
+    <div class="header-line">
+      <div><span class="label">Uptime:</span> {{.Report.Uptime}}</div>
+      <div><span class="label">Started:</span> {{.Report.StartTime}}</div>
+      <div><span class="label">Commit:</span> <code>{{.Report.Commit}}</code></div>
+      <div><span class="label">Upstream requests:</span> {{.Report.UpstreamRequests}}</div>
+      <div><span class="label">Static served:</span> {{.Report.StaticServed}}</div>
+    </div>
+    <table>
+      <tr>
+        <th></th>
+        <th class="num">Loaded</th>
+        <th class="num">Failed</th>
+        <th class="num">Served</th>
+      </tr>
+      <tr>
+        <td>Maps</td>
+        <td class="num">{{.Report.Counters.Maps.Loaded}}</td>
+        <td class="num">{{.Report.Counters.Maps.Failed}}</td>
+        <td class="num">{{.Report.Counters.Maps.Served}}</td>
+      </tr>
+      <tr>
+        <td>Pictos</td>
+        <td class="num">{{.Report.Counters.Pictos.Loaded}}</td>
+        <td class="num">{{.Report.Counters.Pictos.Failed}}</td>
+        <td class="num">{{.Report.Counters.Pictos.Served}}</td>
+      </tr>
+      <tr class="total">
+        <td>Total</td>
+        <td class="num">{{.Report.Counters.Total.Loaded}}</td>
+        <td class="num">{{.Report.Counters.Total.Failed}}</td>
+        <td class="num">{{.Report.Counters.Total.Served}}</td>
+      </tr>
+    </table>
+    <div class="next-line">Next updatable: {{.Report.NextUpdatable}}</div>
+  </section>
+
+  {{if .Report.RecentErrors}}
+  <section class="card">
+    <h2>Last {{len .Report.RecentErrors}} errors</h2>
+    <table>
+      <tr><th>Time</th><th>Age</th><th>Source</th><th>Target</th><th>Error</th></tr>
+      {{range .Report.RecentErrors}}
+      <tr>
+        <td>{{.Time}}</td>
+        <td>{{.Age}}</td>
+        <td class="src-{{.Source}}">{{.Source}}</td>
+        <td>{{.Target}}</td>
+        <td>{{.Err}}</td>
+      </tr>
+      {{end}}
+    </table>
+  </section>
+  {{end}}
+
+  <section class="card">
+    <h2>Maps</h2>
+    <table>
+      <tr>
+        <th>Carte</th>
+        <th>LastHit</th>
+        <th class="num">Hits</th>
+        <th>Mode</th>
+        <th>Last update</th>
+        <th>Next update</th>
+      </tr>
+      {{range .Stats}}
+      <tr {{if (eq .UpdateMode "hot")}}class="fastupdate"{{end}}>
+        <td><a href="{{.Path}}">{{.Name}}</a></td>
+        <td>{{.LastHit}}</td>
+        <td class="num">{{.HitCount}}</td>
+        <td>{{.UpdateMode}}</td>
+        <td>{{.LastUpdate}}</td>
+        <td>{{.NextUpdate}}</td>
+      </tr>
+      {{end}}
+    </table>
+  </section>
 </body>
 
 </html>

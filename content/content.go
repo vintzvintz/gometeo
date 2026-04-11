@@ -4,27 +4,31 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"slices"
 	"sync"
 	"time"
 
-	"gometeo/appconf"
 	"gometeo/mfmap"
+	"gometeo/mfmap/handlers"
+	"gometeo/obs"
 )
+
+// ContentConf holds runtime configuration injected at construction time.
+type ContentConf struct {
+	DayMin  int
+	DayMax  int
+	CacheId string
+	Obs     *obs.Registry // optional; nil disables observability
+}
 
 // Meteo is a http.Handler holding and serving live maps and pictos
 type Meteo struct {
+	conf   ContentConf
 	maps   mapStore
 	pictos pictoStore
 	mux    meteoMux
-}
-
-// Picto is a helper type for storage and passing data through channels
-type Picto struct {
-	Name string
-	Img  []byte
 }
 
 // meteoMux is a mutex-protected, hot-swappable wrapper of a standard http.ServeMux
@@ -47,20 +51,33 @@ type mapStore struct {
 type pictoStore struct {
 	store map[string][]byte
 	mutex sync.Mutex
+	obs   *obs.Registry
 }
 
-const KEEP_PAST_DAYS = 2
-
-// New() returns an empty Meteo struct
-func New() *Meteo {
+// New returns an empty Meteo struct
+func New(conf ContentConf) *Meteo {
 	return &Meteo{
+		conf:   conf,
 		maps:   mapStore{store: make(map[string]*mfmap.MfMap)},
 		pictos: pictoStore{store: make(map[string][]byte)},
 	}
 }
 
 func (mc *Meteo) Close() {
-	log.Println("MeteoContent closed")
+	slog.Info("MeteoContent closed")
+}
+
+// Obs returns the observability registry attached at construction, or nil.
+func (mc *Meteo) Obs() *obs.Registry {
+	return mc.conf.Obs
+}
+
+// Ready reports whether the content store has received at least one map.
+// TODO check age of  last successfull request
+func (mc *Meteo) Ready() bool {
+	mc.maps.mutex.Lock()
+	defer mc.maps.mutex.Unlock()
+	return len(mc.maps.store) > 0
 }
 
 // Receive calls ReceiveMaps and ReceivePictos in parallel
@@ -68,7 +85,7 @@ func (mc *Meteo) Close() {
 // are processed and closed
 func (mc *Meteo) Receive(
 	maps <-chan *mfmap.MfMap,
-	pictos <-chan Picto,
+	pictos <-chan mfmap.Picto,
 ) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
@@ -102,15 +119,14 @@ func (mc *Meteo) ReceiveMaps(ch <-chan *mfmap.MfMap) <-chan struct{} {
 	go func() {
 		defer close(done)
 		for m := range ch {
-			dayMin, dayMax := appconf.KeepDays()
-			mc.maps.update(m, dayMin, dayMax)
+			mc.maps.update(m, mc.conf.DayMin, mc.conf.DayMax)
 			mc.rebuildMux()
 		}
 	}()
 	return done
 }
 
-func (mc *Meteo) ReceivePictos(ch <-chan Picto) <-chan struct{} {
+func (mc *Meteo) ReceivePictos(ch <-chan mfmap.Picto) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -133,10 +149,48 @@ func (mc *Meteo) Updatable() string {
 	return mc.maps.updatable()
 }
 
+// StatusReport is the high-level data surfaced by the /statusse page.
+// It combines the observability snapshot with per-store counts.
+type StatusReport struct {
+	Obs           obs.Snapshot
+	MapsLoaded    int
+	TotalHits     int64
+	PictosLoaded  int
+	NextUpdatable string
+}
+
+// Report returns a point-in-time status report. Safe to call concurrently.
+func (mc *Meteo) Report() StatusReport {
+	var snap obs.Snapshot
+	if mc.conf.Obs != nil {
+		snap = mc.conf.Obs.Snapshot()
+	}
+	mc.maps.mutex.Lock()
+	mapsLoaded := len(mc.maps.store)
+	var totalHits int64
+	for _, m := range mc.maps.store {
+		totalHits += m.Schedule.HitCount()
+	}
+	mc.maps.mutex.Unlock()
+
+	mc.pictos.mutex.Lock()
+	pictosLoaded := len(mc.pictos.store)
+	mc.pictos.mutex.Unlock()
+
+	return StatusReport{
+		Obs:           snap,
+		MapsLoaded:    mapsLoaded,
+		TotalHits:     totalHits,
+		PictosLoaded:  pictosLoaded,
+		NextUpdatable: mc.Updatable(),
+	}
+}
+
 func (mc *Meteo) rebuildMux() {
 	newMux := http.NewServeMux()
-	mc.pictos.register(newMux)
-	mc.maps.register(newMux)
+	mc.pictos.register(newMux, mc.conf.CacheId, mc.conf.Obs)
+	mc.maps.register(newMux, mc.conf.Obs)
+	newMux.Handle("/statusse", mc.makeStatusHandler())
 	mc.mux.setMux(newMux) // concurrent-safe accessor
 }
 
@@ -164,7 +218,7 @@ func (ms *mapStore) buildBreadcrumbs(path string) {
 	// get a *MfMap to work on
 	m, ok := ms.store[path]
 	if !ok || m == nil {
-		log.Printf("rebuildBreadcrumbs(): map '%s' not found", path)
+		slog.Warn("rebuildBreadcrumbs: map not found", "path", path)
 		return // non fatal
 	}
 
@@ -186,13 +240,12 @@ func (ms *mapStore) buildBreadcrumbs(path string) {
 	m.Breadcrumb = bc
 }
 
-func (ms *mapStore) register(mux *http.ServeMux) {
+func (ms *mapStore) register(mux *http.ServeMux, reg *obs.Registry) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 	for _, m := range ms.store {
-		m.Register(mux)
+		handlers.Register(mux, m, reg)
 	}
-	mux.Handle("/statusse", ms.makeStatusHandler())
 }
 
 // returns map with the highest negative delay to update
@@ -202,7 +255,7 @@ func (ms *mapStore) updatable() (path string) {
 
 	var min time.Duration
 	for _, m := range ms.store {
-		d := m.DurationToUpdate()
+		d := m.Schedule.DurationToUpdate()
 		if d <= min {
 			min = d
 			path = m.OriginalPath
@@ -211,17 +264,18 @@ func (ms *mapStore) updatable() (path string) {
 	return
 }
 
-func (ps *pictoStore) update(p Picto) {
+func (ps *pictoStore) update(p mfmap.Picto) {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()
 	ps.store[p.Name] = p.Img
 }
 
-func (ps *pictoStore) register(mux *http.ServeMux) {
+func (ps *pictoStore) register(mux *http.ServeMux, cacheId string, reg *obs.Registry) {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()
 
-	pattern := fmt.Sprintf("/pictos/%s/{pic}", appconf.CacheId())
+	ps.obs = reg
+	pattern := fmt.Sprintf("/pictos/%s/{pic}", cacheId)
 	mux.Handle(pattern, ps)
 }
 
@@ -235,7 +289,7 @@ func (ps *pictoStore) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	b, ok := ps.store[name]
 	if !ok {
 		resp.WriteHeader(http.StatusNotFound)
-		log.Printf("error GET picto %s => statuscode%d\n", name, http.StatusNotFound)
+		slog.Warn("picto not found", "name", name)
 		return
 	}
 	resp.Header().Add("Cache-Control", "max-age=31536000, immutable")
@@ -245,6 +299,7 @@ func (ps *pictoStore) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
+	ps.obs.RecordPictoServed()
 }
 
 func (mux *meteoMux) setMux(newMux *http.ServeMux) {

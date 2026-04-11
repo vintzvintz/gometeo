@@ -136,8 +136,8 @@ func TestEcheanceNight(t *testing.T) {
 	got := f.Echeance().Date
 
 	if want != got {
-		t.Errorf("Date d'une échéance nuit le 1r jour du mois got %d-%d-%d, want %d-%d-%d ", 
-		got.Year, got.Month, got.Day,
-		want.Year, want.Month, want.Day)
+		t.Errorf("Date d'une échéance nuit le 1r jour du mois got %d-%d-%d, want %d-%d-%d ",
+			got.Year, got.Month, got.Day,
+			want.Year, want.Month, want.Day)
 	}
 }

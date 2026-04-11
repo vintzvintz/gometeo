@@ -9,8 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Build
+# Build (commit id auto-embedded from git via vcs.revision)
 go build -o gometeo
+
+# Docker build (needs explicit commit id: .git is excluded from build context)
+COMMIT_ID=$(git rev-parse --short HEAD) docker compose build
 
 # Run (dev mode: fetch 5 maps once, then serve)
 ./gometeo -oneshot -limit 5 -fastupdate
@@ -38,9 +41,11 @@ docker-compose up
 
 | Flag | Default | Purpose |
 |------|---------|---------|
-| `-addr` | `:1051` | Server listen address |
+| `-addr` | `:1051` | Server listen address (env: `GOMETEO_ADDR`) |
+| `-upstream` | meteofrance.com | Upstream base URL (env: `GOMETEO_UPSTREAM`) |
 | `-limit` | `0` (unlimited) | Stop crawling after N maps |
 | `-oneshot` | `false` | Fetch once, then serve (dev/debug) |
+| `-cache` | `""` (disabled) | Path to `.gob` cache file for oneshot mode |
 | `-vue` | `prod` | Vue.js build: `dev` or `prod` |
 | `-fastupdate` | `false` | Reduce update intervals (dev: 30min→1min) |
 
@@ -62,20 +67,22 @@ Browser (Vue.js SPA)
 
 ### Package Responsibilities
 
-- **`appconf`** — CLI flags, constants, upstream URL, cache ID (8-char hex for cache-busting), hot/cold update intervals
+- **`appconf`** — CLI flags, env var overrides, constants, upstream URL, cache ID (8-char hex for cache-busting), hot/cold update intervals
 - **`crawl`** — Multi-level tree crawl of weather map hierarchy. `crawl.Start()` runs `ModeOnce` or `ModeForever`. Uses cache policies (`CacheDefault`, `CacheUpdate`, `CacheDisabled`, `CacheOnly`)
-- **`mfmap`** — Core `MfMap` type: stores parsed forecasts, geography (GeoJSON), SVG map, pictos, parent chain (breadcrumbs), and atomic hit/update stats. `IsHot()` / `DurationToUpdate()` drive refresh scheduling
+- **`mfmap`** — Core `MfMap` type: stores parsed forecasts, geography (GeoJSON), SVG map, pictos, parent chain (breadcrumbs), and atomic hit/update stats
+- **`mfmap/handlers`** — Registers URL patterns: `/{path}` (HTML), `/{path}/data` (JSON), `/{path}/{cacheid}/svg` (SVG). The `/data` endpoint marks the map as "hit" (making it "hot"). HTML rendering via `render.go` + `template.html`
+- **`mfmap/schedule`** — `UpdateRates` type and `IsHot()` / `DurationToUpdate()` scheduling logic (extracted from `mfmap`)
+- **`mfmap/urls`** — URL builder functions for map, data, SVG, and picto endpoints (extracted from `mfmap`)
 - **`geojson`** — `MultiforecastData`, `Forecast`, `Daily` types; custom JSON unmarshalling for upstream quirks; `Merge()` preserves historical forecast data across updates
 - **`content`** — `Meteo` struct: fan-in from crawler channels via `Receive()`, mutex-protected `mapStore`/`pictoStore`, hot-swappable `meteoMux`. `Updatable()` selects the next map needing refresh
-- **`mfmap/handlers`** — Registers URL patterns: `/{path}` (HTML), `/{path}/data` (JSON), `/{path}/{cacheid}/svg` (SVG). The `/data` endpoint marks the map as "hit" (making it "hot")
-- **`server`** — Entry point; middleware chain: logging → legacy `.html` redirect → static files → `Meteo.ServeHTTP()`
+- **`server`** — Entry point; middleware chain: logging → legacy `.html` redirect → mux (`/healthz`, static files, `Meteo.ServeHTTP()`)
 - **`static`** — Embedded static assets (JS, CSS, fonts, favicon) via `go:embed`; served with immutable cache headers using `CacheId()` in URLs
 - **`svgtools`** — Crops SVG maps using `etree`
 - **`stringfloat`** — Custom JSON unmarshaller for lat/lng fields that upstream sends as either strings or floats
 
 ### Hot/Cold Update Logic
 
-Maps that have been recently viewed (`IsHot()`) update every 1–60 minutes. Idle maps update every 4–5 hours. This avoids hammering upstream for unused regions.
+Maps that have been recently viewed (`IsHot()`) update every 1–60 minutes. Idle maps update every 4–5 hours. This avoids hammering upstream for unused regions. Rates are defined in `appconf` and passed as `schedule.UpdateRates` through config structs — packages no longer read from `appconf` globals directly.
 
 ### Concurrency Model
 
@@ -84,7 +91,24 @@ Maps that have been recently viewed (`IsHot()`) update every 1–60 minutes. Idl
 - Breadcrumb chains are rebuilt for **all** maps on every update (O(n²) but acceptable at typical map counts of 40–100)
 - Atomic fields (`lastHit`, `lastUpdate`, `hitCount`) on `MfMap` need no locks
 
+### Logging
+
+Structured logging via `log/slog` throughout. No plain `log.Print*` calls.
+
+### Health Check
+
+`GET /healthz` returns `200 ok` when the content store is ready, `503 not ready` otherwise. Used by Docker health checks.
+
+### Oneshot Cache
+
+In `-oneshot` mode, `-cache <file.gob>` saves/loads the full in-memory store to disk. On startup: load from cache if present, otherwise fetch from upstream and save. Useful for fast dev iteration without hitting upstream repeatedly.
+
 ### Test Fixtures
 
 - `test_data/` contains HTML pages and JSON responses from upstream
 - `testutils/` provides mock HTTP handlers and map helpers reused across packages
+- `integration_test.go` at repo root tests the full content-to-handler pipeline
+
+## Commit instructions
+
+**DO NOT ADD PROMOTIONAL FOOTERS** to commit messages

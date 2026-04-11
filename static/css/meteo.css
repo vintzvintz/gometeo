@@ -271,6 +271,7 @@ ul {
 
 .leaflet-tooltip {
   padding: 5px;
+  pointer-events: none;
 }
 
 .map_tooltip {
@@ -370,6 +371,26 @@ ul {
 .data-picker a:hover {
   background-color: #555;
   color: white;
+}
+
+/******************* Loading / error placeholders ******************/
+.status-msg {
+  padding: 2em 1em;
+  text-align: center;
+  font-size: 1.1em;
+  color: #555;
+}
+
+.status-msg.status-error {
+  color: #802020;
+}
+
+.status-msg .retry-link {
+  display: inline-block;
+  margin-left: 0.5em;
+  color: #145e9a;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 /* Style the footer */

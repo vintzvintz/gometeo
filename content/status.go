@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"slices"
 	"time"
 
+	"gometeo/appconf"
 	"gometeo/mfmap"
 )
 
@@ -20,28 +21,110 @@ var statusTemplate string
 type Stats struct {
 	Name       string
 	Path       string
-	LastUpdate time.Duration
-	LastHit    time.Duration
-	NextUpdate time.Duration
+	LastUpdate string
+	LastHit    string
+	NextUpdate string
 	UpdateMode string
 	HitCount   int64
 }
 
-func getStats(m *mfmap.MfMap) Stats {
-	var lh time.Duration
-	if !m.LastHit().IsZero() {
-		lh = time.Since(m.LastHit()).Round(time.Second)
+// ReportView is a template-friendly (pre-formatted strings) flattening of
+// StatusReport. Keeps the HTML template dumb.
+type ReportView struct {
+	Uptime           string
+	StartTime        string
+	Commit           string
+	NextUpdatable    string
+	UpstreamRequests int64
+	StaticServed     int64
+	Counters         CountersView
+	RecentErrors     []ErrorRow
+}
+
+// CountersView holds the per-resource loaded/failed/served counts
+// plus the totals row. Upstream requests are tracked separately at
+// the client level — see ReportView.UpstreamRequests.
+type CountersView struct {
+	Maps   CounterRow
+	Pictos CounterRow
+	Total  CounterRow
+}
+
+type CounterRow struct {
+	Loaded int64
+	Failed int64
+	Served int64
+}
+
+// ErrorRow is the display form of an obs.ErrorEvent.
+type ErrorRow struct {
+	Time   string
+	Age    string
+	Source string
+	Target string
+	Err    string
+}
+
+func (mc *Meteo) buildReportView() ReportView {
+	r := mc.Report()
+	maps := CounterRow{
+		Loaded: int64(r.MapsLoaded),
+		Failed: r.Obs.MapsFailed,
+		Served: r.Obs.MapsServed,
 	}
+	pictos := CounterRow{
+		Loaded: int64(r.PictosLoaded),
+		Failed: r.Obs.PictosFailed,
+		Served: r.Obs.PictosServed,
+	}
+	total := CounterRow{
+		Loaded: maps.Loaded + pictos.Loaded,
+		Failed: maps.Failed + pictos.Failed,
+		Served: maps.Served + pictos.Served,
+	}
+	rv := ReportView{
+		Uptime:           r.Obs.Uptime.Round(time.Second).String(),
+		StartTime:        r.Obs.StartTime.Local().Format("2006-01-02 15:04:05 MST"),
+		Commit:           appconf.Commit(),
+		NextUpdatable:    r.NextUpdatable,
+		UpstreamRequests: r.Obs.UpstreamRequests,
+		StaticServed:     r.Obs.StaticServed,
+		Counters: CountersView{
+			Maps:   maps,
+			Pictos: pictos,
+			Total:  total,
+		},
+	}
+	for _, e := range r.Obs.RecentErrors {
+		rv.RecentErrors = append(rv.RecentErrors, ErrorRow{
+			Time:   e.Time.Format("15:04:05"),
+			Age:    time.Since(e.Time).Round(time.Second).String(),
+			Source: string(e.Source),
+			Target: e.Target,
+			Err:    e.Err,
+		})
+	}
+	return rv
+}
+
+func getStats(m *mfmap.MfMap) Stats {
 	s := Stats{
 		Name:       m.Name(),
 		Path:       m.Path(),
-		HitCount:   m.HitCount(),
+		HitCount:   m.Schedule.HitCount(),
 		UpdateMode: "-",
-		LastHit:    lh,
-		LastUpdate: time.Since(m.LastUpdate()).Round(time.Second),
-		NextUpdate: m.DurationToUpdate().Round(time.Second),
+		LastHit:    "-",
+		LastUpdate: "-",
+		NextUpdate: "-",
 	}
-	if m.IsHot() {
+	if lh := m.Schedule.LastHit(); !lh.IsZero() {
+		s.LastHit = time.Since(lh).Round(time.Second).String()
+	}
+	if lu := m.Schedule.LastUpdate(); !lu.IsZero() {
+		s.LastUpdate = time.Since(lu).Round(time.Second).String()
+		s.NextUpdate = m.Schedule.DurationToUpdate().Round(time.Second).String()
+	}
+	if m.Schedule.IsHot() {
 		s.UpdateMode = "hot"
 	}
 	return s
@@ -72,7 +155,7 @@ func (ms *mapStore) Status() []Stats {
 	return stats
 }
 
-func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
+func (mc *Meteo) makeStatusHandler() http.HandlerFunc {
 	// compile template only once
 	tmpl, err := template.New("").Parse(statusTemplate)
 	if err != nil {
@@ -81,16 +164,16 @@ func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
 	// return closure having http.HandlerFunc signature
 	return func(resp http.ResponseWriter, _ *http.Request) {
 		d := struct {
-			Stats     []Stats
-			Updatable string
+			Report ReportView
+			Stats  []Stats
 		}{
-			Stats:     ms.Status(),
-			Updatable: ms.updatable(),
+			Report: mc.buildReportView(),
+			Stats:  mc.maps.Status(),
 		}
 		b := &bytes.Buffer{}
 		err := tmpl.Execute(b, d)
 		if err != nil {
-			log.Printf("statusHandler error: %s", err)
+			slog.Error("statusHandler error", "err", err)
 			resp.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -98,7 +181,7 @@ func (ms *mapStore) makeStatusHandler() http.HandlerFunc {
 		resp.WriteHeader(http.StatusOK)
 		_, err = io.Copy(resp, b)
 		if err != nil {
-			log.Printf("ignored send error: %s", err)
+			slog.Error("send error", "err", err)
 		}
 	}
 }

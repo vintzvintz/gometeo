@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"VsCodeTaskButtons.tasks": [
+        { "label": "$(tools) Build", "task": "Go: Build (full rebuild)" },
+        { "label": "$(play) Docker Run", "task": "Docker: Run" },
+        { "label": "$(debug-stop) Docker Stop", "task": "Docker: Stop" },
+        { "label": "$(output) Logs", "task": "Docker: Logs" }
+    	]
+	}
+}

@@ -3,7 +3,7 @@ package geojson
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -32,8 +32,8 @@ type (
 
 	// intermediate struct for data reshaping
 	forecastBuild struct {
-		f *Forecast
-		d *Daily
+		F *Forecast
+		D *Daily
 	}
 )
 
@@ -125,10 +125,10 @@ func (mf MultiforecastData) BuildPrevs() (PrevList, error) {
 				//log.Printf("Missing daily data for id=%s (%s) echeance %s", fi.insee, fi.name, e)
 				continue
 			}
-			pad.processPrev(Journalier, fi, forecastBuild{nil, d})
+			pad.processPrev(Journalier, fi, forecastBuild{F: nil, D: d})
 
 			// accumulate Forecast into PrevAtDay
-			pad.processPrev(e.Moment, fi, forecastBuild{f, d})
+			pad.processPrev(e.Moment, fi, forecastBuild{F: f, D: d})
 		}
 	}
 	return pl, nil
@@ -161,10 +161,10 @@ func (pad prevsAtDay) processPrev(m MomentName, fi featInfo, fb forecastBuild) {
 		}
 	}
 	// TODO warn if d.Time is not unique among other pam.Prevs
-	if fb.f != nil {
-		pam.Time = fb.f.Time
-	} else if fb.d != nil {
-		pam.Time = fb.d.Time
+	if fb.F != nil {
+		pam.Time = fb.F.Time
+	} else if fb.D != nil {
+		pam.Time = fb.D.Time
 	}
 	pam.Updated = fi.updateTime
 	pam.Prevs[fi.insee] = prevAtPoi{
@@ -214,14 +214,14 @@ func (fb forecastBuild) MarshalJSON() ([]byte, error) {
 	}
 
 	// alias
-	f, d := fb.f, fb.d
+	f, d := fb.F, fb.D
 
 	// DEBUG : catch a production bug
 	if d == nil && f == nil {
 		return nil, fmt.Errorf("forecastBuild has 2 nil pointers")
 	}
 	if d == nil {
-		return nil, fmt.Errorf("missing daily prev with forecast %s,", fb.f.describe())
+		return nil, fmt.Errorf("missing daily prev with forecast %s,", fb.F.describe())
 	}
 
 	// basic init with fields for the Daily version (long-term)
@@ -305,10 +305,10 @@ func (pad prevsAtDay) MarshalJSON() ([]byte, error) {
 func (pam prevsAtMoment) terme() prevTerme {
 	var poiLong, poiCourt int
 	for _, p := range pam.Prevs {
-		if p.Prev.f == nil {
+		if p.Prev.F == nil {
 			continue
 		}
-		if p.Prev.f.LongTerme {
+		if p.Prev.F.LongTerme {
 			poiLong++
 		} else {
 			poiCourt++
@@ -324,10 +324,10 @@ func (pam prevsAtMoment) terme() prevTerme {
 
 	// unexpected situations
 	if (poiCourt > 0) && (poiLong > 0) {
-		log.Printf("mélange court/long terme entre différents POI au moment %v", pam.Time)
+		slog.Warn("mélange court/long terme entre différents POI", "time", pam.Time)
 	}
 	if (poiCourt == 0) && (poiLong == 0) {
-		log.Printf("aucune donnée disponible au moment %v", pam.Time)
+		slog.Warn("aucune donnée disponible", "time", pam.Time)
 	}
 	return termeUnknown
 }

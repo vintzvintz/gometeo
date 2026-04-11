@@ -1,4 +1,5 @@
 package geojson
+
 /*
 import (
 	"fmt"
@@ -35,4 +36,4 @@ func TestFindDaily(t *testing.T) {
 		t.Fatalf("FindDaily() did not found daily forecast for location '%s' at '%s'", id, ech)
 	}
 }
-	*/
+*/

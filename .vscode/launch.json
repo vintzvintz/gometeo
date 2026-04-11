@@ -1,0 +1,35 @@
+{
+    // Utilisez IntelliSense pour en savoir plus sur les attributs possibles.
+    // Pointez pour afficher la description des attributs existants.
+    // Pour plus d'informations, visitez : https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "One Shot (avec cache)",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "meteo.go",
+            "args": ["-oneshot", "-limit", "5", "-fastupdate", "-cache", "./content_cache.gob"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "One Shot (sans cache)",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "meteo.go",
+            "args": ["-oneshot", "-limit", "5", "-fastupdate"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "Normal (dev mode)",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "meteo.go",
+            "args": [ "-limit", "15", "-vue", "dev", "-fastupdate" ],
+            "hideSystemGoroutines": true
+        },
+    ]
+}

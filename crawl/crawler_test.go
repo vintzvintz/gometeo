@@ -1,19 +1,36 @@
 package crawl
 
 import (
+	"context"
 	"regexp"
 	"sync"
 	"testing"
+	"time"
 
-	"gometeo/content"
 	"gometeo/mfmap"
+	"gometeo/mfmap/schedule"
 )
+
+var testCrawlConf = CrawlConf{
+	Upstream: "https://meteofrance.com",
+	MapConf: mfmap.MapConf{
+		CacheId:  "testcache",
+		VueJs:    "vue.esm-browser.dev.js",
+		Upstream: "https://meteofrance.com",
+		Rates: schedule.UpdateRates{
+			HotDuration: 72 * time.Hour,
+			HotMaxAge:   60 * time.Minute,
+			ColdMaxAge:  240 * time.Minute,
+		},
+	},
+}
 
 const minPictosPerMap = 10 // temps, vent, uv....
 const minPictoSize = 200   // bytes
 
 func TestPictoUrl(t *testing.T) {
-	u, err := pictoURL("test")
+	cr := NewCrawler(testCrawlConf)
+	u, err := cr.pictoURL("test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +43,7 @@ func TestPictoUrl(t *testing.T) {
 
 func TestFetch(t *testing.T) {
 	var wantN int = 5
-	maps, pictos := newCrawler().Fetch("/", wantN)
+	maps, pictos := NewCrawler(testCrawlConf).Fetch(context.Background(), "/", wantN)
 
 	var nbMaps, nbPics int
 	wg := sync.WaitGroup{}
@@ -64,8 +81,8 @@ func TestGetMap(t *testing.T) {
 }
 
 func getMapTest(t *testing.T, path string) *mfmap.MfMap {
-	cr := newCrawler()
-	m, err := cr.getMap(path)
+	cr := NewCrawler(testCrawlConf)
+	m, err := cr.getMap(context.Background(), path)
 	if err != nil {
 		t.Fatalf("getmap('%s') error: %s", path, err)
 	}
@@ -86,7 +103,7 @@ func checkMap(t *testing.T, m *mfmap.MfMap) {
 		t.Error("mfMap has no picto")
 	}
 	if m.Geography.Type != "FeatureCollection" {
-	 	t.Errorf("MfMap.Geography has wrong type")
+		t.Errorf("MfMap.Geography has wrong type")
 	}
 	if m.SvgMap == nil {
 		t.Errorf("MfMap field m.SvgMap is nil")
@@ -95,7 +112,7 @@ func checkMap(t *testing.T, m *mfmap.MfMap) {
 
 var hasSvgTag *regexp.Regexp = regexp.MustCompile("<svg")
 
-func checkPicto(t *testing.T, p content.Picto) {
+func checkPicto(t *testing.T, p mfmap.Picto) {
 	//svg := p.Img
 	if !hasSvgTag.Match(p.Img) {
 		t.Errorf("no <svg> tag in picto '%s'", p.Name)

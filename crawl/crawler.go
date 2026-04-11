@@ -1,87 +1,54 @@
 package crawl
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
-	"time"
 
-	"gometeo/appconf"
-	"gometeo/content"
 	"gometeo/mfmap"
+	"gometeo/mfmap/urls"
+	"gometeo/obs"
 )
 
 const (
-	fetchInterval = 10 //seconds
 	sessionCookie = "mfsession"
 )
 
+type CrawlConf struct {
+	Upstream  string
+	MapConf   mfmap.MapConf
+	Transport http.RoundTripper // optional; nil uses http.DefaultTransport
+	Obs       *obs.Registry     // optional; nil disables observability recording
+}
+
 type Crawler struct {
+	conf       CrawlConf
 	mainClient *Client
 }
 
 // NewCrawler allocates a Crawler with a pre-configured client
-func newCrawler() *Crawler {
+func NewCrawler(conf CrawlConf) *Crawler {
+	cl := NewClient(conf.Upstream, conf.Transport)
+	cl.SetObs(conf.Obs)
 	return &Crawler{
-		mainClient: NewClient(appconf.UPSTREAM_ROOT),
+		conf:       conf,
+		mainClient: cl,
 	}
-}
-
-type CrawlMode int
-
-const (
-	ModeOnce CrawlMode = iota
-	ModeForever
-)
-
-// startCrawler returns a "self-updating" MeteoContent
-func Start(path string, limit int, mode CrawlMode) (*content.Meteo, <-chan struct{}) {
-
-	var done <-chan struct{}
-	// concurrent use of http.Client is safe according to official documentation,
-	// so we can share the same client for maps and pictos.
-	cr := newCrawler()
-	if (mode != ModeOnce) && (mode != ModeForever) {
-		panic(fmt.Errorf("crawl mode unknown : %d", int(mode)))
-	}
-
-	// direct pipe from crawler output channel to MeteoContent.Receive()
-	mc := content.New()
-	initDone := mc.Receive(cr.Fetch(path, limit))
-	if mode == ModeOnce {
-		done = initDone
-	}
-	if mode == ModeForever {
-		// do not close(done) in ModeForever,
-		// crawler does never exit the update loop
-		go func() {
-			<-initDone // wait for init completion
-			log.Printf("enter forever update loop")
-			for {
-				time.Sleep(fetchInterval * time.Second)
-				path := mc.Updatable()
-				if path == "" {
-					continue
-				}
-				// TODO: add timeout
-				<-mc.Receive(cr.Fetch(path, 1))
-			}
-		}()
-	}
-	return mc, done
 }
 
 // Fetch() crawl upstream map tree with a recursion limit.
-// TODO: handle timeouts, errors or unavailable maps
-func (cr *Crawler) Fetch(startPath string, limit int) (
+// TODO: handle errors or unavailable maps
+func (cr *Crawler) Fetch(ctx context.Context, startPath string, limit int) (
 	chMap chan *mfmap.MfMap,
-	chPicto chan content.Picto,
+	chPicto chan mfmap.Picto,
 ) {
 	chMap = make(chan (*mfmap.MfMap))
-	chPicto = make(chan (content.Picto))
+	chPicto = make(chan (mfmap.Picto))
 
 	go func() {
 		// closing channel signals a crawler exit and terminates server
@@ -102,18 +69,24 @@ func (cr *Crawler) Fetch(startPath string, limit int) (
 		)
 
 		for {
-			// stop when queue is empty or max count is reached
+			// stop when queue is empty, max count reached, or context expired
 			i := len(queue) - 1
 			if ((limit > 0) && (cnt >= limit)) || i < 0 {
+				break
+			}
+			if err := ctx.Err(); err != nil {
+				slog.Warn("fetch context expired", "startPath", startPath, "err", err)
+				cr.recordCrawlError(startPath, err)
 				break
 			}
 			cnt++
 			// pop next map from queue
 			next := queue[i]
 			queue = queue[0:i]
-			m, err := cr.getMap(next.path)
+			m, err := cr.getMap(ctx, next.path)
 			if err != nil {
-				log.Printf("getMap(%s) error:%s", next.path, err)
+				slog.Error("getMap error", "path", next.path, "err", err)
+				cr.recordMapFailed(next.path, err)
 				continue
 			}
 			// add parent path
@@ -125,7 +98,7 @@ func (cr *Crawler) Fetch(startPath string, limit int) (
 			}
 			// donwload pictos
 			// cache will avoid multiple downloads of same a picto
-			cr.fetchPictos(m.Pictos, &wgPictos, chPicto)
+			cr.fetchPictos(ctx, m.Pictos, &wgPictos, chPicto)
 
 			// send map and drop pointer because ownership is transferred
 			chMap <- m
@@ -141,10 +114,15 @@ func (cr *Crawler) Fetch(startPath string, limit int) (
 // getMap gets https://mf.com/zone html page and related data like
 // svg map, pictos, forecasts and list of subzones
 // related data is stored into MfMap fields
-func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
-	log.Printf("getMap() '%s'", path)
+func (cr *Crawler) getMap(ctx context.Context, path string) (*mfmap.MfMap, error) {
+	slog.Info("getMap", "path", path)
 
-	body, err := cr.mainClient.Get(path, CacheDisabled)
+	// Clear any previous token so the HTML page request goes out unauthenticated.
+	// The HTML endpoint is public and its Set-Cookie response re-mints a fresh
+	// mfsession token for the subsequent authenticated API calls. This avoids
+	// stale-token loops on long-running instances when upstream expires sessions.
+	cr.mainClient.token.Set("")
+	body, err := cr.mainClient.Get(ctx, path, CacheDisabled)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +131,7 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 	// allocate a MfMap and initialize with received content
 	m := &mfmap.MfMap{
 		OriginalPath: path,
+		Conf:         cr.conf.MapConf,
 	}
 	err = m.ParseHtml(body)
 	if err != nil {
@@ -161,32 +140,34 @@ func (cr *Crawler) getMap(path string) (*mfmap.MfMap, error) {
 
 	// apiClient is a closure returning a preconfigured api client
 	apiClient := func() (*Client, error) {
-		apiBaseUrl, err := m.ApiUrl("", nil)
+		apiBaseUrl, err := urls.ApiUrl(m.Data, "", nil)
 		if err != nil {
 			return nil, err
 		}
-		cl := NewClient(apiBaseUrl.String())
+		cl := NewClient(apiBaseUrl.String(), cr.conf.Transport)
+		cl.SetObs(cr.conf.Obs)
 		cl.token.Set(cr.mainClient.token.Get())
 		cl.noSessionCookie = true // api server do not send auth tokens so dont expect any
 		return cl, nil
 	}
 
 	// subqueries to retreive SVG, geographical subzones and actual forecasts
-	if err = cr.getAsset(m.SvgUrl, m.ParseSvgMap, nil); err != nil {
+	if err = cr.getAsset(ctx, func() (*url.URL, error) { return urls.SvgUrl(m.Conf.Upstream, m.Data) }, m.ParseSvgMap, nil); err != nil {
 		return nil, err
 	}
-	if err = cr.getAsset(m.GeographyUrl, m.ParseGeography, nil); err != nil {
+	if err = cr.getAsset(ctx, func() (*url.URL, error) { return urls.GeographyUrl(m.Conf.Upstream, m.Data) }, m.ParseGeography, nil); err != nil {
 		return nil, err
 	}
-	if err = cr.getAsset(m.ForecastUrl, m.ParseMultiforecast, apiClient); err != nil {
+	if err = cr.getAsset(ctx, func() (*url.URL, error) { return urls.ForecastUrl(m.Data) }, m.ParseMultiforecast, apiClient); err != nil {
 		return nil, err
 	}
-	m.MarkUpdate() // record update time
+	m.Schedule.MarkUpdate() // record update time
 	return m, nil
 }
 
-// getSvg() downloads SVG map and feed result into MfMap
+// getAsset downloads a map asset and feeds result into MfMap via parser
 func (cr *Crawler) getAsset(
+	ctx context.Context,
 	urlGetter func() (*url.URL, error), // closure (over a mfmap.MfMap) returning asset url
 	parser func(io.Reader) error, // closure (over a mfmap.MfMap) parsing the content
 	clientGetter func() (*Client, error),
@@ -202,7 +183,7 @@ func (cr *Crawler) getAsset(
 			return err
 		}
 	}
-	body, err := cl.Get(u.String(), CacheDefault)
+	body, err := cl.Get(ctx, u.String(), CacheDefault)
 	if err != nil {
 		return err
 	}
@@ -216,27 +197,28 @@ func (cr *Crawler) getAsset(
 
 // fetchPictos retrieves pictos from upstream
 // cr.mainCient has a cache to avoid multiple downloads
-func (cr *Crawler) fetchPictos(names []string, wg *sync.WaitGroup, out chan<- content.Picto) {
+func (cr *Crawler) fetchPictos(ctx context.Context, names []string, wg *sync.WaitGroup, out chan<- mfmap.Picto) {
 	wg.Add(1)
 	go func() {
 		for _, name := range names {
-			p, err := cr.getPicto(name)
+			p, err := cr.getPicto(ctx, name)
 			if err != nil {
-				log.Printf("getPicto(%s): %s", name, err)
+				slog.Error("getPicto error", "name", name, "err", err)
+				cr.recordPictoFailed(name, err)
 				continue
 			}
-			out <- content.Picto{Name: name, Img: p}
+			out <- mfmap.Picto{Name: name, Img: p}
 		}
 		wg.Done()
 	}()
 }
 
-func (cr *Crawler) getPicto(name string) ([]byte, error) {
-	url, err := pictoURL(name)
+func (cr *Crawler) getPicto(ctx context.Context, name string) ([]byte, error) {
+	url, err := cr.pictoURL(name)
 	if err != nil {
 		return nil, err
 	}
-	body, err := cr.mainClient.Get(url.String(), CacheDefault)
+	body, err := cr.mainClient.Get(ctx, url.String(), CacheDefault)
 	if err != nil {
 		return nil, err
 	}
@@ -248,10 +230,29 @@ func (cr *Crawler) getPicto(name string) ([]byte, error) {
 	return b, nil
 }
 
+// nil-safe obs recorders keep tests and non-instrumented callers working
+func (cr *Crawler) recordMapFailed(path string, err error) {
+	if cr.conf.Obs != nil {
+		cr.conf.Obs.RecordMapFailed(path, err)
+	}
+}
+
+func (cr *Crawler) recordPictoFailed(name string, err error) {
+	if cr.conf.Obs != nil {
+		cr.conf.Obs.RecordPictoFailed(name, err)
+	}
+}
+
+func (cr *Crawler) recordCrawlError(target string, err error) {
+	if cr.conf.Obs != nil {
+		cr.conf.Obs.RecordCrawlError(target, err)
+	}
+}
+
 // exemple https://meteofrance.com/modules/custom/mf_tools_common_theme_public/svg/weather/p3j.svg
-func pictoURL(name string) (*url.URL, error) {
+func (cr *Crawler) pictoURL(name string) (*url.URL, error) {
 	elems := []string{
-		appconf.UPSTREAM_ROOT,
+		cr.conf.Upstream,
 		"modules",
 		"custom",
 		"mf_tools_common_theme_public",

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"regexp"
 
 	sf "gometeo/stringfloat"
@@ -139,21 +138,4 @@ func (sz *Subzones) UnmarshalJSON(b []byte) error {
 	}
 	*sz = tmp
 	return nil
-}
-
-// ApiURL builds API URL from "config" node
-// typically : https://rpcache-aa.meteofrance.com/internet2018client/2.0/path
-func (m *MfMap) ApiUrl(path string, query *url.Values) (*url.URL, error) {
-	conf := m.Data.Tools.Config
-	var querystring string
-	if query != nil {
-		querystring = "?" + query.Encode()
-	}
-	// build an url.URL on path with query parameters
-	raw := fmt.Sprintf("https://%s.%s%s%s",
-		conf.Site,
-		conf.BaseUrl,
-		path,
-		querystring)
-	return url.Parse(raw)
 }

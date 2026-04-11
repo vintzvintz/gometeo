@@ -2,13 +2,11 @@ package mfmap_test
 
 import (
 	"bytes"
-	"io"
-	"regexp"
 	"strings"
 	"testing"
 
-	"gometeo/appconf"
 	"gometeo/mfmap"
+	"gometeo/mfmap/handlers"
 	"gometeo/testutils"
 )
 
@@ -61,58 +59,17 @@ func testParseHtml(t *testing.T) *mfmap.MfMap {
 	f := testutils.HtmlReader(t)
 	defer f.Close()
 
-	m := mfmap.MfMap{}
+	m := mfmap.MfMap{Conf: testutils.TestConf}
 	if err := m.ParseHtml(f); err != nil {
 		t.Fatalf("MfMap.ParseHtml() error: %s", err)
 	}
 	return &m
 }
 
-const (
-	apiBaseURL       = "https://rpcache-aa.meteofrance.com/internet2018client/2.0"
-	apiMultiforecast = "/multiforecast"
-)
-
-func TestApiUrl(t *testing.T) {
-
-	tests := map[string]struct {
-		path string
-		want string
-	}{
-		"racine": {
-			path: "",
-			want: apiBaseURL,
-		},
-		"slash": {
-			path: "/",
-			want: apiBaseURL + "/",
-		},
-		"multiforecast": {
-			path: apiMultiforecast,
-			want: apiBaseURL + apiMultiforecast,
-		},
-	}
-
-	m := testParseHtml(t)
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			u, err := m.ApiUrl(test.path, nil)
-			if err != nil {
-				t.Fatalf("ApiURL() error : %s", err)
-			}
-			got := u.String()
-			if got != test.want {
-				t.Errorf("ApiURL()='%s' want '%s'", got, test.want)
-			}
-		})
-	}
-}
-
 // buildTestMap returns a JsonMap structure filled form test files
 
 func testBuildMap(t *testing.T) *mfmap.MfMap {
-	var m mfmap.MfMap
+	m := mfmap.MfMap{Conf: testutils.TestConf}
 	if err := m.ParseHtml(testutils.HtmlReader(t)); err != nil {
 		t.Error(err)
 	}
@@ -128,93 +85,82 @@ func testBuildMap(t *testing.T) *mfmap.MfMap {
 	return &m
 }
 
-const (
-	emptyRegexp    = `^$`
-	anyRegexp      = `.*`
-	coordsRegexp   = `^([\d\.],?)+$`
-	instantsRegexp = `morning,afternoon,evening,night`
-)
-
 func TestWriteHtml(t *testing.T) {
-	appconf.Init([]string{})
-
 	m := testBuildMap(t)
 
 	buf := &bytes.Buffer{}
-	err := m.WriteHtml(buf)
+	err := handlers.WriteHtml(buf, m)
 	if err != nil {
 		t.Errorf("BuildHtml() error: %s", err)
 	}
-	b, _ := io.ReadAll(buf)
-	// display html content
-	t.Log(string(b[:400]))
-	// TODO: improve html content checks
+	html := buf.String()
+	checks := []struct {
+		label string
+		want  string
+	}{
+		{"title", "Météo " + m.Name()},
+		{"description", "Météo pour la zone " + m.Name()},
+		{"path in script", m.Path()},
+		{"cacheId", m.Conf.CacheId},
+		{"vuejs", m.Conf.VueJs},
+	}
+	for _, c := range checks {
+		if !strings.Contains(html, c.want) {
+			t.Errorf("WriteHtml(): %s: %q not found in output", c.label, c.want)
+		}
+	}
 }
 
 func TestBuildJson(t *testing.T) {
 	m := testBuildMap(t)
-	j, err := m.BuildJson()
+	j, err := handlers.BuildJson(m)
 	if err != nil {
 		t.Fatalf("BuildJson() error: %s", err)
 	}
-	// check content
 	if j.Name != "France" {
 		t.Errorf("jsonMap.Name=%s expected %s", j.Name, "France")
 	}
-	// TODO improve json content checks
-}
-
-func TestForecastURL(t *testing.T) {
-	m := testParseHtml(t)
-
-	validationRegexps := map[string]string{
-		"bbox":       emptyRegexp,
-		"begin_time": emptyRegexp,
-		"end_time":   emptyRegexp,
-		"time":       emptyRegexp,
-		"instants":   instantsRegexp,
-		"liste_id":   coordsRegexp,
+	if j.Path != m.Path() {
+		t.Errorf("jsonMap.Path=%s expected %s", j.Path, m.Path())
 	}
-
-	u, err := m.ForecastUrl()
-	if err != nil {
-		t.Fatalf("forecastURL() error: %s", err)
+	if j.Idtech == "" {
+		t.Error("jsonMap.Idtech is empty")
 	}
-	values := u.Query()
-	for key, expr := range validationRegexps {
-		re := regexp.MustCompile(expr)
-		got, ok := values[key]
-		if !ok {
-			t.Fatalf("forecastURL() query does not have key '%s'", key)
-		}
-		if len(got) != 1 {
-			t.Fatalf("forecastURL() query ['%s'] has %d values %q, want 1", key, len(got), got)
-		}
-		if re.Find([]byte(got[0])) == nil {
-			t.Errorf("forecastURL() query ['%s']='%s' doesnt match '%s'", key, got[0], expr)
-		}
+	if j.Taxonomy == "" {
+		t.Error("jsonMap.Taxonomy is empty")
+	}
+	if len(j.SubZones) == 0 {
+		t.Error("jsonMap.SubZones is empty")
+	}
+	if len(j.Prevs) == 0 {
+		t.Error("jsonMap.Prevs is empty")
+	}
+	// PAYS taxonomy: Chroniques should be nil
+	if j.Taxonomy == "PAYS" && j.Chroniques != nil {
+		t.Error("jsonMap.Chroniques should be nil for PAYS taxonomy")
+	}
+	// Bbox should have non-zero extent
+	bbox := j.Bbox
+	if bbox.LngW == bbox.LngE || bbox.LatS == bbox.LatN {
+		t.Errorf("jsonMap.Bbox has zero extent: %+v", bbox)
 	}
 }
 
-const geoRegexp = `^https://meteofrance.com/modules/custom/mf_map_layers_v2/maps/desktop/[A-Z]+/geo_json/[a-z0-9]+-aggrege.json$`
+func TestMerge(t *testing.T) {
+	old := testBuildMap(t)
+	old.Schedule.MarkHit()
+	old.Schedule.MarkHit()
 
-func TestGeographyURL(t *testing.T) {
+	newMap := testBuildMap(t)
+	newMap.Merge(old, -3, 7)
 
-	m := testParseHtml(t)
-
-	u, err := m.GeographyUrl()
-	if err != nil {
-		t.Fatalf("geographyURL() error: %s", err)
+	if newMap.Schedule.HitCount() != old.Schedule.HitCount() {
+		t.Errorf("HitCount after Merge: got %d, want %d", newMap.Schedule.HitCount(), old.Schedule.HitCount())
 	}
-	expr := regexp.MustCompile(geoRegexp)
-	if !expr.Match([]byte(u.String())) {
-		t.Errorf("geographyUrl()='%s' does not match '%s'", u.String(), geoRegexp)
+	if !newMap.Schedule.LastHit().Equal(old.Schedule.LastHit()) {
+		t.Errorf("LastHit after Merge: got %v, want %v", newMap.Schedule.LastHit(), old.Schedule.LastHit())
+	}
+	if len(newMap.Prevs) == 0 {
+		t.Error("Prevs is empty after Merge")
 	}
 }
-
-func TestMerge(t *testing.T){
-	t.Skip()
-	// TODO check new has stats updated
-}
-
-

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -48,12 +48,12 @@ func withLogging(h http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		log.Printf("%s %s status %d duration %v size %d",
-			req.Method,
-			req.RequestURI,
-			responseData.status, // get captured status code
-			duration,
-			responseData.size, // get captured size
+		slog.Info("http request",
+			"method", req.Method,
+			"uri", req.RequestURI,
+			"status", responseData.status,
+			"duration", duration,
+			"size", responseData.size,
 		)
 	}
 	return http.HandlerFunc(loggingFn)

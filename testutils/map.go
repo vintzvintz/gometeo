@@ -5,8 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"gometeo/mfmap"
+	"gometeo/mfmap/schedule"
 )
 
 const assets_path = "../test_data/"
@@ -14,14 +16,24 @@ const assets_path = "../test_data/"
 const (
 	fileHtmlRacine        = "racine.html"
 	fileJsonFilterFail    = "json_filter_fail.html"
-	fileJsonRacine        = "racine.json"
 	fileJsonMultiforecast = "multiforecast.json"
 	fileJsonGeography     = "geography.json"
 	fileSvgRacine         = "pays007.svg"
 )
 
+var TestConf = mfmap.MapConf{
+	CacheId:  "testcache",
+	VueJs:    "vue.esm-browser.dev.js",
+	Upstream: "https://meteofrance.com",
+	Rates: schedule.UpdateRates{
+		HotDuration: 72 * time.Hour,
+		HotMaxAge:   60 * time.Minute,
+		ColdMaxAge:  240 * time.Minute,
+	},
+}
+
 func BuildTestMap(t *testing.T) *mfmap.MfMap {
-	var m mfmap.MfMap
+	m := mfmap.MfMap{Conf: TestConf}
 	if err := m.ParseHtml(openFile(t, fileHtmlRacine)); err != nil {
 		t.Error(err)
 	}
@@ -39,10 +51,6 @@ func BuildTestMap(t *testing.T) *mfmap.MfMap {
 
 func HtmlReader(t *testing.T) io.ReadCloser {
 	return openFile(t, fileHtmlRacine)
-}
-
-func JsonReader(t *testing.T) io.ReadCloser {
-	return openFile(t, fileJsonRacine)
 }
 
 func MultiforecastReader(t *testing.T) io.ReadCloser {

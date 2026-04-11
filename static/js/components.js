@@ -31,15 +31,19 @@ const weatherList = {
     text: "Pression",
     showTendance: false,
   },
-  "uv": {
-    text: "UV",
-    showTendance: true,
-  }
 }
 
 const weatherDisplayOrder = [
-  "prev", "vent", "ress", "humi", "psea", /*"uv",*/
+  "prev", "vent", "ress", "humi", "psea",
 ]
+
+// True on devices whose primary input can hover with fine pointing (mouse,
+// trackpad). False on touch-first devices — tooltips are meaningless there
+// since there's no hover, so we hard-disable them.
+const hasHoverPointer =
+  typeof window !== 'undefined' &&
+  window.matchMedia &&
+  window.matchMedia('(hover: hover) and (pointer: fine)').matches
 
 
 export const RootComponent = {
@@ -51,7 +55,7 @@ export const RootComponent = {
 
   setup(props) {
 
-    // map data properties must be declared at component creation 
+    // map data properties must be declared at component creation
     // filled asynchronously by fetchMapdata() later
     const mapData = reactive({
       'path': null,
@@ -59,109 +63,97 @@ export const RootComponent = {
       'idtech': null,
       'cacheId': props.cacheId,
       'taxonomy': null,
+      'breadcrumb': [],
       'bbox': {},
       'subzones': new Array(),
       'prevs': {},
       'chroniques': null,
     })
 
-    // selection of displayed data
+    // fetch lifecycle: 'loading' | 'ready' | 'error'
+    const status = ref('loading')
+
+    // selection of displayed data. Tooltips are always enabled on devices
+    // with a hover-capable pointer and always disabled on touch-first devices.
     const selections = reactive({
-      tooltipsEnabled: true,
+      tooltipsEnabled: hasHoverPointer,
       activeWeather: "prev"
     })
 
     onMounted(() => {
       fetchMapdata()
-      observeBodyWidth()
     })
 
     async function fetchMapdata() {
-      console.log(`fetchMapdata() path=${props.path}`)
-      const res = await fetch(`/${props.path}/data`)
-      const data = await res.json()
+      status.value = 'loading'
+      try {
+        const res = await fetch(`/${props.path}/data`)
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`)
+        }
+        const data = await res.json()
 
-      // cant replace whole mapData (reactive) object because it is reactive,
-      // so we update each property explicitly
-      mapData.name = data.name
-      mapData.path = data.path
-      mapData.breadcrumb = data.breadcrumb
-      mapData.idtech = data.idtech
-      mapData.taxonomy = data.taxonomy
-      mapData.bbox = data.bbox
-      mapData.subzones = data.subzones
-      mapData.prevs = data.prevs
-      mapData.chroniques = data.chroniques
-      console.log("fetchMapdata() exit")
+        // cant replace whole mapData (reactive) object because it is reactive,
+        // so we update each property explicitly
+        mapData.name = data.name
+        mapData.path = data.path
+        mapData.breadcrumb = data.breadcrumb
+        mapData.idtech = data.idtech
+        mapData.taxonomy = data.taxonomy
+        mapData.bbox = data.bbox
+        mapData.subzones = data.subzones
+        mapData.prevs = data.prevs
+        mapData.chroniques = data.chroniques
+        status.value = 'ready'
+      } catch (err) {
+        console.error('fetchMapdata failed', err)
+        status.value = 'error'
+      }
     }
 
     // callback when WeatherPicker emits a 'weatherSelected' event
     function onWeatherSelected(id) {
-      if (id != "uv") {
-        selections.activeWeather = id   // reactive
-      }
-    }
-
-    // tooltips visibility
-    const tooltipsMinWidth = 800
-
-    function onToggleTooltips() {
-      selections.tooltipsEnabled = !selections.tooltipsEnabled   // reactive
-    }
-    function setTooltipsState(width) {
-      selections.tooltipsEnabled = tooltipsMinWidth < width // reactive
-    }
-
-    // react to body.resize events
-    function observeBodyWidth() {
-      const obs = new ResizeObserver((entries) => {
-        for (let entry of entries) {
-          if (entry.contentBoxSize) {
-            setTooltipsState(entry.contentBoxSize[0].inlineSize)
-          }
-        }
-      })
-      obs.observe(document.body)
+      selections.activeWeather = id   // reactive
     }
 
     // returned objects are available in template
     return {
       mapData,
+      status,
       selections,
       onWeatherSelected,
-      onToggleTooltips,
-      setTooltipsState,
+      retryFetch: fetchMapdata,
     }
   },
 
   template: /*html*/ `
   <header>
-  
-  <TopNav 
-  :breadcrumb="mapData.breadcrumb"
-  :tooltipsEnabled="selections.tooltipsEnabled"
-  @toggleTooltips="onToggleTooltips"/>
+
+  <TopNav :breadcrumb="mapData.breadcrumb"/>
 
   <section class="selecteurs">
-    <WeatherPicker 
+    <WeatherPicker
     :activeWeather="selections.activeWeather"
     @weatherSelected="onWeatherSelected" />
 
-    <HighchartComponent 
-    v-if="mapData.chroniques != null "
+    <HighchartComponent
+    v-if="status === 'ready' && mapData.chroniques != null"
     :activeWeather="selections.activeWeather"
     :chroniques="mapData.chroniques"/>
 
   </section>
 </header>
-<!--    <h2 style="color: rgb(43, 70, 226);">2024-08-18 : Tests en cours ...<P></P> </h2> -->
-
 
 <main class="content">
+  <div v-if="status === 'loading'" class="status-msg">Chargement…</div>
+  <div v-else-if="status === 'error'" class="status-msg status-error">
+    Erreur de chargement des données.
+    <a class="retry-link" @click="retryFetch">Réessayer</a>
+  </div>
   <MapGridComponent
+  v-else
   :selections="selections"
-  :data="mapData" 
-  @setTooltipsState="setTooltipsState"/>
+  :data="mapData"/>
 </main>
 
 <!--<footer class="footer"> <p>Footer</p> </footer> -->
@@ -171,12 +163,6 @@ export const RootComponent = {
 export const TopNav = {
   props: {
     breadcrumb: Array,
-    tooltipsEnabled: Boolean,
-  },
-
-  emits: ['toggleTooltips'],
-
-  setup(props) {
   },
 
   template: /*html*/`
@@ -184,9 +170,6 @@ export const TopNav = {
   <a v-for="item in breadcrumb" :href="item.path">{{item.nom}}</a>
   <div class="spacer"></div>
  <!-- <a class="no-mobile" href="/about">A propos</a> -->
-  <a class="no-mobile" @click="$emit('toggleTooltips')" > 
-     Tooltips : {{tooltipsEnabled ? "Oui" : "Non"}}
-  </a>
 </nav>`
 }
 
@@ -222,9 +205,7 @@ export const MapGridComponent = {
     selections: Object,
   },
 
-  emits: ['setTooltipsState'],
-
-  setup(props, ctx) {
+  setup(props) {
 
     function displayedRows() {
       const firstDay = 0
@@ -319,7 +300,6 @@ export const MapComponent = {
       // use a getter ()=> to keep reactivity
       // cf. https://vuejs.org/guide/essentials/watchers.html#watch-source-types
       watch(() => props.selections.activeWeather, updateMarkers)
-      watch(() => props.selections.tooltipsEnabled, updateTooltipsVisibility)
     })
 
     // mapId is defined at component creation from a module-level global var.
@@ -436,6 +416,28 @@ export const MapComponent = {
     }
 
 
+    // Hide marker DOM, hit-test the point under the cursor, and dispatch a
+    // synthetic click on whatever subzone polygon is underneath. The polygon's
+    // own click handler (set in addSubzones) then navigates to the sub-map.
+    function forwardClickToSubzone(e) {
+      const orig = e.originalEvent
+      if (!orig) return
+      const iconEl = e.target.getElement()
+      if (!iconEl) return
+      const prevVisibility = iconEl.style.visibility
+      iconEl.style.visibility = 'hidden'
+      const under = document.elementFromPoint(orig.clientX, orig.clientY)
+      iconEl.style.visibility = prevVisibility
+      if (under && typeof under.dispatchEvent === 'function') {
+        under.dispatchEvent(new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          clientX: orig.clientX,
+          clientY: orig.clientY,
+        }))
+      }
+    }
+
     function createMarker(poi, idx, all_pois) {
       const prev = poi.prev        // alias
 
@@ -497,11 +499,6 @@ export const MapComponent = {
           m.txt += '<span style="color:red;">|' + kmPerHour(prev.wind_speed_gust) + '</span>'
         }
 
-        // customisations pour les UV  
-      } else if (w == "uv") {
-        m.icon = "UV_" + prev.uv_index
-        m.txt = "index uv " + prev.uv_index
-
         // customisations pour la temp ressentie
       } else if (w == "ress") {
         if (prev.T_windchill == null) {
@@ -516,13 +513,6 @@ export const MapComponent = {
           return
         }
         m.txt = String(Math.round(parseFloat(prev.P_sea)))
-
-        // customisations pour la couverture nuageuse
-      } else if (w == "cloud") {
-        if (prev.total_cloud_cover == null) {
-          return
-        }
-        m.txt = prev.total_cloud_cover + "%"
 
         // customisation pour l'humidité relative
       } else if (w == "humi") {
@@ -556,10 +546,9 @@ export const MapComponent = {
         offset: m.tt_offset,
       })
 
-      // attach a callback to make the marker clickable
-      // TODO : trouver la subzone contenant le marker ( a faire plutot server-side ?) 
-      //let target = 'http://www.' + poi.titre + '.zzzzzzz'
-      //marker.on('click', ((e) => console.log([target, e]))
+      // forward marker clicks to whatever subzone polygon sits underneath,
+      // so the marker doesn't block sub-map navigation when tooltips are on.
+      marker.on('click', forwardClickToSubzone)
       marker.addTo(lMap)
 
       // keep a reference for later cleanup
@@ -759,20 +748,9 @@ export const HighchartComponent = {
       }
     }
 
-    function optsCloudCover() {
-      return {
-        title: 'Couverture nuageuse',
-        axeY1: '%',
-        series: {
-          'Cloud': { lineWidth: 1, color: '#222' },
-        },
-      }
-    }
-
-
     const hcConf = computed(() => {
       let w = props.activeWeather
-      if (w == "prev" || w == "vent" || w == "uv") {
+      if (w == "prev" || w == "vent") {
         return optsTemperature()
       } else if (w == "ress") {
         return optsRessenti()
@@ -780,8 +758,6 @@ export const HighchartComponent = {
         return optsHumide()
       } else if (w == "psea") {
         return optsPression()
-      } else if (w == "cloud") {
-        return optsCloudCover()
       } else {  // default
         return {
           title: '',

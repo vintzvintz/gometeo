@@ -1,10 +1,11 @@
 package mfmap_test
 
 import (
-	"gometeo/mfmap"
-	"gometeo/testutils"
 	"reflect"
 	"testing"
+
+	"gometeo/mfmap"
+	"gometeo/testutils"
 )
 
 func TestMapParser(t *testing.T) {
@@ -21,7 +22,7 @@ func TestMapParser(t *testing.T) {
 			got:  func(j *mfmap.MapData) interface{} { return j.Info.IdTechnique },
 		},
 		"Tools.Config.Site": {
-			want: "rpcache-aa",
+			want: "rwg",
 			got:  func(j *mfmap.MapData) interface{} { return j.Tools.Config.Site },
 		},
 		"Tools.Config.BaseUrl": {
@@ -60,13 +61,11 @@ func TestMapParserFail(t *testing.T) {
 }
 
 func testParseMap(t *testing.T) *mfmap.MapData {
-	f := testutils.JsonReader(t)
-	defer f.Close()
-	data, err := mfmap.ParseData(f)
-	if err != nil {
-		t.Fatalf("mapParser() error: %s", err)
+	m := mfmap.MfMap{Conf: testutils.TestConf}
+	if err := m.ParseHtml(testutils.HtmlReader(t)); err != nil {
+		t.Fatalf("ParseHtml() error: %s", err)
 	}
-	return data
+	return m.Data
 }
 
 func TestName(t *testing.T) {

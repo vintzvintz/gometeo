@@ -1,113 +1,251 @@
 package server
 
 import (
-	"log"
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
+	"syscall"
+	"time"
 
 	"gometeo/appconf"
 	"gometeo/content"
 	"gometeo/crawl"
+	"gometeo/mfmap"
+	"gometeo/mfmap/schedule"
+	"gometeo/obs"
 	"gometeo/static"
-)
-
-// for dev/tests/debug
-// TODO : refactor into a StartOneShot() parameter
-const (
-	cacheServer = true
-	cacheFile   = "./content_cache.gob"
 )
 
 const startPath = "/"
 
-func Start() error {
-	addr := appconf.Addr()
-	limit := appconf.Limit()
-	rates := appconf.UpdateRate()
-	entryPoint := startNormal
-	if appconf.OneShot() {
-		entryPoint = startOneShot
-	}
-
-	log.Printf(`Starting gometeo Addr='%s' Limit=%d OneShot=%v VueJs=%s `,
-		addr, limit, appconf.OneShot(), appconf.VueJs())
-	log.Printf("update rates HotDuraion=%v HotMaxAge=%v ColdMaxAge=%v",
-		rates.HotDuration, rates.HotMaxAge, rates.ColdMaxAge )
-
-	return entryPoint(addr, limit)
+// ServerConf holds server-level tuning parameters.
+// It is internal to the server package; tests inject custom values directly.
+type ServerConf struct {
+	FetchInterval   time.Duration
+	FetchTimeout    time.Duration
+	ShutdownTimeout time.Duration
 }
 
-// StartSimple fetches data once (no updates)
-// and serve it forever when done
-func startOneShot(addr string, limit int) error {
+func defaultServerConf() ServerConf {
+	return ServerConf{
+		FetchInterval:   10 * time.Second,
+		FetchTimeout:    5 * time.Minute,
+		ShutdownTimeout: 10 * time.Second,
+	}
+}
+
+func contentConf(reg *obs.Registry) content.ContentConf {
+	dayMin, dayMax := appconf.KeepDays()
+	return content.ContentConf{
+		DayMin:  dayMin,
+		DayMax:  dayMax,
+		CacheId: appconf.CacheId(),
+		Obs:     reg,
+	}
+}
+
+func crawlConf(reg *obs.Registry) crawl.CrawlConf {
+	return crawl.CrawlConf{
+		Upstream: appconf.Upstream(),
+		MapConf:  mapConf(),
+		Obs:      reg,
+	}
+}
+
+func mapConf() mfmap.MapConf {
+	r := appconf.UpdateRate()
+	return mfmap.MapConf{
+		CacheId:  appconf.CacheId(),
+		VueJs:    appconf.VueJs(),
+		Upstream: appconf.Upstream(),
+		Rates: schedule.UpdateRates{
+			HotDuration: r.HotDuration,
+			HotMaxAge:   r.HotMaxAge,
+			ColdMaxAge:  r.ColdMaxAge,
+		},
+	}
+}
+
+func Start() error {
+	rates := appconf.UpdateRate()
+	slog.Info("starting gometeo", "commit", appconf.Commit(), "addr", appconf.Addr(), "limit", appconf.Limit(), "oneshot", appconf.OneShot(), "vuejs", appconf.VueJs())
+	slog.Info("update rates", "hotDuration", rates.HotDuration, "hotMaxAge", rates.HotMaxAge, "coldMaxAge", rates.ColdMaxAge)
+
+	// Root context cancelled on SIGINT/SIGTERM for graceful shutdown.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	return startWithContext(ctx, defaultServerConf(), obs.NewRegistry())
+}
+
+func startWithContext(ctx context.Context, sconf ServerConf, reg *obs.Registry) error {
+	addr := appconf.Addr()
+	limit := appconf.Limit()
+
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("listen %s: %w", addr, err)
+	}
+
+	if appconf.OneShot() {
+		return startOneShot(ctx, sconf, ln, limit, reg)
+	}
+	return startNormal(ctx, sconf, ln, limit, reg)
+}
+
+// startOneShot fetches data once (no updates) and serves it forever when done.
+func startOneShot(ctx context.Context, sconf ServerConf, ln net.Listener, limit int, reg *obs.Registry) error {
 	var c *content.Meteo
 
-	// for dev/debug/test
-	if cacheServer {
-		c = content.LoadBlob(cacheFile)
+	cacheFile := appconf.CacheFile()
+	if cacheFile != "" {
+		c = content.LoadBlob(cacheFile, contentConf(reg), mapConf())
 	}
 	// fetch data if cache is disabled or failed
 	if c == nil {
-		var crawlerDone <-chan struct{}
-		c, crawlerDone = crawl.Start(startPath, limit, crawl.ModeOnce)
-		<-crawlerDone // wait for all maps downloads to complete
+		fetchCtx, cancel := context.WithTimeout(ctx, sconf.FetchTimeout)
+		cr := crawl.NewCrawler(crawlConf(reg))
+		c = content.New(contentConf(reg))
+		chMap, chPicto := cr.Fetch(fetchCtx, startPath, limit)
+		<-c.Receive(chMap, chPicto) // wait for all maps downloads to complete
+		cancel()
 
-		// for dev/debug/test
-		if cacheServer {
-			c.SaveBlob(cacheFile)
+		if cacheFile != "" {
+			if err := c.SaveBlob(cacheFile); err != nil {
+				slog.Error("SaveBlob error", "err", err)
+			}
 		}
 	}
-	_, serverDone := serveContent(addr, c)
-	// wait for server termination
-	return <-serverDone
+	srv, serverDone := serveContentOn(ln, c)
+	// shut down on signal or wait for server termination
+	select {
+	case <-ctx.Done():
+		shutdownServer(srv, sconf.ShutdownTimeout)
+		<-serverDone
+		return nil
+	case err := <-serverDone:
+		return err
+	}
 }
 
-// TODO add more crawl/serve/config options, maybe in a struct
-func startNormal(addr string, limit int) error {
-
-	c, crawlerDone := crawl.Start(startPath, limit, crawl.ModeForever)
+func startNormal(ctx context.Context, sconf ServerConf, ln net.Listener, limit int, reg *obs.Registry) error {
+	cr := crawl.NewCrawler(crawlConf(reg))
+	c := content.New(contentConf(reg))
 	defer c.Close()
 
-	srv, serverDone := serveContent(addr, c)
-	defer srv.Close()
+	// initial fetch, bounded by FetchTimeout so startup can't hang forever
+	initCtx, cancelInit := context.WithTimeout(ctx, sconf.FetchTimeout)
+	chMap, chPicto := cr.Fetch(initCtx, startPath, limit)
+	initDone := c.Receive(chMap, chPicto)
 
-	// block until either server or crawler terminates
+	// forever update loop in background
+	crawlerDone := make(chan struct{})
+	go func() {
+		defer close(crawlerDone)
+		defer cancelInit()
+		runUpdateLoop(ctx, sconf, cr, c, initDone)
+	}()
+
+	srv, serverDone := serveContentOn(ln, c)
+
+	// block until signal, server exit, or crawler exit
 	select {
-	case <-serverDone:
-		log.Printf("server exited")
+	case <-ctx.Done():
+		slog.Info("shutdown signal received")
+		shutdownServer(srv, sconf.ShutdownTimeout)
+		<-serverDone
+	case err := <-serverDone:
+		slog.Info("server exited", "err", err)
 	case <-crawlerDone:
-		log.Printf("crawler exited")
+		slog.Info("crawler exited")
+		shutdownServer(srv, sconf.ShutdownTimeout)
+		<-serverDone
 	}
 	return nil
 }
 
+// runUpdateLoop waits for initDone then repeatedly fetches the next map
+// needing an update. It exits when ctx is cancelled.
+func runUpdateLoop(
+	ctx context.Context,
+	sconf ServerConf,
+	cr *crawl.Crawler,
+	c *content.Meteo,
+	initDone <-chan struct{},
+) {
+	<-initDone
+	slog.Info("enter forever update loop")
+	ticker := time.NewTicker(sconf.FetchInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		path := c.Updatable()
+		if path == "" {
+			continue
+		}
+		fetchCtx, cancel := context.WithTimeout(ctx, sconf.FetchTimeout)
+		chMap, chPicto := cr.Fetch(fetchCtx, path, 1)
+		<-c.Receive(chMap, chPicto)
+		cancel()
+	}
+}
+
+// shutdownServer attempts a graceful shutdown with a bounded deadline,
+// falling back to Close() if the deadline is exceeded.
+func shutdownServer(srv *http.Server, timeout time.Duration) {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, context.Canceled) {
+		slog.Warn("graceful shutdown failed, forcing close", "err", err)
+		srv.Close()
+	}
+}
+
 func makeMeteoHandler(mc *content.Meteo) http.Handler {
 	mux := http.NewServeMux()
-	static.Register(mux)
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		if mc.Ready() {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintln(w, "ok")
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintln(w, "not ready")
+		}
+	})
+	static.Register(mux, appconf.CacheId(), mc.Obs())
 	mux.Handle("/", mc)
 	hdl := withOldUrlRedirect(mux)
 	hdl = withLogging(hdl)
 	return hdl
 }
 
-func serveContent(addr string, mc *content.Meteo) (*http.Server, <-chan error) {
-	srv := http.Server{
-		Addr:    addr,
-		Handler: makeMeteoHandler(mc),
-	}
-	ch := make(chan error)
+// serveContentOn starts an HTTP server on the provided listener.
+// Tests use this with a ":0" listener to get a random port.
+func serveContentOn(ln net.Listener, mc *content.Meteo) (*http.Server, <-chan error) {
+	srv := &http.Server{Handler: makeMeteoHandler(mc)}
+	ch := make(chan error, 1)
 	go func() {
-		log.Printf("Start server on '%s'", addr)
-		err := srv.ListenAndServe()
-		if err != http.ErrServerClosed {
-			log.Printf("server error: %s", err)
+		slog.Info("start server", "addr", ln.Addr())
+		err := srv.Serve(ln)
+		if err != nil && err != http.ErrServerClosed {
+			slog.Error("server error", "err", err)
 		} else {
-			log.Printf("Server closed")
+			slog.Info("server closed")
 		}
 		ch <- err
 		close(ch)
 	}()
-	return &srv, ch
+	return srv, ch
 }
 
 func withOldUrlRedirect(h http.Handler) http.Handler {
@@ -121,7 +259,7 @@ func withOldUrlRedirect(h http.Handler) http.Handler {
 		match := pattern.FindStringSubmatch(req.URL.Path)
 		if (match != nil) && (len(match) == 2) {
 			newpath := match[1]
-			log.Printf("LEGACY ADDRESS %s redirected to %s", req.URL, newpath)
+			slog.Info("legacy address redirect", "from", req.URL, "to", newpath)
 			http.Redirect(resp, req, newpath, http.StatusMovedPermanently)
 			return
 		}

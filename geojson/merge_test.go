@@ -40,7 +40,6 @@ func TestMergePrevList(t *testing.T) {
 	}
 }
 
-
 func TestMergeChroniques(t *testing.T) {
 
 	// prepare two prevlists
@@ -49,7 +48,6 @@ func TestMergeChroniques(t *testing.T) {
 	if !reflect.DeepEqual(new, old) {
 		t.Error("initial prevlists should be equal")
 	}
-
 
 	// iterate over new to remove some points
 	const nbRemoved = 3

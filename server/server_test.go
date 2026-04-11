@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"gometeo/content"
+	"gometeo/mfmap"
 )
 
 func TestRedirectHtml(t *testing.T) {
@@ -54,5 +57,44 @@ func TestRedirectHtml(t *testing.T) {
 		if got != test.location {
 			t.Errorf("%s redirect location %s want %s", test.path, got, test.location)
 		}
+	}
+}
+
+func TestHealthzNotReady(t *testing.T) {
+	mc := content.New(content.ContentConf{DayMin: -2, DayMax: 2, CacheId: "test"})
+	handler := makeMeteoHandler(mc)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/healthz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("healthz status = %d, want %d", resp.StatusCode, http.StatusServiceUnavailable)
+	}
+}
+
+func TestHealthzReady(t *testing.T) {
+	mc := content.New(content.ContentConf{DayMin: -2, DayMax: 2, CacheId: "test"})
+
+	// Feed a map so Ready() returns true
+	ch := make(chan *mfmap.MfMap, 1)
+	ch <- &mfmap.MfMap{}
+	close(ch)
+	<-mc.ReceiveMaps(ch)
+
+	handler := makeMeteoHandler(mc)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/healthz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("healthz status = %d, want %d", resp.StatusCode, http.StatusOK)
 	}
 }

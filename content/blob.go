@@ -2,53 +2,62 @@ package content
 
 import (
 	"encoding/gob"
+	"fmt"
+	"gometeo/geojson"
 	"gometeo/mfmap"
-	"log"
+	"log/slog"
 	"os"
 )
+
+func init() {
+	gob.Register(geojson.FloatTs{})
+	gob.Register(geojson.IntTs{})
+	gob.Register(geojson.FloatRangeTs{})
+	gob.Register(geojson.IntRangeTs{})
+}
 
 // utility type to store a MeteoContent without the ServeMux and exposed fields
 type meteoBlob struct {
 	Maps   []*mfmap.MfMap
-	Pictos []Picto
+	Pictos []mfmap.Picto
 }
 
-// LoadBlob ans SaveBlob are useful for dev and maintenance
-// panics is any error happens
-func LoadBlob(fname string) *Meteo {
+// LoadBlob and SaveBlob are useful for dev and maintenance
+func LoadBlob(fname string, cconf ContentConf, mconf mfmap.MapConf) *Meteo {
 	// load and decode the whole blob
 	f, err := os.Open(fname)
 	if err != nil {
-		log.Println(err)
+		slog.Error("LoadBlob open error", "err", err)
 		return nil
 	}
 	dec := gob.NewDecoder(f)
 	blob := meteoBlob{}
 	err = dec.Decode(&blob)
 	if err != nil {
-		log.Println(err)
+		slog.Error("LoadBlob decode error", "err", err)
 		return nil
 	}
-	mc := New()
+	mc := New(cconf)
 	for _, m := range blob.Maps {
+		m.Conf = mconf
 		mc.maps.update(m, -1000, +1000)
 	}
 	for _, p := range blob.Pictos {
 		mc.pictos.update(p)
 	}
 	mc.rebuildMux()
-	log.Printf("loaded blob from %s", fname)
+	slog.Info("loaded blob", "file", fname)
 	return mc
 }
 
 // SaveBlob and LoadBlob are useful for dev and maintenance
-// panics is any error happens
-func (mc *Meteo) SaveBlob(fname string) {
+func (mc *Meteo) SaveBlob(fname string) error {
 
 	f, err := os.Create(fname)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("SaveBlob create %s: %w", fname, err)
 	}
+	defer f.Close()
 	enc := gob.NewEncoder(f)
 
 	blob := meteoBlob{
@@ -57,18 +66,19 @@ func (mc *Meteo) SaveBlob(fname string) {
 	}
 	err = enc.Encode(blob)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("SaveBlob encode: %w", err)
 	}
-	log.Printf("blob stored to %s", fname)
+	slog.Info("blob stored", "file", fname)
+	return nil
 }
 
 // for load/save as binary blob
-func (ps *pictoStore) asSlice() []Picto {
+func (ps *pictoStore) asSlice() []mfmap.Picto {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()
-	pictos := make([]Picto, len(ps.store))
+	pictos := make([]mfmap.Picto, 0, len(ps.store))
 	for name, img := range ps.store {
-		pictos = append(pictos, Picto{Name: name, Img: img})
+		pictos = append(pictos, mfmap.Picto{Name: name, Img: img})
 	}
 	return pictos
 }

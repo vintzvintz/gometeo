@@ -143,7 +143,6 @@ func (pt *PolygonType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-
 func (c *Coordinates) UnmarshalJSON(b []byte) error {
 	// https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.1
 	var a [2]float64

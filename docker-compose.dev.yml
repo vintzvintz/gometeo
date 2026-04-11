@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+      network: host
+      args:
+        COMMIT_ID: ${COMMIT_ID:-unknown}
+    command: ["/gometeo", "-oneshot", "-limit", "5", "-fastupdate"]
+    ports:
+      - "1051:1051"
+    environment:
+      - TZ=Europe/Paris

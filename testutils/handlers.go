@@ -33,7 +33,7 @@ func RunSvgHandler(
 	if gotContentType != wantContentType {
 		t.Fatalf("GET %s wrong content type. got '%s' want '%s'", req.URL, gotContentType, wantContentType)
 	}
-	
+
 	// check svg content
 	body, err := io.ReadAll(resp.Result().Body)
 	if err != nil {
