@@ -110,6 +110,19 @@ func NewDate(t time.Time) Date {
 	return Date{Year: t.Year(), Month: t.Month(), Day: t.Day()}
 }
 
+// dayPivotUTC is the UTC offset at which the displayed J+0 row advances.
+// Sitting halfway between the nominal nuit (00:00Z) and matin (06:00Z)
+// slots, it gives ±3h of headroom on each side: a matin tile may drift
+// anywhere in (03:00Z, 08:59Z) and still be bucketed as the leftmost tile
+// of the right row; a nuit tile may drift in (21:00Z prev day, 02:59Z) and
+// still land on the correct row via the day -= 1 shift in Forecast.Echeance.
+// UTC-anchored, so DST-immune by construction — no Paris zone, no wall-clock
+// arithmetic, no lookup into forecast timestamps.
+const dayPivotUTC = 3 * time.Hour
+
+// nowFunc is indirected for tests.
+var nowFunc = time.Now
+
 // Sub() returns duration in calendar days from Date ref
 // used to decide on which row the map will be displayed
 func (d Date) Sub(ref Date) int {
@@ -119,10 +132,18 @@ func (d Date) Sub(ref Date) int {
 	return int(math.Round(diff))
 }
 
+// todayDate returns the Date that J+0 currently points at. Rollover happens
+// at dayPivotUTC each UTC day — e.g. at 03:00Z, the row advances from the
+// previous UTC date to the current one. The returned Date matches how
+// upstream keys its daily/forecast data (UTC midnight).
+func todayDate() Date {
+	t := nowFunc().UTC().Add(-dayPivotUTC)
+	y, m, d := t.Date()
+	return Date{Year: y, Month: m, Day: d}
+}
+
 func (d Date) DaysFromNow() int {
-	// TODO : Paramétrer un décalage du changement de date par rapport à 00h00 UTC
-	today := NewDate(time.Now())
-	return d.Sub(today)
+	return d.Sub(todayDate())
 }
 
 func (m *MomentName) UnmarshalJSON(b []byte) error {

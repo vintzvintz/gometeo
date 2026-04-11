@@ -125,6 +125,44 @@ func TestDateSub(t *testing.T) {
 	}
 }
 
+func TestTodayDatePivot(t *testing.T) {
+	// Pivot is 03:00Z. Row J+0 advances at that instant, every UTC day.
+	// DST plays no role (pivot is UTC-anchored).
+	tests := []struct {
+		name    string
+		nowUTC  time.Time
+		wantYMD [3]int
+	}{
+		{"just-before-pivot", time.Date(2026, 1, 15, 2, 59, 59, 0, time.UTC), [3]int{2026, 1, 14}},
+		{"at-pivot", time.Date(2026, 1, 15, 3, 0, 0, 0, time.UTC), [3]int{2026, 1, 15}},
+		{"just-after-pivot", time.Date(2026, 1, 15, 3, 0, 1, 0, time.UTC), [3]int{2026, 1, 15}},
+		{"mid-morning", time.Date(2026, 1, 15, 8, 0, 0, 0, time.UTC), [3]int{2026, 1, 15}},
+		{"late-evening", time.Date(2026, 1, 15, 23, 59, 0, 0, time.UTC), [3]int{2026, 1, 15}},
+		{"next-midnight", time.Date(2026, 1, 16, 0, 0, 0, 0, time.UTC), [3]int{2026, 1, 15}},
+		{"next-02h59", time.Date(2026, 1, 16, 2, 59, 0, 0, time.UTC), [3]int{2026, 1, 15}},
+		// DST transitions — should behave identically to any other day
+		// because the pivot is in UTC.
+		{"spring-forward-before-pivot", time.Date(2026, 3, 29, 2, 59, 0, 0, time.UTC), [3]int{2026, 3, 28}},
+		{"spring-forward-after-pivot", time.Date(2026, 3, 29, 3, 0, 0, 0, time.UTC), [3]int{2026, 3, 29}},
+		{"fall-back-before-pivot", time.Date(2026, 10, 25, 2, 59, 0, 0, time.UTC), [3]int{2026, 10, 24}},
+		{"fall-back-after-pivot", time.Date(2026, 10, 25, 3, 0, 0, 0, time.UTC), [3]int{2026, 10, 25}},
+		// Month / year rollover across the pivot.
+		{"month-rollover", time.Date(2026, 2, 1, 2, 0, 0, 0, time.UTC), [3]int{2026, 1, 31}},
+		{"year-rollover", time.Date(2027, 1, 1, 2, 0, 0, 0, time.UTC), [3]int{2026, 12, 31}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			restore := gj.SetNowForTest(func() time.Time { return tc.nowUTC })
+			defer restore()
+			got := gj.TodayDateForTest()
+			want := gj.Date{Year: tc.wantYMD[0], Month: time.Month(tc.wantYMD[1]), Day: tc.wantYMD[2]}
+			if got != want {
+				t.Errorf("todayDate() at %s got %v want %v", tc.nowUTC, got, want)
+			}
+		})
+	}
+}
+
 func TestEcheanceNight(t *testing.T) {
 	// 3h du mat le 1r janver
 	f := gj.Forecast{

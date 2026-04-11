@@ -18,6 +18,18 @@ import (
 //go:embed status.html
 var statusTemplate string
 
+// displayLoc is the zone used to render wall-clock timestamps on the status
+// page. Pinned to Europe/Paris so the page looks the same whether the server
+// runs in a UTC Docker container or on a developer box. Falls back to UTC if
+// the tzdata is unavailable.
+var displayLoc = func() *time.Location {
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}()
+
 type Stats struct {
 	Name       string
 	Path       string
@@ -84,7 +96,7 @@ func (mc *Meteo) buildReportView() ReportView {
 	}
 	rv := ReportView{
 		Uptime:           r.Obs.Uptime.Round(time.Second).String(),
-		StartTime:        r.Obs.StartTime.Local().Format("2006-01-02 15:04:05 MST"),
+		StartTime:        r.Obs.StartTime.In(displayLoc).Format("2006-01-02 15:04:05 MST"),
 		Commit:           appconf.Commit(),
 		NextUpdatable:    r.NextUpdatable,
 		UpstreamRequests: r.Obs.UpstreamRequests,
