@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO_DIR="/srv/gometeo"
+REMOTE="github"
 BRANCH="master"
 COMPOSE_FILE="docker-compose.yml"
 
@@ -35,7 +36,7 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
 fi
 
 echo ">>> pulling $BRANCH"
-git pull --ff-only origin "$BRANCH"
+git pull --ff-only "$REMOTE" "$BRANCH"
 
 COMMIT_ID=$(git rev-parse --short HEAD)
 export COMMIT_ID
