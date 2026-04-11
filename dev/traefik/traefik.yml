@@ -1,6 +1,6 @@
 entryPoints:
   web:
-    address: ":80"
+    address: "127.0.0.1:1051"
 
 providers:
   docker:

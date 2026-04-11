@@ -2,17 +2,14 @@ services:
   traefik:
     image: traefik:v3.6
     restart: unless-stopped
+    network_mode: host
     group_add:
       - "${DOCKER_GID:-999}"
     command:
       - --configFile=/etc/traefik/traefik.yml
-    ports:
-      - "127.0.0.1:1051:80"
     volumes:
       - ./dev/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - gometeo-dev
 
   app:
     build:
