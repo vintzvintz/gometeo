@@ -3,7 +3,8 @@
 /.vscode/*
 !/.vscode/launch.json
 
-crawl/coverage.out
+# local dev compose-file
+*.env
 
 # binary temp files
 *.gob 
