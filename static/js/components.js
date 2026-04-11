@@ -37,6 +37,53 @@ const weatherDisplayOrder = [
   "prev", "vent", "ress", "humi", "psea",
 ]
 
+// Render Highcharts datetime axes in Europe/Paris wall-clock. Server sends
+// UTC millisecond epochs (matin=06:00Z, etc.); without this override Highcharts
+// defaults to UTC, which would mislabel axis ticks by 1h in winter and 2h in
+// summer. Using a named zone is DST-aware — no drift across spring-forward
+// / fall-back. Must run before any chart is created.
+if (typeof Highcharts !== 'undefined') {
+  Highcharts.setOptions({ time: { timezone: 'Europe/Paris' } })
+}
+
+// Series names carrying daily min/max ranges. Their server-side timestamp is
+// at 00:00Z of the forecast day; plotted as-is they'd stack on the midnight
+// gridline. noonParis() below nudges them to 13:00 Paris local so the marker
+// sits mid-afternoon of the right calendar day, stable across DST.
+const dailyRangeSeries = new Set(['Trange', 'Hrange'])
+const dailyRangeHour = 13
+
+// parisOffsetMinutes returns the offset (in minutes west-of-UTC, sign as in
+// Date.getTimezoneOffset) of Europe/Paris at instant tsMs. Uses Intl readback
+// so it is always correct for the actual DST state of that instant.
+function parisOffsetMinutes(tsMs) {
+  const parisStr = new Date(tsMs).toLocaleString('en-CA', {
+    timeZone: 'Europe/Paris', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+  const [date, time] = parisStr.split(', ')
+  const [y, m, d] = date.split('-').map(Number)
+  const [hh, mi, ss] = time.split(':').map(Number)
+  const parisAsUtc = Date.UTC(y, m - 1, d, hh, mi, ss)
+  return (tsMs - parisAsUtc) / 60000
+}
+
+// noonParis returns the UTC ms for dailyRangeHour:00 Europe/Paris on the
+// Paris calendar day to which tsMs belongs. 13:00 is safely far from the
+// 02:00/03:00 DST transition points, so there is no local-time ambiguity.
+function noonParis(tsMs) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date(tsMs))
+  const y = +parts.find(p => p.type === 'year').value
+  const m = +parts.find(p => p.type === 'month').value
+  const d = +parts.find(p => p.type === 'day').value
+  const guess = Date.UTC(y, m - 1, d, dailyRangeHour, 0, 0)
+  return guess + parisOffsetMinutes(guess) * 60 * 1000
+}
+
 // True on devices whose primary input can hover with fine pointing (mouse,
 // trackpad). False on touch-first devices — tooltips are meaningless there
 // since there's no hover, so we hard-disable them.
@@ -842,10 +889,13 @@ export const HighchartComponent = {
         // chroniques is a set of chroniques of the same "type" (T, Hrel, Twindchill, etc...)
         // a chronique is an array of [ ts, val ] pairs ( one per POI)
         let chroniques = props.chroniques[sName]
+        const shiftToNoonParis = dailyRangeSeries.has(sName)
         for (let chronique of chroniques) {
           // deepcopy intended - graph options are not shared between each individual serie
           let opts = Object.assign({}, conf.series[sName]);
-          opts.data = chronique
+          opts.data = shiftToNoonParis
+            ? chronique.map(pt => [noonParis(pt[0]), ...pt.slice(1)])
+            : chronique
           hcObj.addSeries(
             opts,
             false,  // do not redraw after each serie

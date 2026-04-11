@@ -41,10 +41,9 @@ type (
 	}
 
 	FloatRangeTs struct {
-		ts          time.Time
-		min         float64
-		max         float64
-		offsetHours int
+		ts  time.Time
+		min float64
+		max float64
 	}
 
 	IntTs struct {
@@ -53,10 +52,9 @@ type (
 	}
 
 	IntRangeTs struct {
-		ts          time.Time
-		min         int
-		max         int
-		offsetHours int
+		ts  time.Time
+		min int
+		max int
 	}
 )
 
@@ -75,9 +73,6 @@ const (
 	Uv     = "Uv"
 	Trange = "Trange"
 	Hrange = "Hrange"
-
-	// shift min/max points position from 00h00
-	dailyOffset = 8 // hours
 )
 
 var forecastsChroniques = []NomSerie{
@@ -275,9 +270,9 @@ func (d Daily) withTimestamp(data NomSerie) (ValueTs, error) {
 	ts := d.Time
 	switch data {
 	case Trange:
-		return FloatRangeTs{ts, d.Tmin, d.Tmax, dailyOffset}, nil
+		return FloatRangeTs{ts, d.Tmin, d.Tmax}, nil
 	case Hrange:
-		return IntRangeTs{ts, d.Hmin, d.Hmax, dailyOffset}, nil
+		return IntRangeTs{ts, d.Hmin, d.Hmax}, nil
 	case Uv:
 		return IntTs{ts, d.Uv}, nil
 	default:
@@ -297,8 +292,7 @@ func (v FloatTs) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON outputs a timestamped float as an array [ts, min, max]
 func (v FloatRangeTs) MarshalJSON() ([]byte, error) {
-	t := timeToJs(v.ts.Add(time.Duration(v.offsetHours) * time.Hour))
-	s := fmt.Sprintf("[%d, %f, %f]", t, v.min, v.max)
+	s := fmt.Sprintf("[%d, %f, %f]", timeToJs(v.ts), v.min, v.max)
 	return []byte(s), nil
 }
 
@@ -310,8 +304,7 @@ func (v IntTs) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON outputs a timestamped float as an array [ts, min, max]
 func (v IntRangeTs) MarshalJSON() ([]byte, error) {
-	t := timeToJs(v.ts.Add(time.Duration(v.offsetHours) * time.Hour))
-	s := fmt.Sprintf("[%d, %d, %d]", t, v.min, v.max)
+	s := fmt.Sprintf("[%d, %d, %d]", timeToJs(v.ts), v.min, v.max)
 	return []byte(s), nil
 }
 
@@ -374,13 +367,12 @@ func (v FloatRangeTs) GobEncode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := make([]byte, 2+len(ts)+8+8+8)
+	buf := make([]byte, 2+len(ts)+8+8)
 	binary.LittleEndian.PutUint16(buf, uint16(len(ts)))
 	copy(buf[2:], ts)
 	off := 2 + len(ts)
 	binary.LittleEndian.PutUint64(buf[off:], math.Float64bits(v.min))
 	binary.LittleEndian.PutUint64(buf[off+8:], math.Float64bits(v.max))
-	binary.LittleEndian.PutUint64(buf[off+16:], uint64(v.offsetHours))
 	return buf, nil
 }
 
@@ -392,7 +384,6 @@ func (v *FloatRangeTs) GobDecode(data []byte) error {
 	off := 2 + tsLen
 	v.min = math.Float64frombits(binary.LittleEndian.Uint64(data[off:]))
 	v.max = math.Float64frombits(binary.LittleEndian.Uint64(data[off+8:]))
-	v.offsetHours = int(binary.LittleEndian.Uint64(data[off+16:]))
 	return nil
 }
 
@@ -401,13 +392,12 @@ func (v IntRangeTs) GobEncode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := make([]byte, 2+len(ts)+8+8+8)
+	buf := make([]byte, 2+len(ts)+8+8)
 	binary.LittleEndian.PutUint16(buf, uint16(len(ts)))
 	copy(buf[2:], ts)
 	off := 2 + len(ts)
 	binary.LittleEndian.PutUint64(buf[off:], uint64(v.min))
 	binary.LittleEndian.PutUint64(buf[off+8:], uint64(v.max))
-	binary.LittleEndian.PutUint64(buf[off+16:], uint64(v.offsetHours))
 	return buf, nil
 }
 
@@ -419,6 +409,5 @@ func (v *IntRangeTs) GobDecode(data []byte) error {
 	off := 2 + tsLen
 	v.min = int(binary.LittleEndian.Uint64(data[off:]))
 	v.max = int(binary.LittleEndian.Uint64(data[off+8:]))
-	v.offsetHours = int(binary.LittleEndian.Uint64(data[off+16:]))
 	return nil
 }
