@@ -133,6 +133,7 @@ func (cr *Crawler) getMap(ctx context.Context, path string) (*mfmap.MfMap, error
 		OriginalPath: path,
 		Conf:         cr.conf.MapConf,
 	}
+	m.Schedule.Rates = cr.conf.MapConf.Rates
 	err = m.ParseHtml(body)
 	if err != nil {
 		return nil, err
