@@ -21,5 +21,6 @@ __pycache__
 /.claude/
 /instructions.txt
 
-# Symlink to /msg/message.txt, created by deploy.sh
+# Message dir and symlink, created by deploy.sh
+/msg/
 /message.txt

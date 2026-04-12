@@ -18,7 +18,7 @@ services:
       args:
         COMMIT_ID: ${COMMIT_ID:-unknown}
     volumes:
-      - /msg:/msg:ro
+      - ./msg:/msg:ro
     command: ["/gometeo", "-oneshot", "-limit", "5", "-fastupdate"]
     environment:
       - TZ=Europe/Paris

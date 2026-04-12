@@ -12,7 +12,7 @@ services:
     networks:
       - traefik
     volumes:
-      - /msg:/msg:ro
+      - ./msg:/msg:ro
     environment:
       - TZ=Europe/Paris
     logging:
