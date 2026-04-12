@@ -48,13 +48,15 @@ func withLogging(h http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		slog.Info("http request",
-			"method", req.Method,
-			"uri", req.RequestURI,
-			"status", responseData.status,
-			"duration", duration,
-			"size", responseData.size,
-		)
+		if req.RequestURI != "/healthz" {
+			slog.Info("http request",
+				"method", req.Method,
+				"uri", req.RequestURI,
+				"status", responseData.status,
+				"duration", duration,
+				"size", responseData.size,
+			)
+		}
 	}
 	return http.HandlerFunc(loggingFn)
 }
