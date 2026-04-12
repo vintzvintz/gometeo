@@ -11,6 +11,8 @@ services:
     restart: always
     networks:
       - traefik
+    volumes:
+      - ./message.txt:/message.txt:ro
     environment:
       - TZ=Europe/Paris
     logging:

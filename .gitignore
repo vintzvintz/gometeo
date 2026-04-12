@@ -20,3 +20,6 @@ __pycache__
 # AI
 /.claude/
 /instructions.txt
+
+# Operator message (edited on VPS, not tracked)
+/message.txt

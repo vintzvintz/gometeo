@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 	"text/template"
 
 	gj "gometeo/geojson"
@@ -19,6 +21,22 @@ type TemplateData struct {
 	Path        string
 	VueJs       string
 	CacheId     string
+	Message     string
+}
+
+// messageFile is the path to the optional message file.
+// Exported for testing.
+var messageFile = "message.txt"
+
+// readMessage returns the content of messageFile, or "" if the file
+// is missing, empty, or contains only whitespace.
+func readMessage() string {
+	b, err := os.ReadFile(messageFile)
+	if err != nil {
+		return ""
+	}
+	s := strings.TrimSpace(string(b))
+	return s
 }
 
 //go:embed template.html
@@ -35,6 +53,7 @@ func WriteHtml(wr io.Writer, m *mfmap.MfMap) error {
 		Path:        m.Path(),
 		CacheId:     m.Conf.CacheId,
 		VueJs:       m.Conf.VueJs,
+		Message:     readMessage(),
 	})
 }
 

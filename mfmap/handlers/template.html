@@ -45,9 +45,9 @@
 </head>
 
 <body>
-<!--  <div id="message"> 
-    <h2>message informatif</h2>
-  </div> -->
+{{if .Message}}
+  <div id="message">{{.Message}}</div>
+{{end}}
   <div id="vuejs_root"></div>
   <script type="module">
     import {createMeteoApp} from 'main'

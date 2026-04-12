@@ -38,6 +38,9 @@ fi
 echo ">>> pulling $BRANCH"
 git pull --ff-only "$REMOTE" "$BRANCH"
 
+# Ensure message.txt exists so Docker bind-mount doesn't create a directory.
+touch message.txt
+
 COMMIT_ID=$(git rev-parse --short HEAD)
 export COMMIT_ID
 echo ">>> building image at commit $COMMIT_ID"
