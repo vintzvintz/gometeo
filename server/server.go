@@ -75,14 +75,16 @@ func mapConf() mfmap.MapConf {
 
 func Start() error {
 	// Remove timestamp from slog output to avoid duplication with journald timestamps.
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	// Errors and warnings go to stderr; info and debug go to stdout.
+	logOpts := &slog.HandlerOptions{
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.TimeKey {
 				return slog.Attr{}
 			}
 			return a
 		},
-	})))
+	}
+	slog.SetDefault(slog.New(newLevelSplitHandler(os.Stdout, os.Stderr, logOpts)))
 
 	rates := appconf.UpdateRate()
 	slog.Info("starting gometeo", "commit", appconf.Commit(), "addr", appconf.Addr(), "limit", appconf.Limit(), "oneshot", appconf.OneShot(), "vuejs", appconf.VueJs())
