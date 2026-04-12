@@ -36,9 +36,10 @@ func TestAtomicRace(t *testing.T) {
 }
 
 var testRates = UpdateRates{
-	HotDuration: 72 * time.Hour,
-	HotMaxAge:   60 * time.Minute,
-	ColdMaxAge:  240 * time.Minute,
+	HotDuration:    72 * time.Hour,
+	HotMaxAge:      60 * time.Minute,
+	ColdMaxAge:     240 * time.Minute,
+	FailureBackoff: 30 * time.Minute,
 }
 
 func TestLogUpdate(t *testing.T) {
@@ -51,6 +52,35 @@ func TestLogUpdate(t *testing.T) {
 	dur = s.DurationToUpdate()
 	if dur < 0 {
 		t.Error("DurationToUpdate() on just-updated map must be positive")
+	}
+}
+
+func TestFailureBackoff(t *testing.T) {
+	r := testRates
+	// A map with a stale lastUpdate would normally be due immediately.
+	// After MarkFailure, it must not be due until FailureBackoff has elapsed.
+	s := Stats{Rates: r}
+	s.lastUpdate.Store(time.Now().Add(-2 * r.ColdMaxAge)) // very overdue
+	if d := s.DurationToUpdate(); d > 0 {
+		t.Fatalf("precondition: expected overdue map, got d=%v", d)
+	}
+	s.MarkFailure()
+	if d := s.DurationToUpdate(); d <= 0 {
+		t.Errorf("after MarkFailure: expected backoff > 0, got d=%v", d)
+	}
+
+	// Simulating a failure further in the past than FailureBackoff should
+	// let the map become due again.
+	s.lastFailure.Store(time.Now().Add(-r.FailureBackoff - time.Minute))
+	if d := s.DurationToUpdate(); d > 0 {
+		t.Errorf("after backoff expired: expected due, got d=%v", d)
+	}
+
+	// A successful MarkUpdate must clear the failure state.
+	s.MarkFailure()
+	s.MarkUpdate()
+	if !s.LastFailure().IsZero() {
+		t.Errorf("MarkUpdate must clear lastFailure, got %v", s.LastFailure())
 	}
 }
 

@@ -25,13 +25,15 @@ const (
 )
 
 const (
-	fastHotDuration = 30 * time.Minute
-	fastHotMaxAge   = 1 * time.Minute
-	fastColdMaxAge  = 5 * time.Minute
+	fastHotDuration    = 30 * time.Minute
+	fastHotMaxAge      = 1 * time.Minute
+	fastColdMaxAge     = 5 * time.Minute
+	fastFailureBackoff = 2 * time.Minute
 
-	normalHotDuration = 72 * time.Hour
-	normalHotMaxAge   = 60 * time.Minute
-	normalColdMaxAge  = 240 * time.Minute
+	normalHotDuration    = 72 * time.Hour
+	normalHotMaxAge      = 60 * time.Minute
+	normalColdMaxAge     = 240 * time.Minute
+	normalFailureBackoff = 30 * time.Minute
 )
 
 type CliOpts struct {
@@ -146,14 +148,16 @@ func KeepDays() (dayMin, dayMax int) {
 func UpdateRate() schedule.UpdateRates {
 	if appOpts != nil && appOpts.FastUpdate {
 		return schedule.UpdateRates{
-			HotDuration: fastHotDuration,
-			HotMaxAge:   fastHotMaxAge,
-			ColdMaxAge:  fastColdMaxAge,
+			HotDuration:    fastHotDuration,
+			HotMaxAge:      fastHotMaxAge,
+			ColdMaxAge:     fastColdMaxAge,
+			FailureBackoff: fastFailureBackoff,
 		}
 	}
 	return schedule.UpdateRates{
-		HotDuration: normalHotDuration,
-		HotMaxAge:   normalHotMaxAge,
-		ColdMaxAge:  normalColdMaxAge,
+		HotDuration:    normalHotDuration,
+		HotMaxAge:      normalHotMaxAge,
+		ColdMaxAge:     normalColdMaxAge,
+		FailureBackoff: normalFailureBackoff,
 	}
 }

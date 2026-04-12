@@ -149,6 +149,20 @@ func (mc *Meteo) Updatable() string {
 	return mc.maps.updatable()
 }
 
+// MarkFailure records that a fetch attempt for the given upstream path failed,
+// so the scheduler backs off before retrying. The path is matched against
+// MfMap.OriginalPath, which is what Updatable() returns.
+func (mc *Meteo) MarkFailure(originalPath string) {
+	mc.maps.mutex.Lock()
+	defer mc.maps.mutex.Unlock()
+	for _, m := range mc.maps.store {
+		if m.OriginalPath == originalPath {
+			m.Schedule.MarkFailure()
+			return
+		}
+	}
+}
+
 // StatusReport is the high-level data surfaced by the /statusse page.
 // It combines the observability snapshot with per-store counts.
 type StatusReport struct {

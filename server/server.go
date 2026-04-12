@@ -65,9 +65,10 @@ func mapConf() mfmap.MapConf {
 		VueJs:    appconf.VueJs(),
 		Upstream: appconf.Upstream(),
 		Rates: schedule.UpdateRates{
-			HotDuration: r.HotDuration,
-			HotMaxAge:   r.HotMaxAge,
-			ColdMaxAge:  r.ColdMaxAge,
+			HotDuration:    r.HotDuration,
+			HotMaxAge:      r.HotMaxAge,
+			ColdMaxAge:     r.ColdMaxAge,
+			FailureBackoff: r.FailureBackoff,
 		},
 	}
 }
@@ -75,7 +76,7 @@ func mapConf() mfmap.MapConf {
 func Start() error {
 	rates := appconf.UpdateRate()
 	slog.Info("starting gometeo", "commit", appconf.Commit(), "addr", appconf.Addr(), "limit", appconf.Limit(), "oneshot", appconf.OneShot(), "vuejs", appconf.VueJs())
-	slog.Info("update rates", "hotDuration", rates.HotDuration, "hotMaxAge", rates.HotMaxAge, "coldMaxAge", rates.ColdMaxAge)
+	slog.Info("update rates", "hotDuration", rates.HotDuration, "hotMaxAge", rates.HotMaxAge, "coldMaxAge", rates.ColdMaxAge, "failureBackoff", rates.FailureBackoff)
 
 	// Root context cancelled on SIGINT/SIGTERM for graceful shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -195,7 +196,22 @@ func runUpdateLoop(
 		}
 		fetchCtx, cancel := context.WithTimeout(ctx, sconf.FetchTimeout)
 		chMap, chPicto := cr.Fetch(fetchCtx, path, 1)
-		<-c.Receive(chMap, chPicto)
+		// Tee the map channel so we can tell whether the fetch produced a map.
+		// On failure, mark the map so the scheduler applies the failure backoff
+		// and we don't hammer upstream every tick.
+		teedMap := make(chan *mfmap.MfMap)
+		received := 0
+		go func() {
+			defer close(teedMap)
+			for m := range chMap {
+				received++
+				teedMap <- m
+			}
+		}()
+		<-c.Receive(teedMap, chPicto)
+		if received == 0 {
+			c.MarkFailure(path)
+		}
 		cancel()
 	}
 }
