@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 
 	"gometeo/mfmap"
 	"gometeo/obs"
@@ -60,8 +61,7 @@ func makeDataHandler(m *mfmap.MfMap, reg *obs.Registry) func(http.ResponseWriter
 		}
 		// update on data handler (JSON request) instead of main handler
 		// to allow main page caching and avoid simplest bots
-		ip, _, _ := net.SplitHostPort(req.RemoteAddr)
-		m.Schedule.MarkHit(ip)
+		m.Schedule.MarkHit(clientIP(req))
 		reg.RecordMapServed()
 	}
 }
@@ -81,6 +81,22 @@ func makeSvgMapHandler(m *mfmap.MfMap) func(http.ResponseWriter, *http.Request) 
 			slog.Error("send error", "err", err)
 		}
 	}
+}
+
+// clientIP returns the real client IP, looking through reverse-proxy headers.
+func clientIP(req *http.Request) string {
+	if xff := req.Header.Get("X-Forwarded-For"); xff != "" {
+		// X-Forwarded-For may contain a chain: "client, proxy1, proxy2"
+		if ip, _, ok := strings.Cut(xff, ","); ok {
+			return strings.TrimSpace(ip)
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := req.Header.Get("X-Real-Ip"); xri != "" {
+		return xri
+	}
+	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
+	return ip
 }
 
 func makeRedirectHandler(url string) func(http.ResponseWriter, *http.Request) {

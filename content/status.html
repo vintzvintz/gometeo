@@ -151,7 +151,7 @@
       <tr {{if (eq .UpdateMode "hot")}}class="fastupdate"{{end}}>
         <td><a href="{{.Path}}">{{.Name}}</a></td>
         <td>{{.LastHit}}</td>
-        <td>{{.LastClientIP}}</td>
+        <td>{{if .LastClientIP}}<a href="https://whatismyipaddress.com/ip/{{.LastClientIP}}" target="_blank">{{.LastClientIP}}</a>{{end}}</td>
         <td class="num">{{.HitCount}}</td>
         <td>{{.UpdateMode}}</td>
         <td>{{.LastUpdate}}</td>
