@@ -6,7 +6,7 @@ services:
       args:
         COMMIT_ID: ${COMMIT_ID:-unknown}
     volumes:
-      - ./message.txt:/message.txt:ro
+      - /msg:/msg:ro
     command: ["/gometeo", "-oneshot", "-limit", "5", "-fastupdate"]
     ports:
       - "1051:1051"

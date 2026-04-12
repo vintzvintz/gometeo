@@ -21,5 +21,5 @@ __pycache__
 /.claude/
 /instructions.txt
 
-# Operator message (edited on VPS, not tracked)
+# Symlink to /msg/message.txt, created by deploy.sh
 /message.txt

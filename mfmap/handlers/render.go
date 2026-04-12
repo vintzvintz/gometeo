@@ -26,7 +26,7 @@ type TemplateData struct {
 
 // messageFile is the path to the optional message file.
 // Exported for testing.
-var messageFile = "message.txt"
+var messageFile = "/msg/message.txt"
 
 // readMessage returns the content of messageFile, or "" if the file
 // is missing, empty, or contains only whitespace.

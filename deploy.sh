@@ -38,8 +38,11 @@ fi
 echo ">>> pulling $BRANCH"
 git pull --ff-only "$REMOTE" "$BRANCH"
 
-# Ensure message.txt exists so Docker bind-mount doesn't create a directory.
-touch message.txt
+# Ensure /msg/message.txt exists and is symlinked into the project
+# so the Docker bind mount (./data -> /data) picks it up.
+mkdir -p /msg
+touch /msg/message.txt
+ln -sfn /msg/message.txt message.txt
 
 COMMIT_ID=$(git rev-parse --short HEAD)
 export COMMIT_ID
