@@ -1,6 +1,7 @@
 
 services:
   app:
+    container_name: gometeo
     build:
       context: .
       network: host
@@ -12,6 +13,9 @@ services:
       - traefik
     environment:
       - TZ=Europe/Paris
+    logging:
+      options:
+        tag: "gometeo"
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-lan"
