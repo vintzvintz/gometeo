@@ -141,6 +141,7 @@
       <tr>
         <th>Carte</th>
         <th>LastHit</th>
+        <th>Last IP</th>
         <th class="num">Hits</th>
         <th>Mode</th>
         <th>Last update</th>
@@ -150,6 +151,7 @@
       <tr {{if (eq .UpdateMode "hot")}}class="fastupdate"{{end}}>
         <td><a href="{{.Path}}">{{.Name}}</a></td>
         <td>{{.LastHit}}</td>
+        <td>{{.LastClientIP}}</td>
         <td class="num">{{.HitCount}}</td>
         <td>{{.UpdateMode}}</td>
         <td>{{.LastUpdate}}</td>

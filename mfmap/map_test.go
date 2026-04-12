@@ -148,8 +148,8 @@ func TestBuildJson(t *testing.T) {
 
 func TestMerge(t *testing.T) {
 	old := testBuildMap(t)
-	old.Schedule.MarkHit()
-	old.Schedule.MarkHit()
+	old.Schedule.MarkHit("")
+	old.Schedule.MarkHit("")
 
 	newMap := testBuildMap(t)
 	newMap.Merge(old, -3, 7)

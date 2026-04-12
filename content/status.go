@@ -31,13 +31,14 @@ var displayLoc = func() *time.Location {
 }()
 
 type Stats struct {
-	Name       string
-	Path       string
-	LastUpdate string
-	LastHit    string
-	NextUpdate string
-	UpdateMode string
-	HitCount   int64
+	Name         string
+	Path         string
+	LastUpdate   string
+	LastHit      string
+	LastClientIP string
+	NextUpdate   string
+	UpdateMode   string
+	HitCount     int64
 }
 
 // ReportView is a template-friendly (pre-formatted strings) flattening of
@@ -121,13 +122,14 @@ func (mc *Meteo) buildReportView() ReportView {
 
 func getStats(m *mfmap.MfMap) Stats {
 	s := Stats{
-		Name:       m.Name(),
-		Path:       m.Path(),
-		HitCount:   m.Schedule.HitCount(),
-		UpdateMode: "-",
-		LastHit:    "-",
-		LastUpdate: "-",
-		NextUpdate: "-",
+		Name:         m.Name(),
+		Path:         m.Path(),
+		HitCount:     m.Schedule.HitCount(),
+		LastClientIP: m.Schedule.LastClientIP(),
+		UpdateMode:   "-",
+		LastHit:      "-",
+		LastUpdate:   "-",
+		NextUpdate:   "-",
 	}
 	if lh := m.Schedule.LastHit(); !lh.IsZero() {
 		s.LastHit = time.Since(lh).Round(time.Second).String()

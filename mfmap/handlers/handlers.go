@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 
 	"gometeo/mfmap"
@@ -59,7 +60,8 @@ func makeDataHandler(m *mfmap.MfMap, reg *obs.Registry) func(http.ResponseWriter
 		}
 		// update on data handler (JSON request) instead of main handler
 		// to allow main page caching and avoid simplest bots
-		m.Schedule.MarkHit()
+		ip, _, _ := net.SplitHostPort(req.RemoteAddr)
+		m.Schedule.MarkHit(ip)
 		reg.RecordMapServed()
 	}
 }

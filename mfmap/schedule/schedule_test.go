@@ -18,7 +18,7 @@ func TestAtomicRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start // wait for start signal
-			s.MarkHit()
+			s.MarkHit("")
 			s.MarkUpdate()
 		}()
 	}

@@ -13,11 +13,12 @@ type UpdateRates struct {
 }
 
 type Stats struct {
-	Rates       UpdateRates
-	lastUpdate  atomic.Value // wraps a time.Time
-	lastHit     atomic.Value // wraps a time.Time
-	lastFailure atomic.Value // wraps a time.Time
-	hitCount    atomic.Int64 // simple counter
+	Rates        UpdateRates
+	lastUpdate   atomic.Value // wraps a time.Time
+	lastHit      atomic.Value // wraps a time.Time
+	lastFailure  atomic.Value // wraps a time.Time
+	lastClientIP atomic.Value // wraps a string
+	hitCount     atomic.Int64 // simple counter
 }
 
 func (s *Stats) MarkUpdate() {
@@ -34,14 +35,23 @@ func (s *Stats) LastFailure() time.Time {
 	return loadAsTime(&s.lastFailure)
 }
 
-func (s *Stats) MarkHit() {
+func (s *Stats) MarkHit(clientIP string) {
 	now := time.Now()
 	s.lastHit.Store(now)
+	s.lastClientIP.Store(clientIP)
 	s.hitCount.Add(1)
 }
 
 func (s *Stats) LastHit() time.Time {
 	return loadAsTime(&s.lastHit)
+}
+
+func (s *Stats) LastClientIP() string {
+	val := s.lastClientIP.Load()
+	if ip, ok := val.(string); ok {
+		return ip
+	}
+	return ""
 }
 
 func (s *Stats) LastUpdate() time.Time {
@@ -92,5 +102,6 @@ func (s *Stats) DurationToUpdate() time.Duration {
 // Used during map merges to preserve hit tracking.
 func (s *Stats) CopyFrom(other *Stats) {
 	s.lastHit.Store(other.LastHit())
+	s.lastClientIP.Store(other.LastClientIP())
 	s.hitCount.Store(other.HitCount())
 }
