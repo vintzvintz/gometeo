@@ -1,7 +1,6 @@
 services:
   traefik:
     image: traefik:v3.6
-    restart: unless-stopped
     network_mode: host
     group_add:
       - "${DOCKER_GID:-999}"
