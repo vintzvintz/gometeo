@@ -8,7 +8,7 @@ deploy: pull build down up
 pull:
 
 build:
-    docker compose build
+    COMMIT_ID=$(git rev-parse --short HEAD) docker compose build
 
 down:
     docker compose down
