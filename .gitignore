@@ -10,8 +10,6 @@
 # binary temp files
 *.gob 
 
-/www/svg/*.svg
-
 # temp files
 __debug_*
 __pycache__
@@ -20,7 +18,3 @@ __pycache__
 # AI
 /.claude/
 /instructions.txt
-
-# Message dir and symlink, created by deploy.sh
-/msg/
-/message.txt
